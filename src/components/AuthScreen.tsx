@@ -32,7 +32,7 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, onSign
   return <main className="auth-shell">
     <section className="auth-story">
       <div className="story-glow glow-one" /><div className="story-glow glow-two" />
-      <div className="brand"><div className="brand-mark">N</div><div><strong>Novaes<span>Web</span></strong><small>MASTER</small></div></div>
+      <div className="brand"><img className="auth-brand-logo" src="/images/novaesweb-logo.jpeg" alt="Logo NovaesWeb" /><div><strong>Painel Master</strong><small>GESTÃO NOVAESWEB</small></div></div>
       <div className="story-content">
         <div className="eyebrow"><span className="live-dot" /> CENTRAL DE GESTÃO</div>
         <h1>Bem-vindo ao<br /><span>Painel Master</span></h1>
@@ -50,7 +50,7 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, onSign
     </section>
     <section className="auth-panel">
       <div className="auth-card">
-        <div className="brand auth-card-brand"><div className="brand-mark">N</div><div><strong>Novaes<span>Web</span></strong><small>MASTER</small></div></div>
+        <div className="brand auth-card-brand"><img className="auth-brand-logo" src="/images/novaesweb-logo.jpeg" alt="Logo NovaesWeb" /><div><strong>Painel Master</strong><small>GESTÃO NOVAESWEB</small></div></div>
         {setupRequired ? <>
           <div className="status-icon status-warn"><LockKeyhole size={22} /></div>
           <h2>Conexão pendente</h2>

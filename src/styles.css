@@ -58,3 +58,42 @@
   .auth-panel:before{background-color:#030611;background-size:cover;background-position:80% top;filter:blur(14px);opacity:.5;transform:scale(1.04)}
   .auth-panel:after{background-image:linear-gradient(180deg,rgba(3,5,16,.04) 0%,rgba(3,5,16,.06) 22%,rgba(3,5,16,.38) 42%,rgba(3,5,16,.86) 63%,#030611 100%),url('/images/novaesweb-personagem.jpeg');background-size:cover,100% auto;background-position:center,center top;background-repeat:no-repeat}
 }
+
+/* Identidade NovaesWeb: preto profundo com acentos neon azul, violeta e rosa. */
+:root{--bg:#05040b;--sidebar:#080611;--card:#0d0a18;--purple:#8a35ff;--pink:#ff1680;--cyan:#3b5cff;--brand-blue:#3b5cff;--brand-violet:#a326ff;--brand-pink:#ff176f}
+body,.app-shell,.main-shell{background-color:#05040b}
+.main-shell{background-image:radial-gradient(ellipse at 78% 0%,rgba(82,48,180,.09),transparent 34%),radial-gradient(ellipse at 12% 76%,rgba(224,24,111,.035),transparent 38%)}
+.sidebar{background:linear-gradient(180deg,#0a0714 0%,#07060e 60%,#09050e 100%);border-right-color:rgba(143,75,255,.2)}
+.sidebar-brand{padding-bottom:18px;border-bottom:1px solid rgba(143,75,255,.16)}
+.sidebar-logo,.auth-brand-logo{display:block;flex:none;object-fit:cover;background:#030207;border:1px solid rgba(164,83,255,.38);box-shadow:0 0 22px rgba(119,49,255,.2),0 0 20px rgba(255,25,119,.08)}
+.sidebar-logo{width:52px;height:52px;border-radius:13px}
+.topbar-logo{display:none}
+.sidebar-brand .brand-copy strong{color:#f5edff;font-size:14px;letter-spacing:-.4px}
+.sidebar-brand .brand-copy small{color:#b38bdc;font-size:7px;letter-spacing:1.6px}
+.auth-brand-logo{width:64px;height:64px;border-radius:15px}
+.auth-story .brand strong,.auth-card-brand strong{color:#f7f2ff}
+.auth-story .brand strong span,.auth-card-brand strong span{color:#ff5aa7}
+.auth-story .brand small,.auth-card-brand small{color:#c5a6f4}
+.workspace-icon{background:linear-gradient(145deg,rgba(57,89,255,.2),rgba(141,48,255,.2),rgba(255,22,128,.12));color:#c196ff}
+.nav-link.active{background:linear-gradient(100deg,rgba(52,86,255,.2),rgba(138,53,255,.18) 52%,rgba(255,22,128,.1));color:#f2dcff}
+.nav-link.active:before{background:linear-gradient(180deg,#3b5cff,#a326ff 55%,#ff176f);box-shadow:0 0 12px rgba(175,45,255,.85)}
+.nav-link:hover{background:linear-gradient(90deg,rgba(138,53,255,.1),rgba(255,22,128,.045));color:#f4eaff}
+.topbar{border-bottom-color:rgba(149,89,255,.16);background:rgba(5,4,11,.9)}
+.top-avatar,.avatar{border-color:rgba(211,65,255,.44);background:linear-gradient(145deg,#3025a8,#8523b8 62%,#b51362);color:#fff1ff;box-shadow:0 0 15px rgba(142,45,255,.17)}
+.metric-card,.panel{border-color:rgba(149,89,255,.15);background:linear-gradient(145deg,rgba(15,11,29,.96),rgba(8,7,17,.96))}
+.metric-card:hover,.panel:hover{border-color:rgba(169,79,255,.27)}
+.metric-icon.purple{background:rgba(138,53,255,.16);color:#bc83ff}
+.metric-icon.blue{background:rgba(59,92,255,.15);color:#7f9aff}
+.metric-icon.pink{background:rgba(255,22,128,.13);color:#ff69b0}
+.connection-banner{border-color:rgba(158,65,255,.25);background:linear-gradient(100deg,rgba(54,75,255,.1),rgba(138,53,255,.1) 55%,rgba(255,22,128,.055))}
+.banner-icon,.chart-empty-icon,.module-icon{border-color:rgba(173,73,255,.3);background:linear-gradient(145deg,rgba(59,92,255,.16),rgba(138,53,255,.16),rgba(255,22,128,.08));color:#d2a1ff}
+.inline-link,.text-button{color:#c294ff}
+.primary-button,.primary-compact{background:linear-gradient(100deg,#355cff 0%,#8b35ff 53%,#ff147d 100%);box-shadow:0 8px 26px rgba(118,48,255,.24),0 5px 20px rgba(255,20,125,.1)}
+.primary-button:hover:not(:disabled),.primary-compact:hover{filter:brightness(1.13);box-shadow:0 10px 30px rgba(118,48,255,.32),0 6px 20px rgba(255,20,125,.15)}
+.secondary-button:hover,.select-button:hover{border-color:rgba(185,95,255,.45);color:#f0dfff}
+.input-wrap:focus-within,.sidebar-search:focus-within{border-color:rgba(181,92,255,.75);box-shadow:0 0 0 3px rgba(138,53,255,.12),0 0 18px rgba(255,22,128,.07)}
+.auth-panel .auth-card{border-color:rgba(162,79,255,.3);box-shadow:0 28px 90px rgba(0,0,0,.42),0 0 35px rgba(114,57,220,.12)}
+.auth-panel .input-wrap{border-color:rgba(74,97,255,.38)}
+.auth-panel .primary-button{background:linear-gradient(100deg,#355cff 0%,#8b35ff 53%,#ff147d 100%)}
+.loading-screen .brand-mark{background:linear-gradient(135deg,#355cff,#8b35ff 55%,#ff147d)}
+@media(max-width:760px){.topbar-logo{display:block;width:32px;height:32px;flex:none;object-fit:cover;border:1px solid rgba(164,83,255,.4);border-radius:9px;background:#030207}.auth-panel .auth-card-brand .auth-brand-logo{width:50px;height:50px;border-radius:12px}}

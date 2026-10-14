@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Building2, Check, ChevronRight, Clock3, Copy, Globe2, Layers3, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { siteIntegrationPrompt } from '../lib/integrationPrompt'
 import './StoresPage.css'
 
 type Integration = { provider: string; status: string; last_seen_at: string | null }
@@ -35,11 +34,9 @@ export function StoresPage({ role }: { role: string }) {
   const [query, setQuery] = useState('')
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showPrompt, setShowPrompt] = useState(false)
   const [showRegistration, setShowRegistration] = useState(false)
   const [registering, setRegistering] = useState(false)
-  const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', owner_name: '', plan_code: '' })
-  const [copied, setCopied] = useState(false)
+  const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
 
   const loadSites = useCallback(async (quiet = false) => {
     if (!supabase || !isSupabaseConfigured) {
@@ -117,12 +114,6 @@ export function StoresPage({ role }: { role: string }) {
     setMessage('Registro oficial encontrado no Supabase.')
   }
 
-  async function copyPrompt() {
-    await navigator.clipboard.writeText(siteIntegrationPrompt)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
-  }
-
   async function registerOfficialSite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setMessage('')
@@ -135,6 +126,7 @@ export function StoresPage({ role }: { role: string }) {
         nx_id: registration.nx_id.trim(),
         name: registration.name.trim(),
         owner_id: registration.owner_id.trim(),
+        site_domain: registration.site_domain.trim(),
         owner_name: registration.owner_name.trim() || null,
         plan_code: registration.plan_code.trim() || null,
       },
@@ -155,11 +147,11 @@ export function StoresPage({ role }: { role: string }) {
       setRegistering(false)
       return
     }
-    setRegistration({ nx_id: '', name: '', owner_id: '', owner_name: '', plan_code: '' })
+    setRegistration({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
     setShowRegistration(false)
     setSelectedId(data.site.id as string)
     await loadSites(true)
-    setMessage(`Registro oficial ${data.site.nx_id} criado e vinculado ao proprietário.`)
+    setMessage(`Cadastro manual ${data.site.nx_id} importado e vinculado ao proprietário.`)
     setRegistering(false)
   }
 
@@ -168,30 +160,24 @@ export function StoresPage({ role }: { role: string }) {
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Central Multi-Loja</h1><p>Cadastro oficial do Supabase, atualizado em tempo real e por reconciliação periódica.</p></div>
       <div className="stores-heading-actions">
         <button className="secondary-button" onClick={() => void loadSites(true)} disabled={refreshing}><RefreshCw size={14} className={refreshing ? 'spin' : ''} /> Atualizar</button>
-        {role === 'MASTER' && <button className="secondary-button" onClick={() => setShowRegistration((value) => !value)}><Store size={14} /> Registrar loja oficial</button>}
-        <button className="primary-compact" onClick={() => setShowPrompt((value) => !value)}><Layers3 size={14} /> Guia do novo site</button>
+        {role === 'MASTER' && <button className="secondary-button" onClick={() => setShowRegistration((value) => !value)}><Store size={14} /> Cadastro manual (secundário)</button>}
       </div>
     </div>
 
     {showRegistration && role === 'MASTER' && <section className="panel official-registration">
-      <div className="registration-heading"><div><strong>Registrar cadastro oficial</strong><p>Use o ID NX já emitido pelo cadastro oficial; esta tela não gera nem substitui identificadores.</p></div><span className="registration-lock"><ShieldCheck size={15} /> Somente MASTER</span></div>
+      <div className="registration-heading"><div><strong>Importar cadastro manual</strong><p>Opção secundária para lojas que já têm um ID NX oficial. Novos sites devem solicitar cadastro pela integração e aguardar a aprovação MASTER.</p></div><span className="registration-lock"><ShieldCheck size={15} /> Somente MASTER</span></div>
       <form className="registration-grid" onSubmit={(event) => void registerOfficialSite(event)}>
         <label>ID NX oficial<input required maxLength={64} value={registration.nx_id} onChange={(event) => setRegistration({ ...registration, nx_id: event.target.value })} placeholder="ID permanente já emitido" /></label>
         <label>Nome da loja<input required maxLength={160} value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} placeholder="Nome registrado" /></label>
         <label>UUID do proprietário<input required value={registration.owner_id} onChange={(event) => setRegistration({ ...registration, owner_id: event.target.value })} placeholder="UUID de usuário no Supabase Auth" /></label>
+        <label>Domínio principal<input required type="url" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="https://minhaloja.vercel.app" /></label>
         <label>Nome do proprietário<input maxLength={160} value={registration.owner_name} onChange={(event) => setRegistration({ ...registration, owner_name: event.target.value })} placeholder="Opcional" /></label>
         <label>Plano<input maxLength={80} value={registration.plan_code} onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })} placeholder="Opcional" /></label>
-        <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Registrando…' : 'Registrar com ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
+        <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Importando…' : 'Importar ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
       </form>
     </section>}
 
-    {showPrompt && <section className="panel integration-guide">
-      <div><strong>Contrato de integração NovaesWeb Connect 1.0</strong><p>O prompt usa os nomes reais das tabelas e reforça Auth, RLS e proteção de chaves.</p></div>
-      <button className="secondary-button" onClick={() => void copyPrompt()}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? 'Copiado' : 'Copiar prompt'}</button>
-      <details><summary>Ver prompt de integração</summary><pre>{siteIntegrationPrompt}</pre></details>
-    </section>}
-
-    {message && <div className={`stores-message ${message.startsWith('Registro oficial') ? 'success' : ''}`} role="status">{message}</div>}
+    {message && <div className={`stores-message ${message.startsWith('Cadastro manual') ? 'success' : ''}`} role="status">{message}</div>}
     <div className="store-metrics">
       <Metric icon={<Store size={17} />} label="Lojas reais" value={sites.length} tone="violet" />
       <Metric icon={<ShieldCheck size={17} />} label="Ativas" value={activeCount} tone="green" />

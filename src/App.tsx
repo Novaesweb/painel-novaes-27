@@ -5,6 +5,7 @@ import { AuthScreen } from './components/AuthScreen'
 import { DashboardLayout } from './components/DashboardLayout'
 import { DashboardPage } from './pages/DashboardPage'
 import { ModulePage } from './pages/ModulePage'
+import { SiteIntegrationPage } from './pages/SiteIntegrationPage'
 import { StoresPage } from './pages/StoresPage'
 import { getMasterProfile, isSupabaseConfigured, supabase } from './lib/auth'
 import type { AccessProfile } from './lib/auth'
@@ -51,6 +52,7 @@ export function App() {
     <Routes>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/lojas" element={<StoresPage role={profile.role} />} />
+      <Route path="/integracao-sites" element={<SiteIntegrationPage role={profile.role} />} />
       <Route path="*" element={<ModulePage path={page} />} />
     </Routes>
   </DashboardLayout>

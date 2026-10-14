@@ -24,17 +24,17 @@ ETAPA 1 — AUDITAR E PRESERVAR
 ETAPA 2 — SOLICITAR O CADASTRO OFICIAL
 Se o site ainda não tiver cadastro oficial, implemente uma solicitação autenticada, sem criar loja diretamente:
 - O proprietário entra na conta confirmada do Supabase Auth central. Não permita solicitação anônima.
-- Solicite nome do site, domínio público HTTPS principal (incluindo domínio vercel.app se esse for o endereço atual), nome do proprietário opcional e plano opcional.
+- Solicite o nome do site, nome do proprietário opcional e plano opcional. O domínio/URL é opcional: se já estiver definido, aceite HTTP ou HTTPS e informe-o; se não estiver, envie site_domain como null. Não invente um domínio. O MASTER poderá cadastrá-lo depois na Central Multi-Loja.
 - Gere e persista um idempotency_key aleatório para a tentativa, reutilizando-o ao repetir a mesma chamada. Ele serve só para evitar solicitações duplicadas; não é ID oficial.
 - Chame a função existente novaesweb-admin com a ação request_site_registration e os campos site_name, site_domain, owner_name, plan_code e idempotency_key. Não envie owner_id, store_id ou nx_id: o backend identifica o solicitante pelo JWT e rejeita IDs oficiais enviados pelo cliente.
 - A resposta fornece request_id e status pending_approval; não há loja nem IDs oficiais nessa etapa.
-- A Edge Function limita solicitações, rejeita domínio já cadastrado ou outra solicitação pendente para o domínio, audita a solicitação e notifica o MASTER. A RLS permite ao solicitante acompanhar apenas a própria solicitação e ao MASTER ver a fila.
+- A Edge Function limita solicitações, rejeita domínio duplicado quando informado, audita a solicitação e notifica o MASTER. A RLS permite ao solicitante acompanhar apenas a própria solicitação e ao MASTER ver a fila.
 - Consulte o andamento chamando novaesweb-admin com action get_site_registration_status e request_id. Pode usar polling com intervalo razoável e, quando RLS/Realtime estiver configurado, atualização em tempo real. Trate pending_approval, approved e rejected e mostre a observação de recusa sem criar registros locais como se fossem oficiais.
 - Apenas perfis MASTER ativos podem listar a fila (action list_site_registration_requests), aprovar (approve_site_registration) ou recusar (reject_site_registration). Não crie botão para o proprietário aprovar a própria solicitação.
 
 ETAPA 3 — RECEBER OS IDS APÓS APROVAÇÃO MASTER
 - Quando get_site_registration_status retornar approved, o backend retorna os valores reais store_id e nx_id. O endpoint verifica que a solicitação pertence ao usuário autenticado; nunca devolve IDs de outro solicitante.
-- A aprovação é uma transação PostgreSQL: cria managed_sites, vínculo ativo owner em store_members, domínio principal pendente em store_domains, integração pending em store_integrations, atualiza a solicitação e registra auditoria/notificação. Se alguma etapa falhar, nenhuma dessas alterações fica parcial.
+- A aprovação é uma transação PostgreSQL: cria managed_sites, vínculo ativo owner em store_members, integração pending em store_integrations, atualiza a solicitação e registra auditoria/notificação. Só cria o domínio principal pendente em store_domains se um domínio foi informado na solicitação. Se não informou, o MASTER poderá adicioná-lo depois pela Central Multi-Loja. Se alguma etapa falhar, nenhuma dessas alterações fica parcial.
 - O UUID é gerado no banco/backend. O nx_id é gerado no backend como NX- seguido da representação hexadecimal do UUID, protegido também pelos índices de unicidade. Nunca gere ou substitua IDs no frontend.
 - A Central Multi-Loja reconhece o registro por managed_sites e Realtime/reconciliação, sem um segundo cadastro. Não altere nem recrie lojas existentes.
 - Não use a ação register_site no site integrado. Ela é apenas o fluxo manual secundário do Painel Master para importações autorizadas com NX já existente.

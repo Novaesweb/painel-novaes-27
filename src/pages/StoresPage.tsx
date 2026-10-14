@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
 
@@ -36,6 +36,9 @@ export function StoresPage({ role }: { role: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showRegistration, setShowRegistration] = useState(false)
   const [registering, setRegistering] = useState(false)
+  const [addingDomain, setAddingDomain] = useState(false)
+  const [newDomain, setNewDomain] = useState('')
+  const [makePrimary, setMakePrimary] = useState(false)
   const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
 
   const loadSites = useCallback(async (quiet = false) => {
@@ -155,6 +158,35 @@ export function StoresPage({ role }: { role: string }) {
     setRegistering(false)
   }
 
+  async function addSiteDomain(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage('')
+    if (role !== 'MASTER' || !selected || !supabase) {
+      setMessage('Somente um MASTER pode adicionar o domínio da loja.')
+      return
+    }
+    setAddingDomain(true)
+    const { data, error } = await supabase.functions.invoke('novaesweb-admin', {
+      body: { action: 'add_site_domain', store_id: selected.id, site_domain: newDomain.trim(), is_primary: selected.store_domains.length === 0 || makePrimary },
+    })
+    if (error) {
+      let detail = error.message
+      try {
+        const response = (error as Error & { context?: Response }).context
+        const payload = await response?.clone().json() as { error?: string } | undefined
+        if (payload?.error) detail = payload.error
+      } catch { /* keep the Supabase error message */ }
+      setMessage(`Não foi possível adicionar o domínio: ${detail}`)
+      setAddingDomain(false)
+      return
+    }
+    setNewDomain('')
+    setMakePrimary(false)
+    await loadSites(true)
+    setMessage(`Domínio ${data?.domain || 'adicionado'} vinculado à loja.`)
+    setAddingDomain(false)
+  }
+
   return <div className="stores-page">
     <div className="page-heading stores-heading">
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Central Multi-Loja</h1><p>Cadastro oficial do Supabase, atualizado em tempo real e por reconciliação periódica.</p></div>
@@ -170,7 +202,7 @@ export function StoresPage({ role }: { role: string }) {
         <label>ID NX oficial<input required maxLength={64} value={registration.nx_id} onChange={(event) => setRegistration({ ...registration, nx_id: event.target.value })} placeholder="ID permanente já emitido" /></label>
         <label>Nome da loja<input required maxLength={160} value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} placeholder="Nome registrado" /></label>
         <label>UUID do proprietário<input required value={registration.owner_id} onChange={(event) => setRegistration({ ...registration, owner_id: event.target.value })} placeholder="UUID de usuário no Supabase Auth" /></label>
-        <label>Domínio principal<input required type="url" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="https://minhaloja.vercel.app" /></label>
+        <label>URL principal (opcional)<input type="url" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="Pode adicionar depois no Master" /></label>
         <label>Nome do proprietário<input maxLength={160} value={registration.owner_name} onChange={(event) => setRegistration({ ...registration, owner_name: event.target.value })} placeholder="Opcional" /></label>
         <label>Plano<input maxLength={80} value={registration.plan_code} onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })} placeholder="Opcional" /></label>
         <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Importando…' : 'Importar ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
@@ -194,6 +226,12 @@ export function StoresPage({ role }: { role: string }) {
         <Info label="Criada em" value={dateLabel(selected.created_at)} />
         <Info label="UUID interno" value={selected.id} mono />
       </div>
+      {role === 'MASTER' && <form className="domain-add-form" onSubmit={(event) => void addSiteDomain(event)}>
+        <div><strong>Adicionar domínio</strong><p>Você pode cadastrar ou atualizar o domínio desta loja por aqui, agora ou depois.</p></div>
+        <label><span>URL pública (HTTP ou HTTPS)</span><input required type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="http://minhaloja.example.com" /></label>
+        {selected.store_domains.length > 0 && <label className="domain-primary-choice"><input type="checkbox" checked={makePrimary} onChange={(event) => setMakePrimary(event.target.checked)} /> Tornar domínio principal</label>}
+        <button className="secondary-button" disabled={addingDomain}>{addingDomain ? <span className="loader" /> : <Plus size={14} />}{addingDomain ? 'Salvando…' : 'Adicionar domínio'}</button>
+      </form>}
       <div className="store-related-grid">
         <Related title="Domínios" icon={<Globe2 size={16} />} empty="Nenhum domínio cadastrado." items={selected.store_domains.map((domain) => `${domain.domain}${domain.is_primary ? ' · principal' : ''} · ${domain.verification_status}`)} />
         <Related title="Integrações" icon={<Layers3 size={16} />} empty="Nenhuma integração cadastrada." items={selected.store_integrations.map((integration) => `${integration.provider} · ${integration.status}${integration.last_seen_at ? ` · visto ${dateLabel(integration.last_seen_at)}` : ''}`)} />

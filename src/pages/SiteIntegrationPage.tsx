@@ -10,7 +10,7 @@ type RegistrationRequest = {
   requester_contact: string | null
   site_name: string
   owner_name: string | null
-  site_domain: string
+  site_domain: string | null
   plan_code: string | null
   status: string
   created_at: string
@@ -116,7 +116,7 @@ export function SiteIntegrationPage({ role }: { role: string }) {
       {loadingRequests && requests.length === 0 ? <div className="registration-queue-empty"><span className="loader" /><p>Carregando solicitações…</p></div>
         : requests.length === 0 ? <div className="registration-queue-empty"><strong>Nenhuma solicitação pendente</strong><p>Os novos sites aparecerão aqui depois que o proprietário enviar uma solicitação autenticada.</p></div>
           : <div className="registration-request-list">{requests.map((item) => <article className="registration-request" key={item.id}>
-            <div className="registration-request-content"><div className="registration-request-main"><strong>{item.site_name}</strong><span>{item.site_domain}</span></div>
+            <div className="registration-request-content"><div className="registration-request-main"><strong>{item.site_name}</strong><span>{item.site_domain || 'Domínio será adicionado depois no Master'}</span></div>
               <div className="registration-request-meta"><span>Solicitante: {item.requester_contact || item.requester_user_id}</span>{item.owner_name && <span>Proprietário: {item.owner_name}</span>}{item.plan_code && <span>Plano: {item.plan_code}</span>}<span>{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.created_at))}</span></div>
             </div>
             <div className="registration-request-actions"><button className="primary-button" disabled={busyRequestId !== null} onClick={() => void reviewRequest(item.id, 'approve')}>{busyRequestId === item.id ? 'Processando…' : 'Aprovar e gerar IDs'}</button><button className="secondary-button reject-request" disabled={busyRequestId !== null} onClick={() => void reviewRequest(item.id, 'reject')}><X size={14} /> Recusar</button></div>

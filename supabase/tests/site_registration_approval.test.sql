@@ -2,7 +2,7 @@
 -- Nunca execute em producao: cria usuarios e registros de teste dentro de uma transacao.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(24);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -100,6 +100,39 @@ select is(
   )->>'status'),
   'pending_approval', 'Solicitante diferente pode ter solicitação própria'
 );
+select is(
+  (public.novaesweb_create_site_registration_request(
+    '41000000-0000-4000-8000-000000000001', 'requester@example.invalid',
+    'No Domain Shop', null, null, null,
+    '47000000-0000-4000-8000-000000000007'
+  )->>'status'),
+  'pending_approval', 'Solicitação sem domínio é aceita'
+);
+select is(
+  (public.novaesweb_review_site_registration(
+    (select id from public.site_registration_requests where site_name = 'No Domain Shop'),
+    '42000000-0000-4000-8000-000000000002', 'approve', null
+  )->>'status'),
+  'approved', 'MASTER pode aprovar cadastro sem domínio'
+);
+select is(
+  (select count(*)::int from public.store_domains d join public.managed_sites s on s.id = d.store_id
+   where s.name = 'No Domain Shop'),
+  0, 'Aprovação sem URL não cria domínio fictício'
+);
+select is(
+  (public.novaesweb_add_site_domain(
+    '42000000-0000-4000-8000-000000000002',
+    (select id from public.managed_sites where name = 'No Domain Shop'),
+    'later-shop.example.invalid', true
+  )->>'domain'),
+  'later-shop.example.invalid', 'MASTER pode associar o domínio posteriormente'
+);
+select is(
+  (select count(*)::int from public.store_domains d join public.managed_sites s on s.id = d.store_id
+   where s.name = 'No Domain Shop' and d.domain = 'later-shop.example.invalid' and d.is_primary),
+  1, 'Domínio posterior fica vinculado como principal'
+);
 reset role;
 
 select ok(not has_table_privilege('anon', 'public.site_registration_requests', 'SELECT'), 'Anônimo não lê solicitações');
@@ -110,12 +143,12 @@ select ok(has_function_privilege('service_role', 'public.novaesweb_review_site_r
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '41000000-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claims', '{"sub":"41000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
-select is((select count(*)::int from public.site_registration_requests), 1, 'Solicitante só vê a própria solicitação');
+select is((select count(*)::int from public.site_registration_requests), 2, 'Solicitante só vê as próprias solicitações');
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '42000000-0000-4000-8000-000000000002', true);
 select set_config('request.jwt.claims', '{"sub":"42000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
-select is((select count(*)::int from public.site_registration_requests), 2, 'MASTER ativo vê a fila completa');
+select is((select count(*)::int from public.site_registration_requests), 3, 'MASTER ativo vê toda a fila e o histórico');
 reset role;
 select * from finish();
 rollback;

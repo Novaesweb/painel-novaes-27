@@ -19,7 +19,7 @@ function normalizeDomain(value: unknown): string | null {
     const input = value.trim()
     const url = new URL(input.includes('://') ? input : `https://${input}`)
     const hostname = url.hostname.toLowerCase().replace(/\.$/, '')
-    if (url.protocol !== 'https:' || url.username || url.password || !hostname.includes('.')
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || !hostname.includes('.')
       || hostname === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
       || hostname.includes(':') || !/^[a-z0-9.-]+$/.test(hostname)
       || hostname.startsWith('.') || hostname.endsWith('.') || hostname.includes('..')) return null
@@ -31,7 +31,7 @@ function normalizeDomain(value: unknown): string | null {
 
 function errorStatus(error: { message: string; code?: string }, fallback = 500) {
   const message = error.message
-  if (message.includes('SITE_ALREADY_REGISTERED')) return 409
+  if (message.includes('SITE_ALREADY_REGISTERED') || message.includes('SITE_DOMAIN_ALREADY_ASSIGNED')) return 409
   if (error.code === '23505') return 409
   if (message.includes('REGISTRATION_RATE_LIMIT')) return 429
   if (message.includes('ACTIVE_MASTER_REQUIRED')) return 403
@@ -90,13 +90,14 @@ Deno.serve(async (request) => {
       return reply(400, { error: 'O site não pode enviar IDs oficiais nem escolher outro proprietário. O Master gera e vincula esses dados após aprovar.' })
     }
     const siteName = typeof input.site_name === 'string' ? input.site_name.trim() : ''
-    const siteDomain = normalizeDomain(input.site_domain)
+    const rawSiteDomain = typeof input.site_domain === 'string' ? input.site_domain.trim() : ''
+    const siteDomain = rawSiteDomain ? normalizeDomain(rawSiteDomain) : null
     const ownerName = typeof input.owner_name === 'string' ? input.owner_name.trim() : null
     const planCode = typeof input.plan_code === 'string' ? input.plan_code.trim() : null
     const idempotencyKey = typeof input.idempotency_key === 'string' ? input.idempotency_key.trim() : ''
-    if (!siteName || siteName.length > 160 || !siteDomain || !uuidPattern.test(idempotencyKey)
+    if (!siteName || siteName.length > 160 || (rawSiteDomain && !siteDomain) || !uuidPattern.test(idempotencyKey)
       || (ownerName && ownerName.length > 160) || (planCode && planCode.length > 80)) {
-      return reply(400, { error: 'Informe nome, domínio HTTPS público e uma chave de repetição válida.' })
+      return reply(400, { error: 'Informe o nome, uma URL pública válida se já tiver domínio e uma chave de repetição válida.' })
     }
 
     const { data, error } = await admin.rpc('novaesweb_create_site_registration_request', {
@@ -163,6 +164,28 @@ Deno.serve(async (request) => {
       : error.message.includes('REQUEST_ALREADY_REVIEWED')
         ? 'Esta solicitação já foi analisada.'
         : 'Não foi possível concluir a decisão.' })
+    return reply(200, data as Record<string, unknown>)
+  }
+
+  if (input.action === 'add_site_domain') {
+    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode adicionar domínios.' })
+    const storeId = typeof input.store_id === 'string' ? input.store_id.trim() : ''
+    const siteDomain = normalizeDomain(input.site_domain)
+    const isPrimary = input.is_primary !== false
+    if (!uuidPattern.test(storeId) || !siteDomain) {
+      return reply(400, { error: 'Informe a loja e uma URL pública válida (HTTP ou HTTPS).' })
+    }
+    const { data, error } = await admin.rpc('novaesweb_add_site_domain', {
+      p_actor_user_id: actorId,
+      p_store_id: storeId,
+      p_domain: siteDomain,
+      p_is_primary: isPrimary,
+    })
+    if (error) return reply(errorStatus(error), {
+      error: error.message.includes('SITE_DOMAIN_ALREADY_ASSIGNED') || error.code === '23505'
+        ? 'Esse domínio já está associado a outra loja ou solicitação.'
+        : 'Não foi possível adicionar o domínio.'
+    })
     return reply(200, data as Record<string, unknown>)
   }
 
@@ -234,10 +257,11 @@ Deno.serve(async (request) => {
   const ownerId = typeof input.owner_id === 'string' ? input.owner_id.trim() : ''
   const ownerName = typeof input.owner_name === 'string' ? input.owner_name.trim() : null
   const planCode = typeof input.plan_code === 'string' ? input.plan_code.trim() : null
-  const siteDomain = normalizeDomain(input.site_domain)
+  const rawSiteDomain = typeof input.site_domain === 'string' ? input.site_domain.trim() : ''
+  const siteDomain = rawSiteDomain ? normalizeDomain(rawSiteDomain) : null
   if (!nxId || nxId.length > 64 || !name || name.length > 160 || !uuidPattern.test(ownerId)
-    || !siteDomain) {
-    return reply(400, { error: 'Informe o ID NX existente, nome, domínio HTTPS público e UUID do proprietário.' })
+    || (rawSiteDomain && !siteDomain)) {
+    return reply(400, { error: 'Informe o ID NX existente, nome, UUID do proprietário e, se quiser, uma URL pública válida.' })
   }
   if (ownerName && ownerName.length > 160) return reply(400, { error: 'Nome do proprietário muito longo.' })
   if (planCode && planCode.length > 80) return reply(400, { error: 'Código do plano muito longo.' })

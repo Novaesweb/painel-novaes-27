@@ -1,0 +1,84 @@
+import { useState } from 'react'
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Store, WandSparkles } from 'lucide-react'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
+
+type Props = { setupRequired?: boolean; accessDenied?: boolean; onSignOut?: () => void; email?: string }
+
+export function AuthScreen({ setupRequired = false, accessDenied = false, onSignOut, email }: Props) {
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
+
+  async function signIn(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(''); setNotice(''); setLoading(true)
+    if (!supabase) { setError('Configure a conexão do Supabase para habilitar o acesso.'); setLoading(false); return }
+    const values = new FormData(event.currentTarget)
+    const { error: authError } = await supabase.auth.signInWithPassword({ email: String(values.get('email')), password: String(values.get('password')) })
+    if (authError) setError(authError.status === 400 ? 'E-mail ou senha inválidos.' : 'Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
+    setLoading(false)
+  }
+
+  async function recoverPassword() {
+    setError(''); setNotice('')
+    const emailField = document.querySelector<HTMLInputElement>('input[name="email"]')?.value.trim()
+    if (!emailField) { setError('Informe seu e-mail para receber o link de recuperação.'); return }
+    if (!supabase) { setError('Configure o Supabase para habilitar a recuperação de senha.'); return }
+    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(emailField)
+    if (recoveryError) setError('Não foi possível enviar o link de recuperação agora.')
+    else setNotice('Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.')
+  }
+
+  return <main className="auth-shell">
+    <section className="auth-story">
+      <div className="story-glow glow-one" /><div className="story-glow glow-two" />
+      <div className="brand"><div className="brand-mark">N</div><div><strong>Novaes<span>Web</span></strong><small>MASTER</small></div></div>
+      <div className="story-content">
+        <div className="eyebrow"><span className="live-dot" /> CENTRAL DE GESTÃO</div>
+        <h1>Bem-vindo ao<br /><span>Painel Master</span></h1>
+        <p className="story-lead">A gestão completa da sua plataforma, em um só lugar.</p>
+        <ul className="feature-list">
+          <li><span><Store size={17} /></span> Gerencie suas lojas</li>
+          <li><span><ShieldCheck size={17} /></span> Controle de acessos</li>
+          <li><span><WandSparkles size={17} /></span> Domínios e publicações</li>
+          <li><span><Mail size={17} /></span> Suporte e notificações</li>
+          <li><span><WandSparkles size={17} /></span> E muito mais...</li>
+        </ul>
+      </div>
+      <div className="story-footer"><span className="footer-line" />Tecnologia que impulsiona o seu negócio!</div>
+      <div className="orbital orbital-a" /><div className="orbital orbital-b" />
+    </section>
+    <section className="auth-panel">
+      <div className="auth-card">
+        <div className="brand auth-card-brand"><div className="brand-mark">N</div><div><strong>Novaes<span>Web</span></strong><small>MASTER</small></div></div>
+        {setupRequired ? <>
+          <div className="status-icon status-warn"><LockKeyhole size={22} /></div>
+          <h2>Conexão pendente</h2>
+          <p className="auth-description">A base do painel está pronta. Para conectar seu Supabase, vou precisar da URL do projeto e da chave pública (anon/publishable).</p>
+          <div className="setup-note"><span className="live-dot amber" /> Nenhuma informação de demonstração está sendo exibida.</div>
+        </> : accessDenied ? <>
+          <div className="status-icon status-error"><ShieldCheck size={22} /></div>
+          <h2>Acesso não autorizado</h2>
+          <p className="auth-description">{email ? `${email} não possui um perfil autorizado para este painel.` : 'Este usuário não possui um perfil autorizado para este painel.'}</p>
+          <button className="primary-button" onClick={onSignOut}>Sair da conta <ArrowRight size={16} /></button>
+        </> : <>
+          <p className="form-kicker">ACESSO RESTRITO</p>
+          <h2>Acesse sua conta</h2>
+          <p className="auth-description">Digite seu e-mail e senha para entrar no Painel Master.</p>
+          {!isSupabaseConfigured && <div className="setup-note"><span className="live-dot amber" /> A autenticação será ativada após conectar o Supabase.</div>}
+          <form onSubmit={signIn} className="login-form">
+            <label htmlFor="email">E-mail</label>
+            <div className="input-wrap"><Mail size={17} /><input id="email" name="email" type="email" placeholder="seu@email.com" autoComplete="email" required /></div>
+            <div className="password-heading"><label htmlFor="password">Senha</label><button type="button" className="text-button" onClick={recoverPassword}>Esqueceu a senha?</button></div>
+            <div className="input-wrap"><LockKeyhole size={17} /><input id="password" name="password" type={passwordVisible ? 'text' : 'password'} placeholder="Sua senha" autoComplete="current-password" required /><button type="button" className="icon-button" onClick={() => setPasswordVisible(!passwordVisible)} aria-label={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}>{passwordVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+            {error && <div className="form-message error-message" role="alert">{error}</div>}
+            {notice && <div className="form-message success-message" role="status">{notice}</div>}
+            <button className="primary-button" type="submit" disabled={loading || !isSupabaseConfigured}>{loading ? <><span className="button-spinner" /> Entrando...</> : <>Entrar no painel <ArrowRight size={16} /></>}</button>
+          </form>
+          <div className="secure-note"><ShieldCheck size={15} /> Ambiente seguro e protegido</div>
+        </>}
+      </div>
+      <span className="copyright">© 2026 NovaesWeb · Todos os direitos reservados</span>
+    </section>
+  </main>
+}

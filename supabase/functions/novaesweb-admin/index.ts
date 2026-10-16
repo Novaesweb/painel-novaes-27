@@ -35,9 +35,7 @@ function errorStatus(error: { message: string; code?: string }, fallback = 500) 
   if (error.code === '23505') return 409
   if (message.includes('REGISTRATION_RATE_LIMIT')) return 429
   if (message.includes('ACTIVE_MASTER_REQUIRED')) return 403
-  if (message.includes('REQUEST_NOT_FOUND')) return 404
   if (message.includes('SUPPORT_TICKET_NOT_FOUND')) return 404
-  if (message.includes('REQUEST_ALREADY_REVIEWED')) return 409
   if (message.includes('INVALID_')) return 400
   return fallback
 }
@@ -78,97 +76,6 @@ Deno.serve(async (request) => {
     const { data, error } = await admin.from('master_profiles')
       .select('role,is_active').eq('user_id', actorId).maybeSingle()
     return !error && data?.is_active === true && data.role === 'MASTER'
-  }
-
-  if (input.action === 'request_site_registration') {
-    const user = authData.user
-    const confirmedIdentity = Boolean((user.email && user.email_confirmed_at)
-      || (user.phone && user.phone_confirmed_at))
-    if (!confirmedIdentity) {
-      return reply(403, { error: 'Confirme seu e-mail ou telefone no Supabase Auth antes de solicitar o cadastro.' })
-    }
-    if (input.nx_id || input.store_id || input.owner_id) {
-      return reply(400, { error: 'O site não pode enviar IDs oficiais nem escolher outro proprietário. O Master gera e vincula esses dados após aprovar.' })
-    }
-    const siteName = typeof input.site_name === 'string' ? input.site_name.trim() : ''
-    const rawSiteDomain = typeof input.site_domain === 'string' ? input.site_domain.trim() : ''
-    const siteDomain = rawSiteDomain ? normalizeDomain(rawSiteDomain) : null
-    const ownerName = typeof input.owner_name === 'string' ? input.owner_name.trim() : null
-    const planCode = typeof input.plan_code === 'string' ? input.plan_code.trim() : null
-    const idempotencyKey = typeof input.idempotency_key === 'string' ? input.idempotency_key.trim() : ''
-    if (!siteName || siteName.length > 160 || (rawSiteDomain && !siteDomain) || !uuidPattern.test(idempotencyKey)
-      || (ownerName && ownerName.length > 160) || (planCode && planCode.length > 80)) {
-      return reply(400, { error: 'Informe o nome, uma URL pública válida se já tiver domínio e uma chave de repetição válida.' })
-    }
-
-    const { data, error } = await admin.rpc('novaesweb_create_site_registration_request', {
-      p_requester_user_id: actorId,
-      p_requester_contact: user.email ?? user.phone ?? null,
-      p_site_name: siteName,
-      p_owner_name: ownerName,
-      p_site_domain: siteDomain,
-      p_plan_code: planCode,
-      p_idempotency_key: idempotencyKey,
-    })
-    if (error) return reply(errorStatus(error), { error: error.message.includes('SITE_ALREADY_REGISTERED') || error.code === '23505'
-      ? 'Esse domínio já está cadastrado ou existe uma solicitação pendente para ele.'
-      : error.message.includes('REGISTRATION_RATE_LIMIT')
-        ? 'Limite de solicitações atingido. Tente novamente mais tarde.'
-        : 'Não foi possível enviar a solicitação.' })
-    if (data.status === 'already_registered' && data.store_id && data.nx_id) {
-      return reply(200, { status: 'already_registered', store_id: data.store_id, nx_id: data.nx_id })
-    }
-    return reply(202, { request_id: data.request_id, status: data.status })
-  }
-
-  if (input.action === 'get_site_registration_status') {
-    const requestId = typeof input.request_id === 'string' ? input.request_id.trim() : ''
-    if (!uuidPattern.test(requestId)) return reply(400, { error: 'Identificador da solicitação inválido.' })
-    const { data: siteRequest, error } = await admin.from('site_registration_requests')
-      .select('id,site_name,site_domain,status,review_note,resulting_store_id')
-      .eq('id', requestId).eq('requester_user_id', actorId).maybeSingle()
-    if (error) return reply(500, { error: 'Não foi possível consultar o andamento.' })
-    if (!siteRequest) return reply(404, { error: 'Solicitação não encontrada.' })
-    if (siteRequest.status !== 'approved' || !siteRequest.resulting_store_id) {
-      return reply(200, { request_id: siteRequest.id, status: siteRequest.status,
-        review_note: siteRequest.review_note, site_name: siteRequest.site_name })
-    }
-    const { data: site, error: siteError } = await admin.from('managed_sites')
-      .select('id,nx_id').eq('id', siteRequest.resulting_store_id).maybeSingle()
-    if (siteError || !site) return reply(500, { error: 'O cadastro aprovado não pôde ser localizado.' })
-    return reply(200, { request_id: siteRequest.id, status: 'approved',
-      store_id: site.id, nx_id: site.nx_id, site_name: siteRequest.site_name })
-  }
-
-  if (input.action === 'list_site_registration_requests') {
-    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode consultar as solicitações.' })
-    const { data, error } = await admin.from('site_registration_requests')
-      .select('id,requester_user_id,requester_contact,site_name,owner_name,site_domain,plan_code,status,created_at')
-      .eq('status', 'pending_approval').order('created_at', { ascending: true }).limit(100)
-    if (error) return reply(500, { error: 'Não foi possível carregar a fila de solicitações.' })
-    return reply(200, { requests: data ?? [] })
-  }
-
-  if (input.action === 'approve_site_registration' || input.action === 'reject_site_registration') {
-    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode decidir sobre o cadastro.' })
-    const requestId = typeof input.request_id === 'string' ? input.request_id.trim() : ''
-    const reviewNote = typeof input.review_note === 'string' ? input.review_note.trim() : null
-    if (!uuidPattern.test(requestId) || (reviewNote && reviewNote.length > 500)) {
-      return reply(400, { error: 'Solicitação ou observação inválida.' })
-    }
-    const decision = input.action === 'approve_site_registration' ? 'approve' : 'reject'
-    const { data, error } = await admin.rpc('novaesweb_review_site_registration', {
-      p_request_id: requestId,
-      p_reviewer_user_id: actorId,
-      p_decision: decision,
-      p_review_note: reviewNote,
-    })
-    if (error) return reply(errorStatus(error), { error: error.message.includes('SITE_ALREADY_REGISTERED') || error.code === '23505'
-      ? 'O domínio já está vinculado a um cadastro oficial. Nenhuma loja foi criada.'
-      : error.message.includes('REQUEST_ALREADY_REVIEWED')
-        ? 'Esta solicitação já foi analisada.'
-        : 'Não foi possível concluir a decisão.' })
-    return reply(200, data as Record<string, unknown>)
   }
 
   if (input.action === 'add_site_domain') {

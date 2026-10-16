@@ -24,7 +24,7 @@ export function SiteIntegrationPage() {
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Integração de Sites</h1><p>Use um único prompt para orientar a integração de qualquer site já desenvolvido.</p></div>
     </div>
     <section className="panel site-integration-card">
-      <p>O cadastro agora é automático: o proprietário usa uma conta confirmada do Supabase Auth e o backend cria a loja, gera o UUID e o ID NX, vincula o proprietário e registra a integração. Não precisa aguardar aprovação do MASTER. O domínio pode ser adicionado depois na Central Multi-Loja.</p>
+      <p>O cadastro é automático e não precisa de aprovação do MASTER: com uma conta confirmada do Supabase Auth, o backend gera o UUID e o ID NX oficiais, vincula o proprietário e faz a loja aparecer na Central Multi-Loja. “Aguardando conexão” significa apenas que falta o site concluir o check-in. O domínio pode ser adicionado depois.</p>
       <button className="primary-button site-integration-copy" onClick={() => void copyPrompt()}>
         {copied ? <Check size={16} /> : <Copy size={16} />}
         {copied ? 'Prompt copiado' : 'Copiar Prompt de Integração'}

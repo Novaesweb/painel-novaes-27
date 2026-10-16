@@ -285,7 +285,7 @@ export function StoresPage({ role }: { role: string }) {
     </div>
 
     {showRegistration && role === 'MASTER' && <section className="panel official-registration">
-      <div className="registration-heading"><div><strong>Importar cadastro manual</strong><p>Opção secundária para lojas que já têm um ID NX oficial. Novos sites devem solicitar cadastro pela integração e aguardar a aprovação MASTER.</p></div><span className="registration-lock"><ShieldCheck size={15} /> Somente MASTER</span></div>
+      <div className="registration-heading"><div><strong>Importar cadastro manual</strong><p>Opção secundária para preservar um cadastro oficial existente. Novos sites usam o auto-cadastro da integração, sem aprovação do MASTER; o status inicial “Aguardando conexão” muda quando o site conclui o check-in.</p></div><span className="registration-lock"><ShieldCheck size={15} /> Somente MASTER</span></div>
       <form className="registration-grid" onSubmit={(event) => void registerOfficialSite(event)}>
         <label>ID NX oficial<input required maxLength={64} value={registration.nx_id} onChange={(event) => setRegistration({ ...registration, nx_id: event.target.value })} placeholder="ID permanente já emitido" /></label>
         <label>Nome da loja<input required maxLength={160} value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} placeholder="Nome registrado" /></label>

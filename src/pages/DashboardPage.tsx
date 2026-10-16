@@ -89,7 +89,7 @@ export function DashboardPage() {
 
   const recentSites = useMemo(() => [...sites].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)).slice(0, 5), [sites])
 
-  return <>
+  return <div className="dashboard-page">
     <div className="page-heading"><div><div className="eyebrow small-eyebrow"><span className="live-dot" /> VISÃO GERAL</div><h1>Dashboard</h1><p>Acompanhe lojas, integrações e ações administrativas.</p></div><div className="heading-actions"><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={15} /> {loading ? 'Atualizando…' : 'Atualizar'}</button></div></div>
     <div className="connection-banner"><div className="banner-icon"><Blocks size={18} /></div><div><strong>Conexão com o Supabase</strong><p>{message || 'Os indicadores abaixo vêm dos registros oficiais e da auditoria administrativa.'}</p></div><span className={`banner-status ${message ? '' : 'connected'}`}><i /> {message ? 'VERIFICAR CONEXÃO' : 'DADOS REAIS'}</span></div>
     <section className="metric-grid">{cards.map(({ label, value, detail, icon: Icon, tone, path }) => <button className="metric-card dashboard-metric-button" key={label} onClick={() => navigate(path)} aria-label={`Abrir ${label}`}><div className="metric-top"><span>{label}</span><span className={`metric-icon ${tone}`}><Icon size={18} /></span></div><div className="metric-value">{loading ? '…' : value}</div><div className="metric-foot"><span className="metric-neutral">{detail}</span><ArrowUpRight size={13} /></div></button>)}</section>
@@ -100,5 +100,5 @@ export function DashboardPage() {
       {loading ? <div className="activity-empty"><span className="loader" /><div><strong>Carregando atividade…</strong></div></div> : activity.length === 0 ? <div className="activity-empty"><div className="activity-icon"><CircleAlert size={20} /></div><div><strong>Nenhuma atividade registrada</strong><span>As próximas ações administrativas aparecerão aqui.</span></div></div> : <div className="dashboard-activity-list">{activity.map((item) => <article className="dashboard-activity-row" key={item.id}><span className={`dashboard-activity-dot result-${item.result}`} /><div><strong>{item.action.replaceAll('_', ' ')}</strong><small>{item.entity_type}{item.entity_id ? ` · ${item.entity_id}` : ''}</small></div><time>{dateLabel(item.created_at)}</time><span className={`audit-result result-${item.result}`}>{item.result}</span></article>)}</div>}
     </section>
     <div className="dashboard-footnote"><ShieldCheck size={14} /> O Master exibe indicadores administrativos e não consulta pedidos, clientes finais, catálogo, faturamento, lucro ou caixa das lojas.</div>
-  </>
+  </div>
 }

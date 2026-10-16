@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
@@ -33,6 +34,7 @@ function dateLabel(value: string) {
 }
 
 export function StoresPage({ role }: { role: string }) {
+  const [searchParams] = useSearchParams()
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -101,6 +103,12 @@ export function StoresPage({ role }: { role: string }) {
   }, [])
 
   useEffect(() => { void loadSites() }, [loadSites])
+  useEffect(() => {
+    const requestedQuery = searchParams.get('q')
+    const requestedSite = searchParams.get('site_id')
+    if (requestedQuery && requestedQuery !== query) setQuery(requestedQuery)
+    if (requestedSite && sites.some((site) => site.id === requestedSite) && selectedId !== requestedSite) setSelectedId(requestedSite)
+  }, [query, searchParams, selectedId, sites])
 
   useEffect(() => {
     if (!supabase) return

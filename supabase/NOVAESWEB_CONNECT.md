@@ -23,7 +23,7 @@ Este contrato corresponde às migrations e Edge Functions verificadas no projeto
 6. O registro aparece na Central Multi-Loja assim que `managed_sites` é criado. `pending` significa apenas que o site ainda não fez check-in; não significa que espera aprovação do MASTER.
 7. O site chama `novaesweb-admin` com `action: site_checkin` e o `nx_id` oficial. A função exige sessão e `store_members.is_active`, grava `store_integrations.last_seen_at` e muda o status inicial para `active`. Suspensão/manutenção retorna 403.
 
-As Edge Functions de aprovação antigas foram retiradas da rota ativa do `novaesweb-admin`. A tabela/funções de solicitações legadas permanecem no banco para preservar histórico; não fazem parte do fluxo atual. O registro manual da Central segue disponível somente como opção MASTER para importar cadastros oficiais já existentes, nunca para substituir o auto-cadastro.
+As rotas e RPCs antigas de aprovação foram desativadas. A tabela `site_registration_requests` permanece somente para preservar histórico, com as funções de criação/revisão sem permissão de execução. O registro manual da Central segue disponível somente como opção MASTER para importar cadastros oficiais já existentes, nunca para substituir o auto-cadastro.
 
 ## Isolamento entre lojas
 

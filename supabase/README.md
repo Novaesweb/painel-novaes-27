@@ -7,6 +7,7 @@
 - `migrations/20261014184651_novaesweb_site_registration_approval.sql`: schema histórico de solicitações/aprovação e importação manual. A fila de aprovação foi retirada das Edge Functions ativas; mantemos os objetos no banco para preservar histórico.
 - `migrations/20261015084707_novaesweb_self_service_registration.sql`: auto-cadastro transacional, sem aprovação MASTER, com IDs gerados no banco e deduplicação por proprietário.
 - `migrations/20261015084907_self_registration_deny_direct_access.sql`: nega acesso direto de clientes à tabela de idempotência.
+- `migrations/20261016100000_disable_legacy_site_approval.sql`: revoga execução das RPCs antigas de aprovação e mantém a tabela histórica.
 - `migrations/20261014190152_optional_registration_domains.sql`: domínio opcional no cadastro e ação MASTER para adicionar domínio posteriormente.
 - `functions/novaesweb-admin/index.ts`: ações administrativas, check-in e cadastro manual secundário; não oferece mais as ações antigas de fila/aprovação.
 - `functions/novaesweb-site-register/index.ts`: auto-cadastro de sites por usuário autenticado e confirmado; exige JWT.

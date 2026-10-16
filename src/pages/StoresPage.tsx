@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -34,7 +34,8 @@ function dateLabel(value: string) {
 }
 
 export function StoresPage({ role }: { role: string }) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const appliedDeepLink = useRef<string | null>(null)
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -105,10 +106,16 @@ export function StoresPage({ role }: { role: string }) {
   useEffect(() => { void loadSites() }, [loadSites])
   useEffect(() => {
     const requestedQuery = searchParams.get('q')
-    const requestedSite = searchParams.get('site_id')
     if (requestedQuery && requestedQuery !== query) setQuery(requestedQuery)
-    if (requestedSite && sites.some((site) => site.id === requestedSite) && selectedId !== requestedSite) setSelectedId(requestedSite)
-  }, [query, searchParams, selectedId, sites])
+  }, [query, searchParams])
+  useEffect(() => {
+    const requestedSite = searchParams.get('site_id')
+    if (!requestedSite) { appliedDeepLink.current = null; return }
+    if (requestedSite !== appliedDeepLink.current && sites.some((site) => site.id === requestedSite)) {
+      appliedDeepLink.current = requestedSite
+      setSelectedId(requestedSite)
+    }
+  }, [searchParams, sites])
 
   useEffect(() => {
     if (!supabase) return
@@ -299,7 +306,7 @@ export function StoresPage({ role }: { role: string }) {
     </div>
 
     {selected ? <section className="panel store-detail">
-      <button className="back-to-stores" onClick={() => setSelectedId(null)}><ArrowLeft size={15} /> Voltar à Central Multi-Loja</button>
+      <button className="back-to-stores" onClick={() => { setSelectedId(null); if (searchParams.has('site_id')) { const next = new URLSearchParams(searchParams); next.delete('site_id'); setSearchParams(next, { replace: true }) } }}><ArrowLeft size={15} /> Voltar à Central Multi-Loja</button>
       <div className="store-detail-title"><span className="store-avatar"><Store size={21} /></span><div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div><StatusBadge status={selected.status} /></div>
       <div className="store-detail-grid">
         <Info label="Proprietário" value={selected.owner_name || (selected.owner_id ? `Usuário ${selected.owner_id.slice(0, 8)}…` : 'Não vinculado')} />

@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ModulePage } from './pages/ModulePage'
 import { SiteIntegrationPage } from './pages/SiteIntegrationPage'
 import { StoresPage } from './pages/StoresPage'
+import { OperationalModulePage } from './pages/OperationalModules'
+import { AuditPage, NotificationsPage } from './pages/AdminHistoryPages'
 import { getMasterProfile, isSupabaseConfigured, supabase } from './lib/auth'
 import type { AccessProfile } from './lib/auth'
 
@@ -52,7 +54,17 @@ export function App() {
     <Routes>
       <Route path="/" element={<DashboardPage />} />
       <Route path="/lojas" element={<StoresPage role={profile.role} />} />
-      <Route path="/integracao-sites" element={<SiteIntegrationPage role={profile.role} />} />
+      <Route path="/integracao-sites" element={<SiteIntegrationPage />} />
+      <Route path="/notificacoes" element={<NotificationsPage />} />
+      <Route path="/auditoria" element={<AuditPage role={profile.role} />} />
+      <Route path="/suporte" element={<OperationalModulePage path="/suporte" role={profile.role} />} />
+      <Route path="/clientes" element={<OperationalModulePage path="/clientes" role={profile.role} />} />
+      <Route path="/planos" element={<OperationalModulePage path="/planos" role={profile.role} />} />
+      <Route path="/financeiro" element={<OperationalModulePage path="/financeiro" role={profile.role} />} />
+      <Route path="/dominios" element={<OperationalModulePage path="/dominios" role={profile.role} />} />
+      <Route path="/backups" element={<OperationalModulePage path="/backups" role={profile.role} />} />
+      <Route path="/configuracoes" element={<OperationalModulePage path="/configuracoes" role={profile.role} />} />
+      <Route path="/usuarios" element={<OperationalModulePage path="/usuarios" role={profile.role} />} />
       <Route path="*" element={<ModulePage path={page} />} />
     </Routes>
   </DashboardLayout>

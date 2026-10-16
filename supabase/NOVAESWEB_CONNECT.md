@@ -1,85 +1,68 @@
-# NovaesWeb Connect 1.1
+# NovaesWeb Connect — auto-cadastro sem aprovação manual
 
-Este documento descreve o contrato do Supabase central para integrar sites prontos ao Painel Master. A página **Integração de Sites** mantém um botão universal para copiar o prompt. O cadastro automático começa no site, passa por aprovação de um MASTER e só então cria os registros oficiais. O cadastro manual continua como opção secundária da Central Multi-Loja.
+Este documento descreve o contrato de integração do Painel Master com sites NovaesWeb. O cadastro normal de uma nova loja é iniciado pelo site e concluído automaticamente no backend; não há fila de aprovação MASTER. A Central Multi-Loja continua sendo a fonte oficial para consulta e gerenciamento administrativo.
 
-## Tabelas centrais
+## Projeto e tabelas oficiais
 
-- `managed_sites`: loja oficial, UUID `id`, ID NX `nx_id`, nome, proprietário, status, plano e `registration_key` para deduplicar domínios.
-- `store_members`: associação de usuário autenticado, loja, papel e status ativo.
-- `store_domains`: domínio principal e situação de verificação.
-- `store_integrations`: versão do contrato, estado e último check-in.
-- `store_settings`: preferências não secretas da loja.
-- `site_registration_requests`: solicitações autenticadas aguardando decisão MASTER, com solicitante, domínio, estado e resultado após aprovação.
+- Projeto Supabase central: `mabkzkawziqlmgfikwmh`
+- URL: `https://mabkzkawziqlmgfikwmh.supabase.co`
+- `managed_sites`: cadastro oficial. `id` é o UUID interno, `nx_id` é o ID NX permanente, `owner_id` aponta para Auth, e `status` registra estado administrativo.
+- `store_members`: usuários e papéis por loja. O proprietário é vinculado como `owner` ativo.
+- `store_integrations`: estado e check-in do site.
+- `store_domains`: domínios, que podem ser adicionados depois no Master.
+- `store_settings`: preferências não secretas.
+- `site_self_registrations`: idempotência e deduplicação do fluxo automático. Não concede acesso pelo Data API.
+- `master_audit_log` e `master_notifications`: trilha de auditoria e aviso ao usuário.
 
-As quatro tabelas administrativas do Master (`master_profiles`, `master_role_permissions`, `master_audit_log`, `master_notifications`) são preservadas. Não há tabelas operacionais universais de produtos, pedidos ou clientes; cada site deve propor sua própria migração aditiva com base no esquema real.
+Dados operacionais específicos de um tipo de site devem ser criados/adaptados depois, apenas quando necessários, usando `store_id` e RLS.
 
-Relacionamentos principais:
+## Fluxo de auto-cadastro
 
-```text
-auth.users 1──* managed_sites.owner_id
-managed_sites 1──* store_members *──1 auth.users
-managed_sites 1──* store_domains
-managed_sites 1──* store_integrations
-managed_sites 1──1 store_settings
-auth.users 1──* site_registration_requests
-site_registration_requests 0..1──1 managed_sites (resulting_store_id)
-managed_sites 1──* master_audit_log.store_id (opcional)
-```
+1. O proprietário autentica-se no Supabase Auth central e confirma e-mail ou telefone.
+2. O site solicita nome da loja e, opcionalmente, nome do proprietário. Domínio não é obrigatório.
+3. O site cria e preserva uma chave idempotente aleatória e chama a Edge Function `novaesweb-admin` com `action: register_site_self_service`.
+4. A Edge Function deriva `owner_id` da sessão validada. Rejeita `nx_id`, `store_id` ou `owner_id` enviados pelo cliente.
+5. A RPC `novaesweb_register_site_self_service` gera o UUID e um ID NX `NX-` + UUID sem hífens, cria `managed_sites` com status inicial `pending`, associa o proprietário ativo em `store_members`, cria `store_integrations` pendente e grava auditoria/notificação. As operações são atômicas.
+6. O backend retorna `store_id` e `nx_id` reais com status `registered`. Repetir uma chamada com a mesma chave ou o mesmo nome para a mesma conta retorna o cadastro anterior (`already_registered`). A conta pode criar até três lojas em 24 horas.
+7. A loja aparece na Central Multi-Loja assim que `managed_sites` é criado. O site executa o `site_checkin`; se Auth e vínculo estiverem válidos, `store_integrations` passa a `connected` e o status inicial `pending` passa a `active`.
 
-## Fluxo automático de aprovação
+O cadastro não cria domínio automaticamente. O Master pode adicioná-lo depois. Loja existente não deve ser recriada ou receber um novo ID NX.
 
-1. O proprietário entra com uma conta confirmada do Supabase Auth central e envia o nome e uma chave idempotente aleatória para `novaesweb-admin`, ação `request_site_registration`. A URL pública é opcional; quando conhecida, pode ser HTTP ou HTTPS. Não invente domínio. HTTPS é recomendado para os sites publicados.
-2. O backend deriva o solicitante do JWT; rejeita IDs oficiais enviados pelo navegador, limita solicitações, bloqueia domínios duplicados, grava auditoria e notifica os perfis MASTER ativos. A resposta contém somente `request_id` e `pending_approval`.
-3. O MASTER vê a fila na página Integração de Sites. Pode aprovar ou recusar; só MASTER ativo consegue executar essas ações.
-4. A aprovação chama `novaesweb_review_site_registration`, uma função transacional. Ela gera `managed_sites.id` com `gen_random_uuid()` e `nx_id` no banco a partir do UUID, cria membership ativa do solicitante como `owner`, integração `pending`, auditoria e notificação; só inclui domínio principal pendente se a solicitação informou um. Toda a operação confirma ou falha como uma unidade.
-5. O solicitante consulta `get_site_registration_status`. Apenas depois de aprovado e verificado como dono da solicitação recebe o UUID e o NX ID reais. A Central Multi-Loja observa `managed_sites` via Realtime e reconcilia a lista.
-6. Se o site ainda não tiver domínio, o MASTER pode adicioná-lo depois pelo detalhe da loja na Central Multi-Loja. Depois de configurar o site e confirmar o vínculo em `store_members`, o site chama `site_checkin`. O backend revalida Auth e membership, atualiza `store_integrations` e registra auditoria.
+## Edge Function e ações
 
-A chave idempotente evita solicitações duplicadas do mesmo usuário. Domínio pendente ou já vinculado é bloqueado por validações e índices de unicidade. Repetir a mesma aprovação retorna os identificadores já criados sem gerar outra loja. A solicitação não cria lojas automaticamente e não confia no ID NX como autorização.
+As Edge Functions exigem JWT e autenticam a sessão com Supabase Auth. Para sites integrados, as ações relevantes são:
 
-## Segurança
+- `novaesweb-site-register`: auto-cadastro; recebe `site_name`, opcional `owner_name` e `idempotency_key`.
+- `novaesweb-admin` com `site_checkin`: valida vínculo ativo usando `nx_id` e atualiza o heartbeat/conexão.
 
-- RLS está habilitado no catálogo Connect e em `site_registration_requests`. Usuários autenticados só leem lojas associadas, suas próprias solicitações; MASTER ativo lê o catálogo e a fila.
-- Não há escrita direta do cliente nas tabelas oficiais. As RPCs de criação e revisão são executáveis somente por `service_role`; a Edge Function valida a sessão e o papel MASTER antes de chamá-las.
-- `novaesweb_add_site_domain` também é exclusiva do backend e exige MASTER ativo; a Central Multi-Loja a usa para adicionar ou promover um domínio depois do cadastro.
-- `site_checkin` confirma membership ativa antes de atualizar integração ou ativar uma loja pendente.
-- A chave `service_role` existe apenas no ambiente da Edge Function. Nunca incluí-la em variáveis públicas, bundles, repositório ou prompt.
-- Os futuros dados operacionais devem usar `store_id UUID NOT NULL REFERENCES public.managed_sites(id)`, índices e políticas RLS próprias para SELECT/INSERT/UPDATE/DELETE, com validação de membership e `WITH CHECK` contra troca de loja.
+`novaesweb-master-sites` atende ações administrativas do Master, como `list_sites`, `set_site_status` e `set_block_details`. Sites das lojas não devem chamar essa função.
 
-## Cadastro manual secundário
+`service_role` fica somente nos secrets da Edge Function. Ela não deve ser incluída em `.env` público, frontend, bundle, logs ou repositório.
 
-A Central Multi-Loja ainda oferece `register_site`, agora através da RPC transacional `novaesweb_register_manual_site`. É destinada à importação de uma loja existente: exige MASTER ativo, NX ID oficial já existente e proprietário Auth. A URL HTTP/HTTPS é opcional e pode ser adicionada depois no detalhe da loja. Não use esse fluxo para gerar IDs no navegador nem para contornar a aprovação de um novo site.
+## Autorização e isolamento
 
-## Configuração de um site pronto
+- RLS está habilitada nas tabelas públicas de loja.
+- O helper disponível é `public.novaesweb_connect_is_active_store_member(target_store_id uuid)`.
+- Consultas do site devem usar sessão autenticada e RLS. `nx_id` e UUID identificam a loja; não autorizam acesso.
+- Tabelas operacionais devem conferir membership ativa e papel em cada operação. UPDATE deve usar `USING` e `WITH CHECK`, impedindo troca do `store_id`.
+- Tabelas de uma mesma loja devem ter chaves compostas/estrangeiras adequadas para impedir relações cruzadas entre tenants.
+- MASTER administra o estado da plataforma e os metadados administrativos. Não deve receber acesso ao catálogo, clientes, pedidos, caixa, faturamento comercial, receita ou lucro da loja.
 
-Para Vite, configure localmente e na Vercel:
+## Variáveis do site
 
-```env
+Para Vite:
+
+```dotenv
 VITE_SUPABASE_URL=https://mabkzkawziqlmgfikwmh.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<chave pública publishable deste projeto>
-VITE_NOVAESWEB_NX_ID=<ID NX retornado após aprovação>
-VITE_NOVAESWEB_STORE_ID=<UUID retornado após aprovação>
+VITE_SUPABASE_PUBLISHABLE_KEY=<chave pública do projeto central>
+VITE_NOVAESWEB_STORE_ID=<UUID oficial retornado pelo backend>
+VITE_NOVAESWEB_NX_ID=<ID NX oficial retornado pelo backend>
 ```
 
-Adapte o prefixo público ao framework. Configure as variáveis nos ambientes Vercel necessários e faça novo deploy após alterá-las. Nunca use prefixos públicos para `sb_secret`, `service_role`, `SUPABASE_SERVICE_ROLE_KEY` ou credenciais privadas.
+Use prefixos públicos próprios do framework. Publique somente a chave anon/publishable. Configure secrets privados no backend. Em Vercel, configure Development, Preview e Production e faça novo deploy depois de alterar variáveis.
 
-Antes de alterar um site, audite framework, Auth, banco, migrations, RLS, dados, rotas e implantação; apresente o plano e aguarde aprovação. Preserve dados e IDs. O Auth do site precisa ser compatível com o projeto central; contas de outro projeto não são automaticamente reconhecidas.
+## Testes de integração
 
-Para tabelas operacionais, não presumir um modelo universal. Propor migrations aditivas específicas, preservar os dados e provar o vínculo antes de preencher `store_id`. Não desabilitar RLS, permitir políticas abertas ou confiar em IDs do frontend como permissão.
+Verificar conta confirmada/não confirmada, registro sem domínio, registro idempotente, limite por conta, IDs gerados no servidor, associação `owner` ativa, loja aparecendo sem aprovação, check-in, loja inexistente, usuário sem membership, tentativa de trocar `store_id`, status de suspensão/manutenção e isolamento entre duas lojas. Testes com dados devem usar ambiente local/staging, não criar fixtures na produção.
 
-## Testes e validação
-
-Em banco local/staging descartável, testar: usuário não confirmado ou ausente; limite e repetição idempotente; domínio repetido e concorrência; tentativa de enviar NX/UUID/owner; solicitante tentando aprovar; MASTER ativo e inativo; aprovação/recusa; atomicidade em falha; membership ativa; IDs retornados somente ao solicitante aprovado; check-in e isolamento de duas lojas, inclusive troca de `store_id`.
-
-Não crie fixtures de teste em produção. Build local e check-in não comprovam que a URL implantada da Vercel está correta; confirme a URL real, o registro, o heartbeat e a Central Multi-Loja.
-
-## Arquivos do contrato
-
-- `migrations/20261014174341_novaesweb_connect_multi_store.sql` — catálogo oficial, RLS, funções auxiliares e Realtime.
-- `migrations/20261014174453_novaesweb_connect_fk_indexes.sql` — índices de chaves estrangeiras.
-- `migrations/20261014175152_managed_sites_nx_id_case_insensitive_unique.sql` — unicidade case-insensitive de NX ID.
-- `migrations/20261014184651_novaesweb_site_registration_approval.sql` — solicitação autenticada, aprovação transacional, IDs oficiais e cadastro manual atômico.
-- `migrations/20261014190152_optional_registration_domains.sql` — domínio opcional na solicitação/aprovação e cadastro posterior de domínio pelo MASTER.
-- `functions/novaesweb-admin/index.ts` — API autenticada para solicitação, consulta, decisão MASTER, check-in e cadastro manual.
-- `tests/novaesweb_connect_rls.test.sql` e `tests/site_registration_approval.test.sql` — testes transacionais para banco descartável.
-- `PROMPT_INTEGRACAO_SITE.md` — prompt universal copiado pelo botão da interface.
+O estado local deste contrato não comprova por si só um deployment. Confirme a versão da Edge Function, a migration do auto-cadastro, o check-in e a listagem no ambiente publicado antes de declarar a integração em produção.

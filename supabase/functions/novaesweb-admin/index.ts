@@ -36,6 +36,7 @@ function errorStatus(error: { message: string; code?: string }, fallback = 500) 
   if (message.includes('REGISTRATION_RATE_LIMIT')) return 429
   if (message.includes('ACTIVE_MASTER_REQUIRED')) return 403
   if (message.includes('REQUEST_NOT_FOUND')) return 404
+  if (message.includes('SUPPORT_TICKET_NOT_FOUND')) return 404
   if (message.includes('REQUEST_ALREADY_REVIEWED')) return 409
   if (message.includes('INVALID_')) return 400
   return fallback
@@ -114,6 +115,9 @@ Deno.serve(async (request) => {
       : error.message.includes('REGISTRATION_RATE_LIMIT')
         ? 'Limite de solicitações atingido. Tente novamente mais tarde.'
         : 'Não foi possível enviar a solicitação.' })
+    if (data.status === 'already_registered' && data.store_id && data.nx_id) {
+      return reply(200, { status: 'already_registered', store_id: data.store_id, nx_id: data.nx_id })
+    }
     return reply(202, { request_id: data.request_id, status: data.status })
   }
 
@@ -189,12 +193,87 @@ Deno.serve(async (request) => {
     return reply(200, data as Record<string, unknown>)
   }
 
+  if (input.action === 'manage_site') {
+    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode alterar o status da loja.' })
+    const storeId = typeof input.store_id === 'string' ? input.store_id.trim() : ''
+    const status = typeof input.status === 'string' ? input.status.trim() : ''
+    const reason = typeof input.reason === 'string' ? input.reason.trim() : null
+    const customerMessage = typeof input.customer_message === 'string' ? input.customer_message.trim() : null
+    const rawUntil = typeof input.status_until === 'string' && input.status_until.trim() ? input.status_until.trim() : null
+    const statusUntil = rawUntil ? new Date(rawUntil) : null
+    if (!uuidPattern.test(storeId) || !['active', 'suspended', 'maintenance'].includes(status)
+      || (rawUntil && (!statusUntil || Number.isNaN(statusUntil.getTime())))) {
+      return reply(400, { error: 'Loja, status ou prazo inválido.' })
+    }
+    const { data, error } = await admin.rpc('novaesweb_manage_site', {
+      p_actor_user_id: actorId,
+      p_store_id: storeId,
+      p_status: status,
+      p_reason: reason,
+      p_customer_message: customerMessage,
+      p_status_until: statusUntil?.toISOString() ?? null,
+    })
+    if (error) return reply(errorStatus(error), {
+      error: error.message.includes('SITE_NOT_FOUND') ? 'Loja não encontrada.'
+        : error.message.includes('ACTIVE_MASTER_REQUIRED') ? 'Somente um perfil MASTER ativo pode alterar o status.'
+          : 'Não foi possível aplicar o status. Confira o motivo, a mensagem e o prazo.'
+    })
+    return reply(200, data as Record<string, unknown>)
+  }
+
+  if (input.action === 'reconcile_expired_site_statuses') {
+    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode reconciliar os status das lojas.' })
+    const { data, error } = await admin.rpc('novaesweb_reconcile_expired_site_statuses', {
+      p_actor_user_id: actorId,
+    })
+    if (error) return reply(errorStatus(error), { error: 'Não foi possível reconciliar os prazos expirados.' })
+    return reply(200, { reactivated_count: data ?? 0 })
+  }
+
+  if (input.action === 'send_store_message') {
+    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode enviar mensagens administrativas.' })
+    const storeId = typeof input.store_id === 'string' ? input.store_id.trim() : ''
+    const title = typeof input.title === 'string' ? input.title.trim() : ''
+    const body = typeof input.body === 'string' ? input.body.trim() : ''
+    if (!uuidPattern.test(storeId) || !title || title.length > 160 || !body || body.length > 2000) {
+      return reply(400, { error: 'Informe a loja, um título e uma mensagem válida.' })
+    }
+    const { data, error } = await admin.rpc('novaesweb_send_store_message', {
+      p_actor_user_id: actorId, p_store_id: storeId, p_title: title, p_body: body,
+    })
+    if (error) return reply(errorStatus(error), {
+      error: error.message.includes('SITE_NOT_FOUND') ? 'Loja não encontrada.'
+        : error.message.includes('SITE_OWNER_REQUIRED') ? 'Esta loja ainda não tem proprietário vinculado.'
+          : 'Não foi possível enviar a mensagem administrativa.'
+    })
+    return reply(200, data as Record<string, unknown>)
+  }
+
+  if (input.action === 'reply_support_ticket') {
+    if (!await isActiveMaster()) return reply(403, { error: 'Somente um perfil MASTER ativo pode responder chamados.' })
+    const ticketId = typeof input.ticket_id === 'string' ? input.ticket_id.trim() : ''
+    const body = typeof input.body === 'string' ? input.body.trim() : ''
+    const status = typeof input.status === 'string' ? input.status.trim() : 'waiting_customer'
+    if (!uuidPattern.test(ticketId) || !body || body.length > 4000
+      || !['in_progress', 'waiting_customer', 'resolved'].includes(status)) {
+      return reply(400, { error: 'Informe o chamado, uma resposta e um status válido.' })
+    }
+    const { data, error } = await admin.rpc('novaesweb_reply_support_ticket', {
+      p_actor_user_id: actorId, p_ticket_id: ticketId, p_body: body, p_status: status,
+    })
+    if (error) return reply(errorStatus(error), {
+      error: error.message.includes('SUPPORT_TICKET_NOT_FOUND') ? 'Chamado não encontrado.'
+        : 'Não foi possível responder ao chamado.'
+    })
+    return reply(200, data as Record<string, unknown>)
+  }
+
   if (input.action === 'site_checkin') {
     const nxId = typeof input.nx_id === 'string' ? input.nx_id.trim() : ''
     if (!nxId || nxId.length > 64) return reply(400, { error: 'Informe o ID NX oficial da loja.' })
     const { data: site, error: siteError } = await admin
       .from('managed_sites')
-      .select('id, nx_id, status')
+      .select('id, nx_id, status, block_message, block_until')
       .eq('nx_id', nxId)
       .maybeSingle()
     if (siteError) return reply(500, { error: 'Não foi possível validar o cadastro oficial.' })
@@ -208,8 +287,12 @@ Deno.serve(async (request) => {
       .maybeSingle()
     if (membershipError) return reply(500, { error: 'Não foi possível validar o vínculo da loja.' })
     if (!membership) return reply(403, { error: 'Usuário sem vínculo ativo com esta loja.' })
-    if (site.status === 'suspended' || site.status === 'archived') {
-      return reply(403, { error: 'Esta loja está suspensa ou arquivada.' })
+    if (site.status === 'suspended' || site.status === 'maintenance' || site.status === 'archived') {
+      return reply(403, {
+        error: site.block_message || (site.status === 'maintenance' ? 'Esta loja está em manutenção.' : 'Esta loja está suspensa ou arquivada.'),
+        status: site.status,
+        status_until: site.block_until,
+      })
     }
 
     const projectRef = new URL(supabaseUrl).hostname.split('.')[0]

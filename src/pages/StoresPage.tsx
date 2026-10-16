@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
+import './StoreAdministration.css'
 
-type Integration = { provider: string; status: string; last_seen_at: string | null }
+type Integration = { provider: string; status: string; last_seen_at: string | null; project_ref?: string | null; contract_version?: string | null }
 type Domain = { domain: string; is_primary: boolean; verification_status: string }
 type Site = {
   id: string
@@ -11,7 +12,11 @@ type Site = {
   name: string
   owner_id: string | null
   owner_name: string | null
+  owner_membership_status: string
   status: string
+  status_reason: string | null
+  status_message: string | null
+  status_until: string | null
   plan_code: string | null
   created_at: string
   updated_at: string
@@ -20,7 +25,7 @@ type Site = {
 }
 
 const statusNames: Record<string, string> = {
-  pending: 'Aguardando conexão', active: 'Ativa', suspended: 'Suspensa', archived: 'Arquivada',
+  pending: 'Aguardando conexão', active: 'Ativa', suspended: 'Suspensa', maintenance: 'Em manutenção', archived: 'Arquivada',
 }
 
 function dateLabel(value: string) {
@@ -39,6 +44,10 @@ export function StoresPage({ role }: { role: string }) {
   const [addingDomain, setAddingDomain] = useState(false)
   const [newDomain, setNewDomain] = useState('')
   const [makePrimary, setMakePrimary] = useState(false)
+  const [savingManagement, setSavingManagement] = useState(false)
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [managementForm, setManagementForm] = useState({ status: '', reason: '', message: '', until: '' })
+  const [messageForm, setMessageForm] = useState({ title: '', body: '' })
   const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
 
   const loadSites = useCallback(async (quiet = false) => {
@@ -51,30 +60,42 @@ export function StoresPage({ role }: { role: string }) {
     if (quiet) setRefreshing(true)
     else setLoading(true)
     setMessage('')
-    const all: Site[] = []
-    let from = 0
-    const pageSize = 500
-    let failed = false
-    while (true) {
-      const { data, error } = await supabase
-        .from('managed_sites')
-        .select('id,nx_id,name,owner_id,owner_name,status,plan_code,created_at,updated_at,store_domains(domain,is_primary,verification_status),store_integrations(provider,status,last_seen_at)')
-        .order('created_at', { ascending: false })
-        .range(from, from + pageSize - 1)
-      if (error) {
-        failed = true
-        setMessage(error.message.includes('does not exist')
-          ? 'A estrutura NovaesWeb Connect ainda não está disponível no Supabase.'
-          : `Não foi possível consultar as lojas: ${error.message}`)
-        setSites([])
-        break
-      }
-      const batch = (data ?? []) as unknown as Site[]
-      all.push(...batch)
-      if (batch.length < pageSize) break
-      from += pageSize
+    const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
+      body: { action: 'list_sites' },
+    })
+    if (error || data?.error) {
+      const detail = data?.error || error?.message || 'erro desconhecido'
+      setMessage(`Não foi possível carregar as lojas pelo backend MASTER: ${detail}`)
+      setSites([])
+    } else if (!Array.isArray(data?.sites)) {
+      setMessage('O backend MASTER respondeu sem a lista oficial de lojas.')
+      setSites([])
+    } else {
+      const normalizedSites: Site[] = data.sites.map((site: {
+        id: string; nx_id: string; name: string; owner_id?: string | null; owner_name?: string | null
+        status: string; block_reason?: string | null; block_message?: string | null; block_until?: string | null
+        plan_code?: string | null; created_at: string; updated_at: string
+        domains?: Domain[]; integrations?: Integration[]
+        members?: Array<{ user_id: string; role: string; is_active: boolean }>
+      }) => ({
+        id: site.id,
+        nx_id: site.nx_id,
+        name: site.name,
+        owner_id: site.owner_id ?? null,
+        owner_name: site.owner_name ?? null,
+        owner_membership_status: !site.owner_id ? 'Sem proprietário' : site.members?.some((member) => member.user_id === site.owner_id && member.role === 'owner' && member.is_active) ? 'Vínculo ativo' : 'Vínculo pendente',
+        status: site.status,
+        status_reason: site.block_reason ?? null,
+        status_message: site.block_message ?? null,
+        status_until: site.block_until ?? null,
+        plan_code: site.plan_code ?? null,
+        created_at: site.created_at,
+        updated_at: site.updated_at,
+        store_domains: site.domains ?? [],
+        store_integrations: site.integrations ?? [],
+      }))
+      setSites([...new Map(normalizedSites.map((site) => [site.id, site])).values()])
     }
-    if (!failed) setSites(all)
     setLoading(false)
     setRefreshing(false)
   }, [])
@@ -102,7 +123,7 @@ export function StoresPage({ role }: { role: string }) {
   const selected = sites.find((site) => site.id === selectedId) ?? null
   const activeCount = sites.filter((site) => site.status === 'active').length
   const pendingCount = sites.filter((site) => site.status === 'pending').length
-  const suspendedCount = sites.filter((site) => site.status === 'suspended').length
+  const restrictedCount = sites.filter((site) => site.status === 'suspended' || site.status === 'maintenance').length
 
   async function searchOfficial(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -187,6 +208,58 @@ export function StoresPage({ role }: { role: string }) {
     setAddingDomain(false)
   }
 
+  async function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage('')
+    if (role !== 'MASTER' || !selected || !supabase) return
+    const nextStatus = managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)
+    if (nextStatus !== 'active' && (!managementForm.reason.trim() || !managementForm.message.trim())) {
+      setMessage('Informe o motivo administrativo e a mensagem que será comunicada ao proprietário.')
+      return
+    }
+    setSavingManagement(true)
+    const { error } = await supabase.functions.invoke('novaesweb-master-sites', {
+      body: nextStatus === 'active'
+        ? { action: 'set_site_status', store_id: selected.id, status: 'active' }
+        : {
+          action: 'set_block_details',
+          store_id: selected.id,
+          block_mode: nextStatus === 'maintenance' ? 'maintenance' : 'suspension',
+          block_reason: managementForm.reason.trim(),
+          block_message: managementForm.message.trim(),
+          block_until: managementForm.until ? new Date(managementForm.until).toISOString() : null,
+        },
+    })
+    if (error) {
+      setMessage(`Não foi possível alterar o status: ${error.message}`)
+      setSavingManagement(false)
+      return
+    }
+    await loadSites(true)
+    setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
+    setMessage('Status atualizado. A ação ficou registrada na auditoria e o proprietário foi notificado quando aplicável.')
+    setSavingManagement(false)
+  }
+
+  async function sendStoreMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage('')
+    if (role !== 'MASTER' || !selected || !supabase) return
+    setSendingMessage(true)
+    const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
+      body: { action: 'send_message', store_id: selected.id, title: messageForm.title.trim(), message: messageForm.body.trim(), message_type: 'general' },
+    })
+    if (error) {
+      setMessage(`Não foi possível enviar a mensagem: ${error.message}`)
+      setSendingMessage(false)
+      return
+    }
+    setMessageForm({ title: '', body: '' })
+    await loadSites(true)
+    setMessage(data?.message || 'Comunicado registrado pelo backend MASTER.')
+    setSendingMessage(false)
+  }
+
   return <div className="stores-page">
     <div className="page-heading stores-heading">
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Central Multi-Loja</h1><p>Cadastro oficial do Supabase, atualizado em tempo real e por reconciliação periódica.</p></div>
@@ -214,7 +287,7 @@ export function StoresPage({ role }: { role: string }) {
       <Metric icon={<Store size={17} />} label="Lojas reais" value={sites.length} tone="violet" />
       <Metric icon={<ShieldCheck size={17} />} label="Ativas" value={activeCount} tone="green" />
       <Metric icon={<Clock3 size={17} />} label="Aguardando conexão" value={pendingCount} tone="blue" />
-      <Metric icon={<Building2 size={17} />} label="Suspensas" value={suspendedCount} tone="pink" />
+      <Metric icon={<Building2 size={17} />} label="Bloqueadas / manutenção" value={restrictedCount} tone="pink" />
     </div>
 
     {selected ? <section className="panel store-detail">
@@ -222,10 +295,31 @@ export function StoresPage({ role }: { role: string }) {
       <div className="store-detail-title"><span className="store-avatar"><Store size={21} /></span><div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div><StatusBadge status={selected.status} /></div>
       <div className="store-detail-grid">
         <Info label="Proprietário" value={selected.owner_name || (selected.owner_id ? `Usuário ${selected.owner_id.slice(0, 8)}…` : 'Não vinculado')} />
+        <Info label="Vínculo do proprietário" value={selected.owner_membership_status} />
         <Info label="Plano" value={selected.plan_code || 'Não informado'} />
         <Info label="Criada em" value={dateLabel(selected.created_at)} />
         <Info label="UUID interno" value={selected.id} mono />
       </div>
+      {(selected.status === 'suspended' || selected.status === 'maintenance') && <div className="store-current-restriction"><strong>{selected.status === 'suspended' ? 'Loja suspensa' : 'Loja em manutenção'}</strong><p>{selected.status_message || 'Nenhuma mensagem ao proprietário foi registrada.'}</p>{selected.status_reason && <small>Motivo interno: {selected.status_reason}</small>}{selected.status_until && <small>Prazo: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}</small>}</div>}
+      {role === 'MASTER' && <div className="store-management-grid">
+        <form className="store-management-form" onSubmit={(event) => void manageSelectedSite(event)}>
+          <div><strong>Gerenciar status da loja</strong><p>A ação é validada no backend, registrada na auditoria e notificada ao proprietário.</p></div>
+          <label>Status<select value={managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)} onChange={(event) => setManagementForm({ ...managementForm, status: event.target.value })}><option value="active">Ativa · reativar</option><option value="suspended">Suspensa · bloquear acesso</option><option value="maintenance">Em manutenção</option></select></label>
+          {(managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)) !== 'active' && <>
+            <label>Motivo administrativo<input required maxLength={500} value={managementForm.reason} onChange={(event) => setManagementForm({ ...managementForm, reason: event.target.value })} placeholder="Motivo interno" /></label>
+            <label>Mensagem para o proprietário<textarea required maxLength={1000} value={managementForm.message} onChange={(event) => setManagementForm({ ...managementForm, message: event.target.value })} placeholder="Mensagem exibida pelo site integrado" /></label>
+            <label>Prazo de bloqueio (opcional)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
+          </>}
+          {(selected.status === 'suspended' || selected.status === 'maintenance') && selected.status_until && <p className="status-expiry">Prazo registrado: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}. A remoção do bloqueio depende de uma ação administrativa.</p>}
+          <button className="primary-button" disabled={savingManagement}>{savingManagement ? 'Salvando…' : 'Aplicar status'}</button>
+        </form>
+        <form className="store-management-form" onSubmit={(event) => void sendStoreMessage(event)}>
+          <div><strong>Enviar mensagem administrativa</strong><p>O proprietário recebe a mensagem em suas notificações autenticadas.</p></div>
+          <label>Título<input required maxLength={160} value={messageForm.title} onChange={(event) => setMessageForm({ ...messageForm, title: event.target.value })} /></label>
+          <label>Mensagem<textarea required maxLength={2000} value={messageForm.body} onChange={(event) => setMessageForm({ ...messageForm, body: event.target.value })} /></label>
+          <button className="secondary-button" disabled={sendingMessage}>{sendingMessage ? 'Enviando…' : 'Enviar mensagem'}</button>
+        </form>
+      </div>}
       {role === 'MASTER' && <form className="domain-add-form" onSubmit={(event) => void addSiteDomain(event)}>
         <div><strong>Adicionar domínio</strong><p>Você pode cadastrar ou atualizar o domínio desta loja por aqui, agora ou depois.</p></div>
         <label><span>URL pública (HTTP ou HTTPS)</span><input required type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="http://minhaloja.example.com" /></label>
@@ -234,7 +328,7 @@ export function StoresPage({ role }: { role: string }) {
       </form>}
       <div className="store-related-grid">
         <Related title="Domínios" icon={<Globe2 size={16} />} empty="Nenhum domínio cadastrado." items={selected.store_domains.map((domain) => `${domain.domain}${domain.is_primary ? ' · principal' : ''} · ${domain.verification_status}`)} />
-        <Related title="Integrações" icon={<Layers3 size={16} />} empty="Nenhuma integração cadastrada." items={selected.store_integrations.map((integration) => `${integration.provider} · ${integration.status}${integration.last_seen_at ? ` · visto ${dateLabel(integration.last_seen_at)}` : ''}`)} />
+        <Related title="Integrações" icon={<Layers3 size={16} />} empty="Nenhuma integração cadastrada." items={selected.store_integrations.map((integration) => `${integration.provider} · ${integration.status}${integration.project_ref ? ` · projeto ${integration.project_ref}` : ''}${integration.contract_version ? ` · contrato ${integration.contract_version}` : ''}${integration.last_seen_at ? ` · visto ${dateLabel(integration.last_seen_at)}` : ''}`)} />
       </div>
     </section> : <section className="panel store-list-panel">
       <div className="store-list-heading"><div><h2>Lojas cadastradas oficialmente</h2><p>As buscas consultam registros existentes e nunca geram um ID NX.</p></div><span>{filtered.length} resultado{filtered.length === 1 ? '' : 's'}</span></div>

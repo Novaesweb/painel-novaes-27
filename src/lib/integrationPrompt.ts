@@ -1,62 +1,64 @@
-export const siteIntegrationPrompt = `PROMPT UNIVERSAL — CONECTAR UM SITE EXISTENTE AO NOVAESWEB MASTER
+export const siteIntegrationPrompt = `PROMPT UNIVERSAL — INTEGRAR UM SITE AO NOVAESWEB MASTER
 
-Integre este site já desenvolvido ao Supabase central do NovaesWeb Master usando o fluxo NovaesWeb Connect 1.1 abaixo. Primeiro audite o projeto atual. Preserve o design, páginas, dados, login e funcionalidades existentes. Não recrie o site.
+Conecte este site já desenvolvido ao Supabase central NovaesWeb. Preserve seu design, rotas, autenticação existente, dados e funcionalidades. Não recrie o projeto.
 
-SUPABASE CENTRAL E CONTRATO
-- URL do Supabase central: https://mabkzkawziqlmgfikwmh.supabase.co
-- Chave pública do navegador: publishable key deste mesmo projeto. Solicite ao proprietário que a configure no ambiente do site; nunca inclua segredo.
-- Catálogo oficial: public.managed_sites, public.store_members, public.store_domains, public.store_integrations e public.store_settings.
-- managed_sites.id é o UUID interno. managed_sites.nx_id é o ID NX público permanente. Nenhum ID é credencial ou autorização.
-- O backend oficial é a Edge Function novaesweb-admin, com verify_jwt habilitado. Ela valida o JWT com Supabase Auth e usa service_role somente no servidor.
-- A conta do proprietário precisa autenticar-se no Supabase Auth do projeto central. Se o site usa Auth de outro projeto, primeiro apresente um plano de migração/compatibilidade; não presuma que um usuário/senha de outro projeto funcione no central.
+PROJETO E CONTRATO CENTRAL
+- Supabase URL: https://mabkzkawziqlmgfikwmh.supabase.co
+- Use a chave pública publishable/anon deste projeto no cliente, fornecida pelo proprietário por variável de ambiente. Nunca use chave secreta no navegador.
+- Tabelas oficiais: public.managed_sites (cadastro), public.store_members (vínculos), public.store_domains (domínios), public.store_integrations (check-in/conexão) e public.store_settings (preferências não secretas).
+- managed_sites.id é o UUID interno e managed_sites.nx_id é o ID NX público. Ambos são emitidos pelo backend central; nenhum deles é uma credencial.
+- O cadastro não exige domínio nem aprovação manual do MASTER. Ele exige uma sessão autenticada e e-mail ou telefone confirmado no Supabase Auth central.
+- O backend de auto-cadastro é a Edge Function novaesweb-site-register, com JWT obrigatório. O check-in continua na novaesweb-admin. Os backends validam o usuário e usam service_role apenas em ambiente servidor.
+- A função administrativa novaesweb-master-sites é exclusiva ao Painel Master. O site integrado não deve chamá-la nem usar sua capacidade administrativa.
 
-ETAPA 1 — AUDITAR E PRESERVAR
-1. Examine framework, Auth, clientes Supabase, banco atual, migrations, dados, políticas RLS, rotas, publicação e variáveis do site.
-2. Não solicite NX ID ou UUID antes dessa auditoria. Primeiro apresente achados e plano, indicando dados e funcionalidades preservados.
-3. Antes de editar arquivos, Auth, banco, RLS ou Vercel, aguarde aprovação explícita do proprietário. Não aplique migrations sem aprovação.
+ETAPA 1 — AUDITORIA
+1. Identifique framework, autenticação, tabelas, migrations, RLS, dados, rotas, variáveis e hospedagem atuais.
+2. Verifique o schema e as versões implantadas do Supabase. Não presuma colunas, tipos, ações ou políticas com base apenas neste prompt.
+3. Antes de alterar arquivos, dados, banco, RLS ou Vercel, apresente achados e um plano para o proprietário aprovar. Preserve dados e IDs existentes; não crie tabelas duplicadas.
+4. Se o site usa Auth de outro projeto, explique como migrar ou vincular usuários. Uma conta de outro projeto não autentica automaticamente no Supabase central.
 
-ETAPA 2 — SOLICITAR O CADASTRO OFICIAL
-Se o site ainda não tiver cadastro oficial, implemente uma solicitação autenticada, sem criar loja diretamente:
-- O proprietário entra na conta confirmada do Supabase Auth central. Não permita solicitação anônima.
-- Solicite o nome do site, nome do proprietário opcional e plano opcional. O domínio/URL é opcional: se já estiver definido, aceite HTTP ou HTTPS e informe-o; se não estiver, envie site_domain como null. Não invente um domínio. O MASTER poderá cadastrá-lo depois na Central Multi-Loja.
-- Gere e persista um idempotency_key aleatório para a tentativa, reutilizando-o ao repetir a mesma chamada. Ele serve só para evitar solicitações duplicadas; não é ID oficial.
-- Chame a função existente novaesweb-admin com a ação request_site_registration e os campos site_name, site_domain, owner_name, plan_code e idempotency_key. Não envie owner_id, store_id ou nx_id: o backend identifica o solicitante pelo JWT e rejeita IDs oficiais enviados pelo cliente.
-- A resposta fornece request_id e status pending_approval; não há loja nem IDs oficiais nessa etapa.
-- A Edge Function limita solicitações, rejeita domínio duplicado quando informado, audita a solicitação e notifica o MASTER. A RLS permite ao solicitante acompanhar apenas a própria solicitação e ao MASTER ver a fila.
-- Consulte o andamento chamando novaesweb-admin com action get_site_registration_status e request_id. Pode usar polling com intervalo razoável e, quando RLS/Realtime estiver configurado, atualização em tempo real. Trate pending_approval, approved e rejected e mostre a observação de recusa sem criar registros locais como se fossem oficiais.
-- Apenas perfis MASTER ativos podem listar a fila (action list_site_registration_requests), aprovar (approve_site_registration) ou recusar (reject_site_registration). Não crie botão para o proprietário aprovar a própria solicitação.
+ETAPA 2 — CADASTRO AUTOMÁTICO, SEM APROVAÇÃO MASTER
+Se a loja ainda não estiver cadastrada:
+1. Peça ao proprietário o nome oficial que deve aparecer no Master e, opcionalmente, o nome do proprietário. Domínio é opcional e pode ser adicionado mais tarde pela Central Multi-Loja.
+2. Autentique o proprietário no Supabase Auth central e exija confirmação de e-mail ou telefone. Não permita cadastro anônimo.
+3. Gere um UUID aleatório como idempotency_key e persista-o para repetir com segurança a mesma tentativa. Ele não é o ID oficial.
+4. Chame novaesweb-site-register usando a sessão do usuário, com o corpo: { site_name, owner_name, idempotency_key }. Não envie nx_id, store_id ou owner_id; o backend rejeita esses campos e deriva o proprietário do JWT.
+5. O backend cadastra a loja sem fila de aprovação: cria managed_sites, gera o UUID e o NX ID, vincula o usuário como owner ativo em store_members, cria store_integrations pendente, grava auditoria e notificação. A transação é executada no servidor/banco. Há limite de novos cadastros por conta; repetição pelo mesmo nome/mesma chave devolve o cadastro oficial existente para evitar duplicação.
+6. A resposta retorna status registered ou already_registered, site_name, store_id (UUID oficial) e nx_id (ID NX oficial). Use exatamente os valores recebidos; não gere, edite nem troque IDs no site.
+7. Se o cadastro falhar por conta não confirmada, duplicidade, limite ou erro de conexão, mostre o motivo real e não simule IDs nem conclua a integração.
 
-ETAPA 3 — RECEBER OS IDS APÓS APROVAÇÃO MASTER
-- Quando get_site_registration_status retornar approved, o backend retorna os valores reais store_id e nx_id. O endpoint verifica que a solicitação pertence ao usuário autenticado; nunca devolve IDs de outro solicitante.
-- A aprovação é uma transação PostgreSQL: cria managed_sites, vínculo ativo owner em store_members, integração pending em store_integrations, atualiza a solicitação e registra auditoria/notificação. Só cria o domínio principal pendente em store_domains se um domínio foi informado na solicitação. Se não informou, o MASTER poderá adicioná-lo depois pela Central Multi-Loja. Se alguma etapa falhar, nenhuma dessas alterações fica parcial.
-- O UUID é gerado no banco/backend. O nx_id é gerado no backend como NX- seguido da representação hexadecimal do UUID, protegido também pelos índices de unicidade. Nunca gere ou substitua IDs no frontend.
-- A Central Multi-Loja reconhece o registro por managed_sites e Realtime/reconciliação, sem um segundo cadastro. Não altere nem recrie lojas existentes.
-- Não use a ação register_site no site integrado. Ela é apenas o fluxo manual secundário do Painel Master para importações autorizadas com NX já existente.
-
-AMBIENTE E CHAVES
-Para um projeto Vite, configure no ambiente local e na Vercel:
+ETAPA 3 — CONFIGURAÇÃO DO SITE E CHECK-IN
+Configure no framework correspondente:
 VITE_SUPABASE_URL=https://mabkzkawziqlmgfikwmh.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<publishable key pública do projeto central>
-VITE_NOVAESWEB_REQUEST_ID=<request_id recebido ao solicitar cadastro>
-VITE_NOVAESWEB_NX_ID=<nx_id retornado após aprovação>
-VITE_NOVAESWEB_STORE_ID=<store_id retornado após aprovação>
+VITE_SUPABASE_PUBLISHABLE_KEY=<chave pública deste projeto, fornecida pelo proprietário>
+VITE_NOVAESWEB_STORE_ID=<store_id oficial retornado pelo backend>
+VITE_NOVAESWEB_NX_ID=<nx_id oficial retornado pelo backend>
 
-Adapte prefixos ao framework real (por exemplo, NEXT_PUBLIC_ no Next.js). request_id e IDs só podem ser usados conforme o status real retornado pelo backend; não invente valores. Configure secrets de backend somente no ambiente seguro do servidor. Nunca exponha sb_secret, service_role, SUPABASE_SERVICE_ROLE_KEY, tokens administrativos ou chaves privadas em VITE_*, NEXT_PUBLIC_*, navegador, bundle, logs ou repositório. Use somente a publishable key no cliente.
+Use prefixos apropriados ao framework (por exemplo NEXT_PUBLIC_ em Next.js). Variáveis públicas não podem conter service_role, sb_secret, SUPABASE_SERVICE_ROLE_KEY, tokens administrativos ou outras chaves privadas. Configure as variáveis privadas somente em ambiente server-side.
 
-ETAPA 4 — CONCLUIR A INTEGRAÇÃO
-1. Após a aprovação, valide os IDs retornados: consulte managed_sites pelo par id/nx_id e confirme membership ativa em store_members para o user_id da sessão Auth. Use a sessão do usuário e deixe RLS autorizar as leituras.
-2. Só depois dessa validação, execute o check-in:
-   supabase.functions.invoke('novaesweb-admin', { body: { action: 'site_checkin', nx_id: VITE_NOVAESWEB_NX_ID } })
-   O servidor verifica novamente Auth + membership, grava o heartbeat em store_integrations, ativa uma loja pending e registra auditoria. Trate 401, 403, 404 e erros de rede.
-3. O NX ID e o UUID identificam a loja, mas não autorizam acesso. Não aceite store_id recebido do navegador como permissão.
+Após receber os IDs, verifique com a sessão autenticada que o par id/nx_id corresponde à loja e que store_members possui vínculo ativo do usuário atual com role owner. Use RLS para a autorização; não trate IDs enviados pelo navegador como prova de acesso.
 
-DADOS OPERACIONAIS, RLS E TESTES
-- Analise os dados reais do site: produtos, pedidos, clientes e demais entidades. Não existem tabelas operacionais universais no catálogo central.
-- Preserve dados e IDs. Proponha migrations aditivas próprias, aguarde aprovação e relacione cada tabela operacional a store_id UUID NOT NULL REFERENCES public.managed_sites(id), com índices, integridade entre tabelas e RLS.
-- Políticas devem validar auth.uid() e membership ativa (public.novaesweb_connect_is_active_store_member(store_id)). Restrinja SELECT, INSERT, UPDATE e DELETE conforme a função necessária. Em UPDATE, use USING e WITH CHECK para impedir troca de store_id. Não use OR true nem desative RLS.
-- Teste solicitação anônima/sem confirmação, usuário autenticado, limite de solicitações, repetição idempotente, domínio repetido, usuário não MASTER tentando aprovar, MASTER aprovando/recusando, criação atômica, IDs devolvidos apenas ao solicitante aprovado, membership ativa, check-in e isolamento entre duas lojas.
-- Rode os testes de isolamento apenas em banco local/staging descartável, nunca crie fixtures na produção. Rode build e informe quais verificações foram feitas de verdade.
-- Configure as variáveis públicas necessárias nos ambientes Development, Preview e Production da Vercel e publique novamente após alterar valores. Verifique a URL real implantada. Check-in não comprova sozinho que domínio ou build da Vercel está correto.
-- Confirme no Painel Master o mesmo NX/UUID, a integração novaesweb conectada e last_seen_at atualizado. Relate claramente o que foi confirmado no site, banco e Vercel.
+Em seguida chame:
+supabase.functions.invoke('novaesweb-admin', { body: { action: 'site_checkin', nx_id: VITE_NOVAESWEB_NX_ID } })
 
-Comece pela auditoria deste projeto. Não crie registros oficiais por conta própria e aguarde aprovação do proprietário antes de mudanças no site ou nas tabelas operacionais.`
+O check-in valida novamente Auth + membership, registra store_integrations.last_seen_at e ativa o cadastro pendente. Se o Master bloqueou a loja ou colocou em manutenção, trate o 403 mostrando a mensagem de managed_sites.block_message e o prazo managed_sites.block_until. Trate 401, 403, 404 e falhas de rede sem ignorar a resposta.
+
+A Central Multi-Loja lê cadastros reais por novaesweb-master-sites/list_sites, autorizada para perfil MASTER ativo. managed_sites está publicada em Realtime; mantenha reconciliação/atualização periódica caso um evento se perca. A listagem administrativa mostra metadados da loja e não é uma API para dados comerciais.
+
+ETAPA 4 — DADOS E ISOLAMENTO
+- Audite produtos, pedidos, clientes, catálogo, configurações e demais dados atuais. Preserve IDs, conteúdo e comportamento.
+- Examine o schema central antes de propor migrations. As tabelas operacionais não são universais; crie/adapte somente as necessárias ao site, sempre com store_id UUID REFERENCES public.managed_sites(id), índices e integridade entre tabelas da mesma loja.
+- Habilite RLS e confira as políticas existentes. O helper real disponível é public.novaesweb_connect_is_active_store_member(target_store_id uuid); ele verifica associação ativa do usuário autenticado. Confirme a definição/políticas antes de usar.
+- Restrinja SELECT, INSERT, UPDATE e DELETE por membership e papel. Em UPDATE, use USING e WITH CHECK para impedir alteração do store_id. Não use OR true, não desative RLS e não permita acesso entre lojas.
+- A chave service_role nunca deve ser usada pelo frontend. Para operações privilegiadas, use Edge Functions/backend autenticado com validação de owner e autorização no servidor.
+- store_settings aceita somente preferências sem segredo. Não armazene senhas, chaves privadas ou credenciais de pagamento nessas tabelas.
+- O Master não deve acessar pedidos, clientes, catálogo, caixa, faturamento comercial, receitas ou lucros da loja. Não conecte esses dados à Central Multi-Loja.
+
+ETAPA 5 — VERCEL E VERIFICAÇÃO
+- Configure variáveis públicas nos ambientes necessários (Development, Preview e Production) e faça novo deploy após mudanças. Não as grave no código ou repositório.
+- Teste Auth confirmado e não confirmado, cadastro sem domínio, chamada repetida/idempotente, resposta com IDs oficiais, membership ativa, check-in, cadastro existente, loja suspensa/manutenção, usuário sem vínculo, tentativa de trocar store_id e isolamento entre duas lojas.
+- Teste no banco local/staging descartável. Não crie lojas ou dados de teste na produção.
+- Confirme no Painel Master a mesma loja/NX ID, integração conectada e last_seen_at recente. Confirme build/deploy real quando houver acesso; não declare isso com base apenas em configuração local.
+- Relate exatamente o que foi inspecionado, alterado e testado. Diferencie validação feita de pendências.
+
+Comece pela auditoria deste projeto. Não altere nem migre dados antes da aprovação explícita do proprietário. Não crie cadastro manual no Master: o backend seguro de auto-registro é o único fluxo normal de entrada de novas lojas.`

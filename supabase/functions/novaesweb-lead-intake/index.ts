@@ -29,7 +29,7 @@ async function sha256(value: string) {
 
 Deno.serve(async (request: Request) => {
   const origin = allowedOrigin(request.headers.get('Origin'), Deno.env.get('LEADS_ALLOWED_ORIGINS'))
-  if (request.method === 'OPTIONS') return origin ? new Response('ok', { status: 204, headers: {
+  if (request.method === 'OPTIONS') return origin ? new Response(null, { status: 204, headers: {
     ...jsonHeaders, 'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'apikey, content-type, x-client-info',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',

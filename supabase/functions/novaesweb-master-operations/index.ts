@@ -85,7 +85,7 @@ Deno.serve(async (request: Request) => {
     }, { onConflict: 'user_id' })
     if (error) return reply(500, { error: 'Não foi possível salvar o perfil.' })
     if (role !== 'MASTER') {
-      const modules = ['dashboard','lojas','integracao-sites','clientes','planos','financeiro','dominios','suporte','notificacoes','usuarios','auditoria','backups','configuracoes']
+      const modules = ['dashboard','lojas','integracao-sites','clientes','leads','planos','financeiro','dominios','suporte','notificacoes','usuarios','auditoria','backups','configuracoes']
       const granted = new Set((permissionPresets[role] ?? []).map((permission) => permission.module))
       const { error: permissionError } = await admin.from('master_role_permissions').upsert(
         modules.map((module) => ({ role, module, action: 'view', allowed: granted.has(module) })),
@@ -125,6 +125,29 @@ Deno.serve(async (request: Request) => {
       .order('updated_at', { ascending: false }).limit(300)
     if (error) return reply(500, { error: 'Não foi possível carregar os chamados.' })
     return reply(200, { tickets: data ?? [] })
+  }
+
+  if (body.action === 'list_website_leads') {
+    const { data, error } = await admin.from('website_leads')
+      .select('id,name,whatsapp,interest,message,status,created_at,updated_at,contacted_at,website_lead_sources!inner(id,source_key,name)')
+      .order('created_at', { ascending: false }).limit(500)
+    if (error) return reply(500, { error: 'Não foi possível carregar os leads do site oficial.' })
+    return reply(200, { leads: data ?? [] })
+  }
+
+  if (body.action === 'set_website_lead_status') {
+    const leadId = typeof body.lead_id === 'string' ? body.lead_id : ''
+    const status = typeof body.status === 'string' ? body.status : ''
+    if (!uuidPattern.test(leadId) || !['new','contacted','qualified','won','lost','spam'].includes(status)) {
+      return reply(400, { error: 'Lead ou status inválido.' })
+    }
+    const now = new Date().toISOString()
+    const { data, error } = await admin.from('website_leads')
+      .update({ status, updated_at: now, ...(status === 'contacted' ? { contacted_at: now } : {}) })
+      .eq('id', leadId).select('id').maybeSingle()
+    if (error || !data) return reply(404, { error: 'Lead não encontrado ou não foi possível atualizar.' })
+    await audit('website_lead_status_changed', 'website_lead', leadId, { status, source: 'novaesweb-oficial' })
+    return reply(200, { message: 'Status do lead atualizado.' })
   }
 
   if (body.action === 'set_support_ticket_status') {

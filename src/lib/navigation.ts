@@ -1,5 +1,5 @@
 import {
-  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge,
+  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge, Inbox,
   Globe2, HardDrive, Settings2, ShieldCheck, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -11,6 +11,7 @@ export const navigation: NavItem[] = [
   { label: 'Central Multi-Loja', path: '/lojas', icon: Blocks, group: 'OPERAÇÃO' },
   { label: 'Integração de Sites', path: '/integracao-sites', icon: Cable, group: 'OPERAÇÃO' },
   { label: 'Clientes', path: '/clientes', icon: BriefcaseBusiness, group: 'OPERAÇÃO' },
+  { label: 'Leads do site oficial', path: '/leads', icon: Inbox, group: 'OPERAÇÃO' },
   { label: 'Planos e Assinaturas', path: '/planos', icon: CreditCard, group: 'OPERAÇÃO' },
   { label: 'Financeiro', path: '/financeiro', icon: Activity, group: 'OPERAÇÃO' },
   { label: 'Domínios e Publicações', path: '/dominios', icon: Globe2, group: 'OPERAÇÃO' },

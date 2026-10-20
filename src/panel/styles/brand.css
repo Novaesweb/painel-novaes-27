@@ -43,3 +43,14 @@ body{color:#f8f5fb;background:radial-gradient(1200px 600px at 100% -10%,rgba(255
 
 @media (max-width: 980px){.main-shell{margin-left:0}}
 h1,h2,h3,h4{color:#f8f5fb}
+
+/* Painel Master: foto da NovaesWeb ao fundo de todas as páginas */
+.app-shell{position:relative;isolation:isolate}
+.app-shell:before{content:'';position:fixed;inset:0;z-index:-2;background:url('/images/novaesweb-personagem.jpeg') 63% 22%/cover no-repeat}
+.app-shell:after{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(900px 600px at 85% 10%,rgba(255,45,85,.14),transparent 60%),radial-gradient(800px 600px at 10% 100%,rgba(139,44,255,.18),transparent 60%),linear-gradient(90deg,rgba(5,3,7,.94) 0%,rgba(5,3,7,.82) 45%,rgba(5,3,7,.6) 100%)}
+.sidebar{background:linear-gradient(180deg,rgba(11,6,16,.88),rgba(6,3,8,.92))!important;backdrop-filter:blur(16px)}
+.panel,.metric-card{background:linear-gradient(160deg,rgba(22,12,30,.72),rgba(10,6,14,.8))!important;backdrop-filter:blur(14px)}
+.nav-group{margin-bottom:6px}
+.nav-group-title{display:flex;align-items:center;gap:8px;letter-spacing:.14em}
+.nav-group-title:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--brand-gradient)}
+@media (max-width:760px){.app-shell:before{background-position:50% 12%}.app-shell:after{background:linear-gradient(180deg,rgba(5,3,7,.7),rgba(5,3,7,.86))}}

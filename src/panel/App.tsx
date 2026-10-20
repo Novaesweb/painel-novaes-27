@@ -12,6 +12,8 @@ import { SiteIntegrationPage } from './pages/SiteIntegrationPage'
 import { StoresPage } from './pages/StoresPage'
 import { OperationalModulePage } from './pages/OperationalModules'
 import { AuditPage, NotificationsPage } from './pages/AdminHistoryPages'
+import { LeadsPage } from './pages/LeadsPage'
+import { AddonsPage } from './pages/AddonsPage'
 import { getMasterProfile, isSupabaseConfigured, supabase } from './lib/auth'
 import type { AccessProfile } from './lib/auth'
 
@@ -63,6 +65,8 @@ function renderPage(page: string, role: string) {
   if (page === '/') return <DashboardPage />
   if (page === '/lojas') return <StoresPage role={role} />
   if (page === '/integracao-sites') return <SiteIntegrationPage />
+  if (page === '/adicionais') return <AddonsPage />
+  if (page === '/leads') return <LeadsPage role={role} />
   if (page === '/notificacoes') return <NotificationsPage />
   if (page === '/auditoria') return <AuditPage role={role} />
   if (operational.includes(page)) return <OperationalModulePage path={page as never} role={role} />

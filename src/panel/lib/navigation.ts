@@ -1,5 +1,5 @@
 import {
-  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge,
+  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge, Inbox, PackagePlus,
   Globe2, HardDrive, Settings2, ShieldCheck, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -10,8 +10,10 @@ export const navigation: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: Gauge, group: 'VISÃO GERAL' },
   { label: 'Central Multi-Loja', path: '/lojas', icon: Blocks, group: 'LOJAS E SITES' },
   { label: 'Integração de Sites', path: '/integracao-sites', icon: Cable, group: 'LOJAS E SITES' },
+  { label: 'Central de Adicionais', path: '/adicionais', icon: PackagePlus, group: 'LOJAS E SITES' },
   { label: 'Domínios e Publicações', path: '/dominios', icon: Globe2, group: 'LOJAS E SITES' },
   { label: 'Clientes', path: '/clientes', icon: BriefcaseBusiness, group: 'CLIENTES E VENDAS' },
+  { label: 'Leads do site oficial', path: '/leads', icon: Inbox, group: 'CLIENTES E VENDAS' },
   { label: 'Planos e Assinaturas', path: '/planos', icon: CreditCard, group: 'CLIENTES E VENDAS' },
   { label: 'Financeiro', path: '/financeiro', icon: Activity, group: 'CLIENTES E VENDAS' },
   { label: 'Suporte', path: '/suporte', icon: CircleHelp, group: 'ATENDIMENTO' },

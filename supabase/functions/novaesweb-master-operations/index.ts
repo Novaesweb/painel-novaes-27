@@ -85,7 +85,7 @@ Deno.serve(async (request: Request) => {
     }, { onConflict: 'user_id' })
     if (error) return reply(500, { error: 'Não foi possível salvar o perfil.' })
     if (role !== 'MASTER') {
-      const modules = ['dashboard','lojas','integracao-sites','clientes','leads','planos','financeiro','dominios','suporte','notificacoes','usuarios','auditoria','backups','configuracoes']
+      const modules = ['dashboard','lojas','integracao-sites','clientes','leads','planos','adicionais','financeiro','dominios','suporte','notificacoes','usuarios','auditoria','backups','configuracoes']
       const granted = new Set((permissionPresets[role] ?? []).map((permission) => permission.module))
       const { error: permissionError } = await admin.from('master_role_permissions').upsert(
         modules.map((module) => ({ role, module, action: 'view', allowed: granted.has(module) })),

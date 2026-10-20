@@ -1,5 +1,5 @@
 import {
-  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge, Inbox,
+  Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge, Inbox, PackagePlus,
   Globe2, HardDrive, Settings2, ShieldCheck, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -13,6 +13,7 @@ export const navigation: NavItem[] = [
   { label: 'Clientes', path: '/clientes', icon: BriefcaseBusiness, group: 'OPERAÇÃO' },
   { label: 'Leads do site oficial', path: '/leads', icon: Inbox, group: 'OPERAÇÃO' },
   { label: 'Planos e Assinaturas', path: '/planos', icon: CreditCard, group: 'OPERAÇÃO' },
+  { label: 'Central de Adicionais', path: '/adicionais', icon: PackagePlus, group: 'OPERAÇÃO' },
   { label: 'Financeiro', path: '/financeiro', icon: Activity, group: 'OPERAÇÃO' },
   { label: 'Domínios e Publicações', path: '/dominios', icon: Globe2, group: 'OPERAÇÃO' },
   { label: 'Suporte', path: '/suporte', icon: CircleHelp, group: 'OPERAÇÃO' },

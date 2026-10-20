@@ -10,6 +10,7 @@ import { StoresPage } from './pages/StoresPage'
 import { OperationalModulePage } from './pages/OperationalModules'
 import { AuditPage, NotificationsPage } from './pages/AdminHistoryPages'
 import { LeadsPage } from './pages/LeadsPage'
+import { AddonsPage } from './pages/AddonsPage'
 import { getMasterProfile, isSupabaseConfigured, supabase } from './lib/auth'
 import type { AccessProfile } from './lib/auth'
 
@@ -57,6 +58,7 @@ export function App() {
       <Route path="/lojas" element={<StoresPage role={profile.role} />} />
       <Route path="/integracao-sites" element={<SiteIntegrationPage />} />
       <Route path="/leads" element={<LeadsPage role={profile.role} />} />
+      <Route path="/adicionais" element={<AddonsPage />} />
       <Route path="/notificacoes" element={<NotificationsPage />} />
       <Route path="/auditoria" element={<AuditPage role={profile.role} />} />
       <Route path="/suporte" element={<OperationalModulePage path="/suporte" role={profile.role} />} />

@@ -24,7 +24,7 @@
 .auth-panel .primary-button{background:linear-gradient(100deg,#2563eb 0%,#7c3aed 56%,#ff2d55 100%);box-shadow:0 8px 28px rgba(124,58,237,.28)}
 @media(max-width:1100px) and (min-width:761px){.story-content{max-width:62%}.story-content h1{font-size:clamp(39px,4.5vw,56px);letter-spacing:-2.5px}.feature-list{gap:13px}.auth-story{background:#07040b}}
 @media(max-width:760px){
-  .auth-panel{position:relative;isolation:isolate;overflow:hidden;min-height:100vh;min-height:100svh;justify-content:flex-end;gap:0;padding:calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 18px);background:#050307}
+  .auth-panel{position:relative;isolation:isolate;overflow:hidden;min-height:100vh;min-height:100svh;justify-content:center;gap:0;padding:calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 18px);background:#050307}
   .auth-panel:before{position:absolute;z-index:-2;inset:0;content:"";background-image:url('/images/novaesweb-personagem.jpeg');background-repeat:no-repeat;background-size:cover;background-position:80% top}
   .auth-panel:after{position:absolute;z-index:-1;inset:0;content:"";background:linear-gradient(180deg,rgba(3,5,16,.12) 0%,rgba(3,5,16,.03) 24%,rgba(3,5,16,.32) 42%,rgba(3,5,16,.82) 62%,#050307 100%),linear-gradient(90deg,rgba(3,5,16,.14),transparent 52%,rgba(3,5,16,.12));pointer-events:none}
   .auth-panel .auth-card{width:min(100%,440px);padding:24px 22px 20px;border-color:rgba(115,139,255,.38);border-radius:18px;background:linear-gradient(145deg,rgba(7,13,31,.77),rgba(5,9,25,.88));box-shadow:0 22px 70px rgba(0,0,0,.42),0 0 30px rgba(105,57,220,.1);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
@@ -50,8 +50,8 @@
 @media(max-width:1100px) and (min-width:761px){.auth-shell{grid-template-columns:minmax(0,1.05fr) minmax(390px,.95fr)}.auth-panel{align-items:center;padding:30px 4%}.auth-panel .auth-card{width:min(100%,380px)}.story-content{max-width:62%}}
 @media(max-width:760px){.auth-shell:before,.auth-shell:after{display:none}.auth-panel{background:#050307}}
 @media(max-width:760px){
-  .auth-panel:before{background-color:#050307;background-size:cover;background-position:80% top;filter:blur(14px);opacity:.5;transform:scale(1.04)}
-  .auth-panel:after{background-image:linear-gradient(180deg,rgba(3,5,16,0) 0%,rgba(3,5,16,.06) 17%,rgba(3,5,16,.68) 26%,rgba(3,5,16,.96) 31%,#050307 39%),url('/images/novaesweb-personagem.jpeg');background-size:cover,100% auto;background-position:center,center top;background-repeat:no-repeat}
+  .auth-panel:before{background-color:#050307;background-size:cover;background-position:50% 12%}
+  .auth-panel:after{background:linear-gradient(180deg,rgba(3,5,16,.38) 0%,rgba(3,5,16,.18) 30%,rgba(3,5,16,.3) 55%,rgba(3,5,16,.72) 100%),radial-gradient(ellipse at 50% 45%,transparent 30%,rgba(3,5,16,.35) 100%)}
 }
 
 /* Identidade NovaesWeb: preto profundo com acentos neon azul, violeta e rosa. */

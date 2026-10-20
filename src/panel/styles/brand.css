@@ -1,0 +1,45 @@
+/* NovaesWeb brand layer: purple + red on black, taken from the logo. */
+:root{
+  --brand-purple:#8b2cff;--brand-violet:#a855f7;--brand-red:#ff2d55;--brand-black:#050307;
+  --brand-gradient:linear-gradient(100deg,#7c2cff 0%,#c026d3 50%,#ff2d55 100%);
+  --brand-glow:0 0 0 1px rgba(168,85,247,.25),0 12px 40px -12px rgba(255,45,85,.45);
+  --bg:#050307;--sidebar:#09050d;--card:#100a16;--line:rgba(176,160,190,.11);
+  font-family:'DM Sans',sans-serif;
+}
+body{color:#f8f5fb;background:radial-gradient(1200px 600px at 100% -10%,rgba(255,45,85,.07),transparent 60%),radial-gradient(900px 500px at -10% 110%,rgba(139,44,255,.08),transparent 60%),#050307;background-attachment:fixed}
+.app-shell,.auth-panel,.auth-shell{background:transparent}
+
+/* Buttons & highlights */
+.primary-button,.brand-mark{background:var(--brand-gradient)!important;box-shadow:0 10px 30px -10px rgba(255,45,85,.55)!important}
+.story-content h1 span,.page-title span,.brand strong span,.brand-copy strong span{background:var(--brand-gradient);-webkit-background-clip:text;background-clip:text;color:transparent}
+.footer-line{background:var(--brand-gradient)}
+.input-wrap:focus-within{border-color:rgba(255,45,85,.6)!important;box-shadow:0 0 0 3px rgba(255,45,85,.12)!important}
+
+/* Sidebar */
+.sidebar{width:264px;background:linear-gradient(180deg,#0b0610 0%,#060308 100%);border-right:1px solid rgba(168,85,247,.12)}
+.sidebar:after{content:'';position:absolute;top:0;right:-1px;width:1px;height:40%;background:linear-gradient(180deg,var(--brand-red),transparent);opacity:.6}
+.main-shell{margin-left:264px}
+.sidebar-logo{border-radius:12px;box-shadow:var(--brand-glow)}
+.nav-link{font-size:12.5px;height:40px;border-radius:10px;color:#a69bb3}
+.nav-link:hover{background:rgba(168,85,247,.08);color:#f1e9ff}
+.nav-link.active{background:linear-gradient(90deg,rgba(139,44,255,.22),rgba(255,45,85,.10))!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(168,85,247,.22)}
+.nav-link.active svg{color:var(--brand-red)}
+.nav-link.active:before{background:var(--brand-gradient)!important;box-shadow:0 0 12px var(--brand-red)!important;width:3px}
+.nav-group-title{color:#6f6280;font-size:10px}
+.avatar,.top-avatar{background:var(--brand-gradient)!important;border-color:transparent!important;color:#fff!important}
+
+/* Topbar */
+.topbar{height:68px;background:rgba(5,3,7,.72)!important;backdrop-filter:blur(14px);border-bottom:1px solid rgba(168,85,247,.12)!important}
+.topbar:after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--brand-gradient);opacity:.35}
+.notification-button i{background:var(--brand-red)!important}
+
+/* Content cards */
+.page-content{max-width:1440px;margin:0 auto}
+.panel,.metric-card{border-radius:16px!important;border:1px solid rgba(168,85,247,.13)!important;background:linear-gradient(160deg,rgba(22,12,30,.9),rgba(10,6,14,.92))!important;transition:border-color .2s,transform .2s,box-shadow .2s}
+.metric-card:hover{transform:translateY(-2px);border-color:rgba(255,45,85,.35)!important;box-shadow:var(--brand-glow)}
+.metric-value{font-family:Manrope,sans-serif}
+.metric-icon{background:linear-gradient(145deg,rgba(139,44,255,.18),rgba(255,45,85,.14))!important;color:#ff6b86!important}
+.inline-link,.text-button{color:#ff6b86!important}
+
+@media (max-width: 980px){.main-shell{margin-left:0}}
+h1,h2,h3,h4{color:#f8f5fb}

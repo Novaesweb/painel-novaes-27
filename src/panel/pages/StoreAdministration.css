@@ -1,0 +1,24 @@
+.store-management-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.store-management-form{display:grid;gap:11px;padding:15px;border:1px solid rgba(176,160,190,.11);border-radius:9px;background:rgba(5,10,24,.35)}
+.store-management-form>div strong{color:#e0e5ef;font-size:11px}
+.store-management-form>div p,.status-expiry{margin:5px 0 0;color:#8290a7;font-size:9px;line-height:1.5}
+.store-management-form label{display:grid;gap:6px;color:#8794aa;font-size:9px}
+.store-management-form input,.store-management-form select,.store-management-form textarea{width:100%;min-height:36px;padding:9px 10px;border:1px solid rgba(176,160,190,.16);border-radius:7px;background:rgba(2,6,18,.65);color:#e0e5ef;font:inherit;font-size:10px}
+.store-management-form textarea{min-height:78px;resize:vertical}
+.store-management-form button{justify-self:start;min-height:35px;margin:0;padding:0 13px;font-size:10px}
+.status-expiry{color:#fbbf24}
+.store-message-history{margin-top:14px;padding:14px;border:1px solid rgba(176,160,190,.1);border-radius:9px;background:rgba(5,10,24,.35)}
+.store-message-history h3{margin:0 0 10px;color:#c7d0e0;font-size:10px}
+.store-message-history ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.store-message-history li{padding:10px;border-radius:7px;background:rgba(2,6,18,.45)}
+.store-message-history li>div{display:flex;justify-content:space-between;gap:8px}
+.store-message-history strong{color:#e0e5ef;font-size:10px}
+.store-message-history time{color:#748199;font-size:9px}
+.store-message-history p{margin:7px 0 0;color:#a8b3c6;font-size:10px;line-height:1.5;white-space:pre-wrap}
+.status-maintenance{border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.07);color:#fcd34d}
+.status-maintenance:before{background:#fbbf24;box-shadow:0 0 7px #fbbf24}
+.store-current-restriction{display:grid;gap:6px;margin-top:14px;padding:12px;border:1px solid rgba(251,191,36,.18);border-radius:8px;background:rgba(120,83,8,.08)}
+.store-current-restriction strong{color:#fcd34d;font-size:10px}
+.store-current-restriction p{margin:0;color:#c7d0e0;font-size:10px;line-height:1.5;white-space:pre-wrap}
+.store-current-restriction small{color:#9ba8bc;font-size:9px;overflow-wrap:anywhere}
+@media(max-width:900px){.store-management-grid{grid-template-columns:1fr}}

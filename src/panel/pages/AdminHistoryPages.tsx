@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Bell, MessageSquare, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './AdminHistoryPages.css'
+import { PushSettings } from '../components/PushSettings'
+import { notificationPath } from '../components/NotificationLive'
+import { useNavigate } from 'react-router-dom'
 
 type Notification = {
   id: string
@@ -12,6 +15,7 @@ type Notification = {
   entity_id: string | null
   created_at: string
   read_at: string | null
+  action_url: string | null
 }
 
 type AuditEntry = {
@@ -45,7 +49,8 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-export function NotificationsPage() {
+export function NotificationsPage({ role }: { role: string }) {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Notification[]>([])
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -59,7 +64,7 @@ export function NotificationsPage() {
     }
     setLoading(true)
     const { data, error } = await supabase.from('master_notifications')
-      .select('id,category,title,body,entity_type,entity_id,created_at,read_at')
+      .select('id,category,title,body,entity_type,entity_id,created_at,read_at,action_url')
       .order('created_at', { ascending: false }).limit(100)
     if (error) {
       setMessage(`Não foi possível carregar as notificações: ${error.message}`)
@@ -72,6 +77,11 @@ export function NotificationsPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    const reload = () => { void load() }
+    window.addEventListener('novaesweb-notifications-changed', reload)
+    return () => window.removeEventListener('novaesweb-notifications-changed', reload)
+  }, [load])
 
   async function markRead(item: Notification) {
     if (!supabase || item.read_at) return
@@ -86,11 +96,13 @@ export function NotificationsPage() {
   return <div className="admin-history-page">
     <div className="page-heading"><div><div className="eyebrow small-eyebrow">ADMINISTRAÇÃO</div><h1>Notificações</h1><p>Mensagens vinculadas ao seu usuário autenticado no Supabase.</p></div><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Atualizar</button></div>
     {message && <div className="admin-history-message" role="status">{message}</div>}
+    {role === 'MASTER' && <PushSettings />}
     <section className="panel admin-history-list" aria-live="polite">
       {loading ? <div className="admin-history-empty"><span className="loader" /><p>Carregando notificações…</p></div>
         : items.length === 0 ? <div className="admin-history-empty"><Bell size={22} /><strong>Nenhuma notificação</strong><p>Novas mensagens aparecerão aqui quando forem enviadas ao seu usuário.</p></div>
           : items.map((item) => <article className={`admin-notification${item.read_at ? ' is-read' : ''}`} key={item.id}>
             <span className="notification-dot" aria-hidden="true" />
+            {item.action_url && <button className="secondary-button" onClick={() => { void markRead(item); navigate(notificationPath(item.action_url)) }}>Abrir</button>}
             <div className="admin-notification-content"><div><strong>{item.title}</strong><time>{dateLabel(item.created_at)}</time></div><p>{item.body}</p><small>{item.category}</small></div>
             {!item.read_at && <button className="secondary-button" onClick={() => void markRead(item)} disabled={busyId === item.id}>{busyId === item.id ? 'Salvando…' : 'Marcar como lida'}</button>}
           </article>)}

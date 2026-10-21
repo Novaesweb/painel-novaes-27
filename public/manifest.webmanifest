@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "NovaesWeb Master",
+  "short_name": "NovaesWeb",
+  "description": "Central administrativa NovaesWeb",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05040b",
+  "theme_color": "#05040b",
+  "icons": [{ "src": "/images/novaesweb-logo.jpeg", "sizes": "1254x1254", "type": "image/jpeg", "purpose": "any" }]
+}

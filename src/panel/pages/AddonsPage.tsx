@@ -18,7 +18,7 @@ type State = { addons: CatalogAddon[]; requests: Request[]; assignments: Assignm
 type Draft = Omit<CatalogAddon, 'id'> & { id?: string }
 const emptyDraft: Draft = { code: '', name: '', summary: '', description: '', icon: 'PackagePlus', category: 'premium', billing_type: 'quote', price: null, setup_fee: 0, development_status: 'planned', is_visible: true, is_active: true, compatible_site_types: ['*'], activation_location: 'client_panel', suggested_route: '', integration_requirements: '', activation_rules: '', disable_rules: '', sort_order: 0 }
 const categories: Record<string, string> = { premium: 'Funcionalidades Premium', automation: 'Automações e Integrações', growth: 'Gestão e Crescimento', service: 'Serviços Avulsos', future: 'Adicionais Futuros' }
-const statuses: Record<string, string> = { pending: 'Pendente', in_review: 'Em análise', awaiting_confirmation: 'Aguardando confirmação', approved: 'Aprovada', activated: 'Ativada', rejected: 'Recusada', cancelled: 'Cancelada', active: 'Ativo', suspended: 'Suspenso', disabled: 'Desativado' }
+const statuses: Record<string, string> = { pending: 'Solicitado', in_review: 'Em análise', awaiting_confirmation: 'Aguardando confirmação', approved: 'Em preparo', activated: 'Ativo', rejected: 'Recusado', cancelled: 'Cancelado', active: 'Ativo', suspended: 'Suspenso', disabled: 'Desativado' }
 const development: Record<string, string> = { planned: 'Planejado', in_development: 'Em desenvolvimento', ready: 'Pronto para ativação', unavailable: 'Indisponível' }
 const technicalStatuses: Record<string, string> = { available: 'Implementado e disponível', degraded: 'Implementado com falhas', unavailable: 'Implementado, indisponível' }
 const billing: Record<string, string> = { monthly: 'Mensal', one_time: 'Pagamento único', per_use: 'Por utilização', quote: 'Sob orçamento', free: 'Gratuito' }
@@ -57,6 +57,28 @@ export function AddonsPage() {
   }, [call])
 
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    const reconcile = () => { if (document.visibilityState === 'visible') void refresh() }
+    const timer = window.setInterval(reconcile, 60_000)
+    document.addEventListener('visibilitychange', reconcile)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', reconcile) }
+  }, [refresh])
+  useEffect(() => {
+    const client = supabase
+    if (!client) return
+    let refreshTimer: number | undefined
+    const queueRefresh = () => {
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => { refreshTimer = undefined; void refresh() }, 200)
+    }
+    const channel = client.channel('master-addon-workflow')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'addon_catalog' }, queueRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'addon_requests' }, queueRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_addons' }, queueRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_addon_installations' }, queueRefresh)
+      .subscribe()
+    return () => { if (refreshTimer !== undefined) window.clearTimeout(refreshTimer); void client.removeChannel(channel) }
+  }, [refresh])
   const metrics = useMemo(() => ({
     total: data.addons.length,
     visible: data.addons.filter((addon) => addon.is_active && addon.is_visible).length,
@@ -101,36 +123,11 @@ export function AddonsPage() {
     const feeText = window.prompt('Taxa de implantação (R$):', String(item.setup_fee ?? item.addon?.setup_fee ?? 0).replace('.', ','))
     if (feeText === null) return
     const toAmount = (value: string) => Number(value.replace(',', '.'))
-    await mutate('confirm_commercial', { request_id: item.id, approved_price: toAmount(priceText), setup_fee: toAmount(feeText) }, 'Condições comerciais registradas. Ative tecnicamente apenas após a confirmação do cliente.')
+    await mutate('confirm_commercial', { request_id: item.id, approved_price: toAmount(priceText), setup_fee: toAmount(feeText) }, 'Condições comerciais registradas. O adicional continua em preparo até a implementação, o check-in e sua aprovação final.')
   }
   async function setSiteType(site: Site, site_type: string) {
     await mutate('set_site_type', { store_id: site.id, site_type: site_type || null }, `Tipo de site atualizado para ${site.name}.`)
   }
-  async function activateForSite(site: Site, currentAssignments: Assignment[]) {
-    const installedAddonIds = new Set(data.installations.filter((item) => item.store_id === site.id && item.technical_status === 'available').map((item) => item.addon_id))
-    const options = data.addons.filter((addon) => addon.is_active && addon.development_status === 'ready'
-      && installedAddonIds.has(addon.id)
-      && (addon.compatible_site_types.includes('*') || (site.site_type !== null && addon.compatible_site_types.includes(site.site_type)))
-      && !currentAssignments.some((assignment) => assignment.addon_id === addon.id && assignment.status === 'active'))
-    if (!options.length) { window.alert('Não há adicionais prontos, ativos e compatíveis com o tipo deste site.'); return }
-    const choice = window.prompt(`Escolha o adicional para ${site.name}:\n${options.map((addon, index) => `${index + 1}. ${addon.name} — ${billing[addon.billing_type]} (${money(addon.price)})`).join('\n')}\n\nDigite o número:`)
-    if (choice === null) return
-    const addon = options[Number(choice) - 1]
-    if (!addon) { window.alert('Opção inválida.'); return }
-    const initialPrice = addon.price == null ? '' : String(addon.price).replace('.', ',')
-    const priceText = window.prompt(`Preço comercial acordado para ${addon.name} (R$). Deixe vazio somente para Sob orçamento ou Gratuito.`, initialPrice)
-    if (priceText === null) return
-    const contractedPrice = priceText.trim() === '' ? null : Number(priceText.replace(',', '.'))
-    if (contractedPrice !== null && (!Number.isFinite(contractedPrice) || contractedPrice < 0)) { window.alert('Informe um preço igual ou maior que zero.'); return }
-    if (contractedPrice === null && ['monthly', 'one_time', 'per_use'].includes(addon.billing_type)) { window.alert('Este tipo de cobrança exige um preço contratado.'); return }
-    const feeText = window.prompt('Taxa de implantação acordada (R$):', String(addon.setup_fee).replace('.', ','))
-    if (feeText === null) return
-    const setupFee = Number(feeText.replace(',', '.'))
-    if (!Number.isFinite(setupFee) || setupFee < 0) { window.alert('Informe uma taxa de implantação válida.'); return }
-    if (!window.confirm(`Confirmo as condições comerciais e autorizo ativar ${addon.name} somente para ${site.name}?`)) return
-    await mutate('activate_direct', { store_id: site.id, addon_id: addon.id, contracted_price: contractedPrice, setup_fee: setupFee, commercial_confirmed: true }, `${addon.name} ativado para ${site.name}.`)
-  }
-
   function installationFor(siteId: string, addonId: string) {
     return data.installations.find((item) => item.store_id === siteId && item.addon_id === addonId)
   }
@@ -144,7 +141,7 @@ export function AddonsPage() {
       <Metric icon={<Layers3 size={17} />} label="Adicionais cadastrados" value={metrics.total} color="purple" foot="Catálogo central" />
       <Metric icon={<PackagePlus size={17} />} label="Ativos no catálogo" value={metrics.visible} color="blue" foot="Visíveis e disponíveis" />
       <Metric icon={<Clock3 size={17} />} label="Em desenvolvimento" value={metrics.developing} color="pink" foot="Ainda não ativáveis" />
-      <Metric icon={<CircleDollarSign size={17} />} label="Solicitações pendentes" value={metrics.pending} color="purple" foot={`${metrics.approved} aguardam ativação`} />
+      <Metric icon={<CircleDollarSign size={17} />} label="Solicitações pendentes" value={metrics.pending} color="purple" foot={`${metrics.approved} em preparo`} />
       <Metric icon={<Store size={17} />} label="Empresas com adicionais" value={metrics.companies} color="blue" foot="Contratações ativas" />
       <Metric icon={<CircleDollarSign size={17} />} label="Receita recorrente estimada" value={money(metrics.mrr)} color="pink" foot="Somente mensalidades ativas" />
     </div>
@@ -154,18 +151,22 @@ export function AddonsPage() {
       {loading ? <Loading /> : filteredAddons.length === 0 ? <Empty text="Nenhum adicional encontrado." /> : <div className="addons-table-wrap"><table className="addons-table"><thead><tr><th>Adicional</th><th>Categoria</th><th>Preço</th><th>Desenvolvimento</th><th>Visibilidade</th><th></th></tr></thead><tbody>{filteredAddons.map((addon) => <tr key={addon.id}><td><strong>{addon.name}</strong><small>{addon.summary}</small><code>{addon.code}</code><details className="addon-tech-sheet"><summary>Ficha técnica</summary><dl><dt>UUID</dt><dd><code>{addon.id}</code></dd><dt>Tipos compatíveis</dt><dd>{addon.compatible_site_types.includes('*') ? 'Todos' : addon.compatible_site_types.map((type) => siteTypes[type] ?? type).join(', ')}</dd><dt>Local sugerido</dt><dd>{locations[addon.activation_location]}</dd><dt>Rota sugerida</dt><dd>{addon.suggested_route || 'A definir no projeto'}</dd><dt>Descrição funcional</dt><dd>{addon.description || addon.summary}</dd><dt>Requisitos</dt><dd>{addon.integration_requirements || 'A definir antes da integração'}</dd><dt>Ativação</dt><dd>{addon.activation_rules || 'Requer implementação confirmada, compatibilidade e autorização comercial do Master.'}</dd><dt>Bloqueio</dt><dd>{addon.disable_rules || 'O backend do módulo deve bloquear todas as operações quando a contratação não estiver ativa.'}</dd></dl></details></td><td>{categories[addon.category]}</td><td><strong>{money(addon.price)}</strong><small>{billing[addon.billing_type]}{addon.setup_fee > 0 ? ` · implantação ${money(addon.setup_fee)}` : ''}</small></td><td><span className={`addons-status status-${addon.development_status}`}>{development[addon.development_status]}</span><small>{locations[addon.activation_location]}</small></td><td><span className={`addons-status ${addon.is_active && addon.is_visible ? 'status-enabled' : 'status-muted'}`}>{addon.is_active && addon.is_visible ? 'Disponível' : 'Oculto'}</span></td><td><button className="icon-action" aria-label={`Editar ${addon.name}`} onClick={() => beginEdit(addon)}><Edit3 size={15} /></button></td></tr>)}</tbody></table></div>}
     </section>}
 
-    {tab === 'requests' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Solicitações de Adicionais</h2><p>A aprovação comercial e a ativação técnica são etapas distintas.</p></div></div>{loading ? <Loading /> : data.requests.length === 0 ? <Empty text="Ainda não há solicitações de adicionais." /> : <div className="addons-request-list">{data.requests.map((item) => <article className="addon-request-card" key={item.id}><div className="addon-request-main"><div className="addon-request-icon"><PackagePlus size={17} /></div><div className="addon-request-copy"><strong>{item.addon?.name ?? 'Adicional removido'}</strong><small>{item.store?.name ?? 'Empresa não encontrada'} · {item.store?.nx_id ?? 'sem ID NX'} · {date(item.created_at)}</small><p>{item.customer_notes || 'Sem observações do solicitante.'}</p><span>Preço de catálogo: {money(item.addon?.price)} · {billing[item.addon?.billing_type ?? 'quote']}</span>{item.decision_reason && <em>Justificativa: {item.decision_reason}</em>}</div><span className={`addons-status status-${item.status}`}>{statuses[item.status] ?? item.status}</span></div><div className="addon-request-actions">
+    {tab === 'requests' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Solicitações de Adicionais</h2><p>Aceitar a solicitação coloca o adicional em preparo na loja. Depois da configuração manual e do check-in técnico, a aprovação final libera o acesso.</p></div></div>{loading ? <Loading /> : data.requests.length === 0 ? <Empty text="Ainda não há solicitações de adicionais." /> : <div className="addons-request-list">{data.requests.map((item) => <article className="addon-request-card" key={item.id}><div className="addon-request-main"><div className="addon-request-icon"><PackagePlus size={17} /></div><div className="addon-request-copy"><strong>{item.addon?.name ?? 'Adicional removido'}</strong><small>{item.store?.name ?? 'Empresa não encontrada'} · {item.store?.nx_id ?? 'sem ID NX'} · {date(item.created_at)}</small><p>{item.customer_notes || 'Sem observações do solicitante.'}</p><span>Preço de catálogo: {money(item.addon?.price)} · {billing[item.addon?.billing_type ?? 'quote']}</span>{item.decision_reason && <em>Justificativa: {item.decision_reason}</em>}</div><span className={`addons-status status-${item.status}`}>{statuses[item.status] ?? item.status}</span></div><div className="addon-request-actions">
         {item.status === 'pending' && <button className="secondary-button" onClick={() => void review(item, 'in_review')}>Iniciar análise</button>}
-        {['pending', 'in_review', 'awaiting_confirmation'].includes(item.status) && <><button className="secondary-button" onClick={() => void review(item, 'rejected')}>Recusar</button><button className="primary-compact" onClick={() => void review(item, 'approved')}>Aprovar solicitação</button></>}
-        {item.status === 'approved' && !item.commercial_confirmed_at && <button className="secondary-button" onClick={() => void confirmCommercial(item)}>Confirmar condições comerciais</button>}
-        {item.status === 'approved' && item.commercial_confirmed_at && <button className="primary-compact" disabled={saving || !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available')} onClick={() => void mutate('activate_request', { request_id: item.id }, 'Adicional ativado para esta empresa.')}>Ativar para esta empresa</button>}
-        {['pending', 'in_review', 'awaiting_confirmation', 'approved'].includes(item.status) && <button className="text-button" onClick={() => void review(item, 'awaiting_confirmation')}>Aguardar confirmação comercial</button>}
+        {['pending', 'in_review', 'awaiting_confirmation'].includes(item.status) && <><button className="secondary-button" onClick={() => void review(item, 'rejected')}>Recusar</button><button className="primary-compact" onClick={() => void review(item, 'approved')}>Aceitar e enviar para preparo</button></>}
+        {item.status === 'approved' && !item.commercial_confirmed_at && <button className="secondary-button" onClick={() => void confirmCommercial(item)}>Registrar condições comerciais</button>}
+        {item.status === 'approved' && item.commercial_confirmed_at && <button className="primary-compact" disabled={saving || !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available')} onClick={() => void mutate('activate_request', { request_id: item.id }, 'Adicional aprovado e ativado para esta empresa.')}>Aprovar configuração e ativar</button>}
+        {['pending', 'in_review', 'awaiting_confirmation'].includes(item.status) && <button className="text-button" onClick={() => void review(item, 'awaiting_confirmation')}>Aguardar confirmação comercial</button>}
       </div>{item.status === 'approved' && !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available') && <div className="addons-note">A loja ainda não enviou check-in técnico disponível para este módulo.</div>}{item.status === 'approved' && !item.addon?.is_active && <div className="addons-note">Este adicional está desativado no catálogo. Reative-o antes da ativação técnica.</div>}{item.status === 'approved' && item.addon?.development_status !== 'ready' && <div className="addons-note">O módulo está marcado como {development[item.addon?.development_status ?? 'planned']}; a ativação será recusada até estar pronto.</div>}</article>)}</div>}</section>}
 
-    {tab === 'companies' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Adicionais por Empresa</h2><p>Implementação técnica e permissão comercial são exibidas separadamente. Check-in técnico não ativa adicionais.</p></div></div>{loading ? <Loading /> : data.stores.length === 0 ? <Empty text="Nenhuma empresa cadastrada." /> : <div className="addons-company-list">{data.stores.map((site) => {
+    {tab === 'companies' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Adicionais por Empresa</h2><p>Abra uma empresa para ver implementação, solicitações e ativações. Cada loja fica separada e recolhida até você precisar dela.</p></div></div>{loading ? <Loading /> : data.stores.length === 0 ? <Empty text="Nenhuma empresa cadastrada." /> : <div className="addons-company-list">{data.stores.map((site) => {
       const assigned = data.assignments.filter((entry) => entry.store_id === site.id)
-      return <article className="addon-company-card" key={site.id}>
-        <header><div className="addon-company-icon"><Building2 size={17} /></div><div><strong>{site.name}</strong><small>{site.nx_id} · {site.owner_name || 'Proprietário não informado'} · Plano {site.plan_code || 'não informado'}</small></div><span className="addons-status status-muted">{site.status}</span><button className="secondary-button addon-company-activate" onClick={() => void activateForSite(site, assigned)} disabled={saving}>Ativar adicional</button></header>
+      const activeAddons = assigned.filter((entry) => entry.status === 'active').length
+      const pendingRequests = data.requests.filter((entry) => entry.store_id === site.id && ['pending', 'in_review', 'awaiting_confirmation'].includes(entry.status)).length
+      const preparingRequests = data.requests.filter((entry) => entry.store_id === site.id && entry.status === 'approved').length
+      return <details className="addon-company-card" key={site.id}>
+        <summary className="addon-company-summary"><span className="addon-company-icon"><Building2 size={17} /></span><span className="addon-company-summary-copy"><strong>{site.name}</strong><small>{site.nx_id} · {site.owner_name || 'Proprietário não informado'}</small></span><span className="addons-status status-muted">{site.status}</span><span className="addon-company-summary-count">{activeAddons} ativos{preparingRequests ? ` · ${preparingRequests} em preparo` : ''}{pendingRequests ? ` · ${pendingRequests} pendentes` : ''}</span><span className="addon-company-chevron" aria-hidden="true" /></summary>
+        <div className="addon-company-expanded"><header><div><strong>Gerenciar {site.name}</strong><small>Plano {site.plan_code || 'não informado'}</small></div></header>
         <label className="addon-site-type">Tipo do site<select value={site.site_type ?? ''} onChange={(event) => void setSiteType(site, event.target.value)} disabled={saving}><option value="">Não configurado</option>{Object.entries(siteTypes).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         {assigned.length ? <div className="addon-assigned-list">{assigned.map((entry) => <div className="addon-assigned-row" key={entry.id}><span><strong>{entry.addon?.name ?? 'Adicional'}</strong><small>Ativado em {date(entry.activated_at)} · {billing[entry.billing_type]} · {money(entry.contracted_price)}</small></span><span className={`addons-status status-${entry.status}`}>{statuses[entry.status]}</span>{['active', 'suspended'].includes(entry.status) && <div>{entry.status === 'active' && <button className="text-button" onClick={() => void mutate('set_subscription_status', { store_addon_id: entry.id, status: 'suspended' }, 'Adicional suspenso.')}>Suspender</button>}<button className="text-button danger" onClick={() => window.confirm('Desativar este adicional para esta empresa?') && void mutate('set_subscription_status', { store_addon_id: entry.id, status: 'disabled' }, 'Adicional desativado.')}>Desativar</button></div>}</div>)}</div> : <div className="addons-company-empty">Esta empresa não possui adicionais ativos ou suspensos.</div>}
         <div className="addon-implementation-list"><h3>Estado de todos os adicionais</h3>{data.addons.map((addon) => {
@@ -175,7 +176,8 @@ export function AddonsPage() {
           const implementation = installation ? technicalStatuses[installation.technical_status] : 'Não implementado'
           return <div className="addon-implementation-row" key={addon.id}><span><strong>{addon.name}</strong><small><code>{addon.code}</code>{installation?.installed_version ? ` · versão ${installation.installed_version}` : ''}{installation ? ` · check-in ${date(installation.last_checkin_at)}` : ''}</small></span><span className={`addons-status ${installation?.technical_status === 'available' ? 'status-enabled' : installation ? 'status-muted' : 'status-planned'}`}>{implementation}</span><span className={`addons-status ${entitlement ? `status-${entitlement.status}` : 'status-muted'}`}>{entitlement ? statuses[entitlement.status] : 'Sem ativação'}</span><span className="addon-compatibility">{compatible ? 'Compatível' : site.site_type ? 'Incompatível' : 'Tipo não definido'}</span></div>
         })}</div>
-      </article>
+        </div>
+      </details>
     })}</div>}</section>}
 
     {tab === 'history' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Histórico de alterações</h2><p>Auditoria das ações do catálogo e das ativações por empresa.</p></div></div>{loading ? <Loading /> : data.history.length === 0 ? <Empty text="Ainda não há alterações registradas." /> : <div className="addons-history-list">{data.history.map((item) => <div key={item.id}><span className="addons-history-dot" /><span><strong>{item.action.replaceAll('_', ' ')}</strong><small>{item.store?.name ? `${item.store.name} · ` : ''}{item.addon?.name ?? 'Catálogo'} · {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.created_at))}</small></span><BadgeCheck size={15} /></div>)}</div>}</section>}

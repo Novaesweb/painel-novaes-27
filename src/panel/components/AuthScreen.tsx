@@ -2,9 +2,16 @@ import { useState } from 'react'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Store, WandSparkles } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
-type Props = { setupRequired?: boolean; accessDenied?: boolean; onSignOut?: () => void; email?: string }
+type Props = {
+  setupRequired?: boolean
+  accessDenied?: boolean
+  passwordRecovery?: boolean
+  onSignOut?: () => void
+  onRecoveryComplete?: () => Promise<boolean>
+  email?: string
+}
 
-export function AuthScreen({ setupRequired = false, accessDenied = false, onSignOut, email }: Props) {
+export function AuthScreen({ setupRequired = false, accessDenied = false, passwordRecovery = false, onSignOut, onRecoveryComplete, email }: Props) {
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
@@ -14,19 +21,62 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, onSign
     event.preventDefault(); setError(''); setNotice(''); setLoading(true)
     if (!supabase) { setError('Configure a conexão do Supabase para habilitar o acesso.'); setLoading(false); return }
     const values = new FormData(event.currentTarget)
-    const { error: authError } = await supabase.auth.signInWithPassword({ email: String(values.get('email')), password: String(values.get('password')) })
-    if (authError) setError(authError.status === 400 ? 'E-mail ou senha inválidos.' : 'Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
-    setLoading(false)
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email: String(values.get('email')), password: String(values.get('password')) })
+      if (authError) {
+        setError(authError.status === 400 || authError.status === 401
+          ? 'E-mail ou senha incorretos. Verifique os dados e tente novamente.'
+          : authError.status === 429
+            ? 'Muitas tentativas. Aguarde um momento antes de tentar novamente.'
+            : 'Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
+      }
+    } catch {
+      setError('Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function recoverPassword() {
-    setError(''); setNotice('')
+    if (loading) return
+    setError(''); setNotice(''); setLoading(true)
     const emailField = document.querySelector<HTMLInputElement>('input[name="email"]')?.value.trim()
-    if (!emailField) { setError('Informe seu e-mail para receber o link de recuperação.'); return }
-    if (!supabase) { setError('Configure o Supabase para habilitar a recuperação de senha.'); return }
-    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(emailField)
-    if (recoveryError) setError('Não foi possível enviar o link de recuperação agora.')
-    else setNotice('Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.')
+    if (!emailField) { setError('Informe seu e-mail para receber o link de recuperação.'); setLoading(false); return }
+    if (!supabase) { setError('Configure o Supabase para habilitar a recuperação de senha.'); setLoading(false); return }
+    try {
+      const redirectTo = new URL('/?recuperacao=1', window.location.origin).toString()
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(emailField, { redirectTo })
+      if (recoveryError) setError('Não foi possível enviar o link de recuperação agora.')
+      else setNotice('Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.')
+    } catch {
+      setError('Não foi possível enviar o link de recuperação agora.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function updatePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(''); setNotice(''); setLoading(true)
+    if (!supabase) { setError('A conexão de autenticação não está disponível. Solicite um novo link.'); setLoading(false); return }
+    const values = new FormData(event.currentTarget)
+    const password = String(values.get('new-password') ?? '')
+    const confirmation = String(values.get('confirm-password') ?? '')
+    if (password.length < 12) { setError('Use uma senha com pelo menos 12 caracteres.'); setLoading(false); return }
+    if (password !== confirmation) { setError('As senhas não coincidem.'); setLoading(false); return }
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      if (updateError) { setError('Não foi possível redefinir a senha. Solicite um novo link.'); return }
+      const completed = await onRecoveryComplete?.()
+      if (completed === false) {
+        setError('Senha atualizada, mas não foi possível encerrar a sessão. Feche esta janela e entre novamente.')
+        return
+      }
+      setNotice('Senha atualizada. Entre novamente para continuar.')
+    } catch {
+      setError('Não foi possível redefinir a senha. Solicite um novo link.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return <main className="auth-shell">
@@ -56,6 +106,19 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, onSign
           <h2>Conexão pendente</h2>
           <p className="auth-description">A base do painel está pronta. Para conectar seu Supabase, vou precisar da URL do projeto e da chave pública (anon/publishable).</p>
           <div className="setup-note"><span className="live-dot amber" /> Nenhuma informação de demonstração está sendo exibida.</div>
+        </> : passwordRecovery ? <>
+          <p className="form-kicker">RECUPERAÇÃO SEGURA</p>
+          <h2>Crie uma nova senha</h2>
+          <p className="auth-description">Use uma senha forte, com pelo menos 12 caracteres. Este link é pessoal e temporário.</p>
+          <form onSubmit={updatePassword} className="login-form">
+            <label htmlFor="new-password">Nova senha</label>
+            <div className="input-wrap"><LockKeyhole size={17} /><input id="new-password" name="new-password" type={passwordVisible ? 'text' : 'password'} placeholder="Mínimo de 12 caracteres" autoComplete="new-password" minLength={12} maxLength={256} required /><button type="button" className="icon-button" onClick={() => setPasswordVisible(!passwordVisible)} aria-label={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}>{passwordVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+            <label htmlFor="confirm-password">Confirmar nova senha</label>
+            <div className="input-wrap"><LockKeyhole size={17} /><input id="confirm-password" name="confirm-password" type={passwordVisible ? 'text' : 'password'} placeholder="Repita a nova senha" autoComplete="new-password" minLength={12} maxLength={256} required /></div>
+            {error && <div className="form-message error-message" role="alert">{error}</div>}
+            {notice && <div className="form-message success-message" role="status">{notice}</div>}
+            <button className="primary-button" type="submit" disabled={loading}>{loading ? <><span className="button-spinner" /> Atualizando...</> : <>Atualizar senha <ArrowRight size={16} /></>}</button>
+          </form>
         </> : accessDenied ? <>
           <div className="status-icon status-error"><ShieldCheck size={22} /></div>
           <h2>Acesso não autorizado</h2>

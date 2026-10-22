@@ -1,8 +1,8 @@
 // Os botões copiam os próprios documentos: uma única fonte por contrato.
-import sitePrompt from '../../supabase/PROMPT_INTEGRACAO_SITE.md?raw'
-import controlsPrompt from '../../PROMPT_CONTROLES_MASTER_LOJA.md?raw'
-import addonsPrompt from '../../PROMPT_INTEGRACAO_ADICIONAIS_LOJA.md?raw'
-import implementationPrompt from '../../PROMPT_IMPLEMENTAR_ADICIONAL_APROVADO.md?raw'
+import sitePrompt from '../../../supabase/PROMPT_INTEGRACAO_SITE.md?raw'
+import controlsPrompt from '../../../PROMPT_CONTROLES_MASTER_LOJA.md?raw'
+import addonsPrompt from '../../../PROMPT_INTEGRACAO_ADICIONAIS_LOJA.md?raw'
+import implementationPrompt from '../../../PROMPT_IMPLEMENTAR_ADICIONAL_APROVADO.md?raw'
 
 export const siteIntegrationPrompt = sitePrompt.trim()
 export const integrationPrompts = [

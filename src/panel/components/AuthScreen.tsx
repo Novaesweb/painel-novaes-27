@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Store, WandSparkles } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { TurnstileChallenge } from './TurnstileChallenge'
 
 type Props = {
   setupRequired?: boolean
@@ -16,19 +17,30 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, passwo
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const turnstileSiteKey = import.meta.env['VITE_TURNSTILE_SITE_KEY'] as string | undefined
 
   async function signIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setNotice(''); setLoading(true)
     if (!supabase) { setError('Configure a conexão do Supabase para habilitar o acesso.'); setLoading(false); return }
     const values = new FormData(event.currentTarget)
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email: String(values.get('email')), password: String(values.get('password')) })
-      if (authError) {
-        setError(authError.status === 400 || authError.status === 401
-          ? 'E-mail ou senha incorretos. Verifique os dados e tente novamente.'
-          : authError.status === 429
-            ? 'Muitas tentativas. Aguarde um momento antes de tentar novamente.'
-            : 'Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
+      const { data, error: gatewayError } = await supabase.functions.invoke('novaesweb-auth-gateway', {
+        body: { email: String(values.get('email')), password: String(values.get('password')), captchaToken: captchaToken || undefined },
+      })
+      if (gatewayError) {
+        let detail = 'Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.'
+        try {
+          const payload = await (gatewayError as Error & { context?: Response }).context?.clone().json() as { error?: string; retryAfterSeconds?: number } | undefined
+          if (payload?.error) detail = payload.retryAfterSeconds ? `Muitas tentativas. Aguarde ${Math.ceil(payload.retryAfterSeconds / 60)} minutos antes de tentar novamente.` : payload.error
+        } catch { /* Preserve the safe generic message. */ }
+        setError(detail); setCaptchaToken('')
+      } else if (!data?.session?.access_token || !data?.session?.refresh_token) {
+        setError(data?.error || 'E-mail ou senha incorretos. Verifique os dados e tente novamente.')
+        setCaptchaToken('')
+      } else {
+        const { error: sessionError } = await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token })
+        if (sessionError) setError('Não foi possível iniciar a sessão. Tente novamente mais tarde.')
       }
     } catch {
       setError('Não foi possível conectar ao serviço de autenticação. Tente novamente mais tarde.')
@@ -134,6 +146,7 @@ export function AuthScreen({ setupRequired = false, accessDenied = false, passwo
             <div className="input-wrap"><Mail size={17} /><input id="email" name="email" type="email" placeholder="seu@email.com" autoComplete="email" required /></div>
             <div className="password-heading"><label htmlFor="password">Senha</label><button type="button" className="text-button" onClick={recoverPassword}>Esqueceu a senha?</button></div>
             <div className="input-wrap"><LockKeyhole size={17} /><input id="password" name="password" type={passwordVisible ? 'text' : 'password'} placeholder="Sua senha" autoComplete="current-password" required /><button type="button" className="icon-button" onClick={() => setPasswordVisible(!passwordVisible)} aria-label={passwordVisible ? 'Ocultar senha' : 'Mostrar senha'}>{passwordVisible ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+            {turnstileSiteKey && <TurnstileChallenge siteKey={turnstileSiteKey} onToken={setCaptchaToken} onExpired={() => setCaptchaToken('')} />}
             {error && <div className="form-message error-message" role="alert">{error}</div>}
             {notice && <div className="form-message success-message" role="status">{notice}</div>}
             <button className="primary-button" type="submit" disabled={loading || !isSupabaseConfigured}>{loading ? <><span className="button-spinner" /> Entrando...</> : <>Entrar no painel <ArrowRight size={16} /></>}</button>

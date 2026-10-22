@@ -51,7 +51,7 @@ export function AddonsPage() {
     setLoading(true); setError('')
     try {
       const result = await call('list')
-      setData({ addons: (result.addons as CatalogAddon[]) ?? [], requests: (result.requests as Request[]) ?? [], assignments: (result.assignments as Assignment[]) ?? [], installations: (result.installations as Installation[]) ?? [], stores: (result.stores as Site[]) ?? [], history: (result.history as History[]) ?? [] })
+      setData({ addons: (result['addons'] as CatalogAddon[]) ?? [], requests: (result['requests'] as Request[]) ?? [], assignments: (result['assignments'] as Assignment[]) ?? [], installations: (result['installations'] as Installation[]) ?? [], stores: (result['stores'] as Site[]) ?? [], history: (result['history'] as History[]) ?? [] })
     } catch (err) { setError(err instanceof Error ? err.message : 'Falha ao carregar dados.') }
     finally { setLoading(false) }
   }, [call])

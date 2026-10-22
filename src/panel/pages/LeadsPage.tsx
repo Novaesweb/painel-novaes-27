@@ -51,7 +51,7 @@ export function LeadsPage({ role }: { role: string }) {
     setMessage('')
     try {
       const data = await invoke({ action: 'list_website_leads' })
-      setLeads((data.leads ?? []) as Lead[])
+      setLeads((data['leads'] ?? []) as Lead[])
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Não foi possível carregar os leads.')
     } finally { setLoading(false) }

@@ -98,7 +98,7 @@ export function App() {
   if (!isSupabaseConfigured) return <AuthScreen setupRequired />
   if (passwordRecovery) return <AuthScreen passwordRecovery onRecoveryComplete={finishPasswordRecovery} />
   if (!session) return <AuthScreen />
-  if (denied || !profile || !canViewPage) return <AuthScreen accessDenied onSignOut={() => void signOut()} email={session.user.email} />
+  if (denied || !profile || !canViewPage) return <AuthScreen accessDenied onSignOut={() => void signOut()} email={session.user.email ?? ''} />
 
   return <DashboardLayout profile={profile} onSignOut={() => void signOut()}>
     {renderPage(page, profile.role)}

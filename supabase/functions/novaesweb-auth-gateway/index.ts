@@ -35,7 +35,7 @@ Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: { ...headers(request), 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'authorization, apikey, content-type' },
+      headers: { ...headers(request), 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info' },
     })
   }
   if (request.method !== 'POST') return response(request, { error: 'Método não permitido.' }, 405)

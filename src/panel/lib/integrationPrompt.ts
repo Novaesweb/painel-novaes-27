@@ -1,4 +1,5 @@
 // Os botões copiam os próprios documentos: uma única fonte por contrato.
+// Este arquivo fica em src/panel/lib; os documentos ficam na raiz do projeto.
 import sitePrompt from '../../../supabase/PROMPT_INTEGRACAO_SITE.md?raw'
 import controlsPrompt from '../../../PROMPT_CONTROLES_MASTER_LOJA.md?raw'
 import addonsPrompt from '../../../PROMPT_INTEGRACAO_ADICIONAIS_LOJA.md?raw'

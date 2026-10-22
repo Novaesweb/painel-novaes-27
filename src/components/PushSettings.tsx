@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, Send } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../panel/lib/supabase'
 import { deviceSubscription, disableDevicePush, enableDevicePush, pushAction, pushCategories, supportsPush } from '../lib/push'
 import './PushSettings.css'
 

@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './AdminHistoryPages.css'
 import { PushSettings } from '../components/PushSettings'
 import { notificationPath } from '../components/NotificationLive'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../lib/router-compat'
 
 type Notification = {
   id: string

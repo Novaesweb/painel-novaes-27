@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from '../panel/lib/router-compat'
 import { Bell, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { navigation } from '../lib/navigation'
+import { supabase } from '../panel/lib/supabase'
+import { navigation } from '../panel/lib/navigation'
 import './NotificationLive.css'
 
 export function notificationPath(value: string | null) {

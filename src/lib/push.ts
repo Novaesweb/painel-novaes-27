@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase } from '../panel/lib/supabase'
 
 export const pushCategories = [
   ['leads', 'Leads'], ['financeiro', 'Financeiro'], ['dominios', 'Domínios e publicações'],

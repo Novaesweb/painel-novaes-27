@@ -15,6 +15,10 @@ import {
   ArrowRight,
   TrendingUp,
   Info,
+  CheckCircle2,
+  AlertCircle,
+  BadgeCheck,
+  Globe,
 } from 'lucide-react'
 import './ContractsAndProposalsPage.css'
 
@@ -43,7 +47,17 @@ export function ContractsAndProposalsPage({
   sites,
   plans,
 }: ContractsAndProposalsPageProps) {
-  const [activeTab, setActiveTab] = useState<'proposals' | 'prorata' | 'terms'>('proposals')
+  const [activeTab, setActiveTab] = useState<'proposals' | 'prorata' | 'terms' | 'homologation'>('proposals')
+
+  // Estado do Checklist de Homologação e Publicação (COM-03)
+  const [homologStoreId, setHomologStoreId] = useState<string>(sites[0]?.id || '')
+  const [checkEntryPayment, setCheckEntryPayment] = useState<boolean>(true)
+  const [checkCatalogValid, setCheckCatalogValid] = useState<boolean>(false)
+  const [checkOrderFlowTested, setCheckOrderFlowTested] = useState<boolean>(false)
+  const [checkSoundAndNotification, setCheckSoundAndNotification] = useState<boolean>(false)
+  const [checkClientFormalApproval, setCheckClientFormalApproval] = useState<boolean>(false)
+  const [checkFinalPayment, setCheckFinalPayment] = useState<boolean>(false)
+  const [copiedHomologReport, setCopiedHomologReport] = useState<boolean>(false)
 
   // Estado da Proposta Comercial (COM-02)
   const [proposalClientName, setProposalClientName] = useState('')
@@ -241,6 +255,15 @@ Proposta válida por 15 dias a contar da data de emissão.`
         >
           <ShieldCheck size={15} />
           <span>Cláusulas e Termos Contratuais (COM-09 / COM-10)</span>
+        </button>
+
+        <button
+          type="button"
+          className={`contracts-tab-btn ${activeTab === 'homologation' ? 'active' : ''}`}
+          onClick={() => setActiveTab('homologation')}
+        >
+          <BadgeCheck size={15} />
+          <span>Homologação e Publicação (50% / 50%)</span>
         </button>
       </div>
 
@@ -583,6 +606,220 @@ Proposta válida por 15 dias a contar da data de emissão.`
                 acordada (R$ 0,20 para plano Business e R$ 0,15 para plano Premium)."
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* ABA 4: HOMOLOGAÇÃO E PUBLICAÇÃO (COM-03, COM-04 E COM-05) */}
+      {/* ============================================================== */}
+      {activeTab === 'homologation' && (
+        <div className="homologation-container-card">
+          <div className="homologation-header">
+            <div>
+              <h3>Workflow de Entrada, Aprovação e Publicação Oficial</h3>
+              <p>
+                Garante o cumprimento da regra de ouro comercial da NovaesWeb:
+                <b> 50% de entrada na contratação</b> + <b>50% após aprovação do lojista e antes da publicação do domínio</b>.
+              </p>
+            </div>
+
+            <div className="homologation-store-picker">
+              <Building2 size={16} />
+              <label>Loja em Homologação:</label>
+              <select
+                value={homologStoreId}
+                onChange={(e) => setHomologStoreId(e.target.value)}
+              >
+                {sites.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.nx_id} · {st.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Cards das Parcelas Financeiras 50% / 50% */}
+          <div className="installments-grid">
+            <div className={`installment-card ${checkEntryPayment ? 'paid' : 'pending'}`}>
+              <div className="installment-card-top">
+                <span className="installment-pill">1ª PARCELA · ENTRADA (50%)</span>
+                {checkEntryPayment ? (
+                  <span className="status-badge paid"><CheckCircle2 size={13} /> Confirmado</span>
+                ) : (
+                  <span className="status-badge pending"><Clock size={13} /> Pendente</span>
+                )}
+              </div>
+              <h4>Contratação & Início do Desenvolvimento</h4>
+              <p>O trabalho técnico só é iniciado após a compensação do sinal de 50% (Pix ou Cartão).</p>
+              <label className="checkbox-action-row">
+                <input
+                  type="checkbox"
+                  checked={checkEntryPayment}
+                  onChange={(e) => setCheckEntryPayment(e.target.checked)}
+                />
+                <span>Entrada de 50% recebida e conferida</span>
+              </label>
+            </div>
+
+            <div className={`installment-card ${checkFinalPayment ? 'paid' : 'waiting'}`}>
+              <div className="installment-card-top">
+                <span className="installment-pill">2ª PARCELA · PUBLICAÇÃO (50%)</span>
+                {checkFinalPayment ? (
+                  <span className="status-badge paid"><CheckCircle2 size={13} /> Quitado</span>
+                ) : (
+                  <span className="status-badge waiting"><AlertCircle size={13} /> Aguardando Homologação</span>
+                )}
+              </div>
+              <h4>Aceite Final & Liberação de Domínio</h4>
+              <p>O apontamento do domínio oficial e DNS só ocorre após o aceite formal e quitação dos 50% finais.</p>
+              <label className="checkbox-action-row">
+                <input
+                  type="checkbox"
+                  checked={checkFinalPayment}
+                  onChange={(e) => setCheckFinalPayment(e.target.checked)}
+                  disabled={!checkClientFormalApproval}
+                />
+                <span>2ª Parcela quitada (liberada após aprovação formal)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Checklist de 6 Etapas Críticas */}
+          <div className="checklist-section-card">
+            <h4>Checklist Obrigatório de Pré-Publicação (COM-03 e COM-05)</h4>
+            <div className="checklist-items-grid">
+              <label className={`checklist-item ${checkEntryPayment ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkEntryPayment}
+                  onChange={(e) => setCheckEntryPayment(e.target.checked)}
+                />
+                <div className="checklist-item-content">
+                  <strong>1. Requisitos combinados e 50% de entrada confirmados (COM-03)</strong>
+                  <span>Briefing preenchido, escopo acordado e sinal pago pelo cliente.</span>
+                </div>
+              </label>
+
+              <label className={`checklist-item ${checkCatalogValid ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkCatalogValid}
+                  onChange={(e) => setCheckCatalogValid(e.target.checked)}
+                />
+                <div className="checklist-item-content">
+                  <strong>2. Catálogo e cardápio cadastrados e validados (COM-04)</strong>
+                  <span>Fotos, descrições, preços e opções de entrega/retirada preenchidas.</span>
+                </div>
+              </label>
+
+              <label className={`checklist-item ${checkOrderFlowTested ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkOrderFlowTested}
+                  onChange={(e) => setCheckOrderFlowTested(e.target.checked)}
+                />
+                <div className="checklist-item-content">
+                  <strong>3. Fluxo de ponta a ponta testado no ambiente de prévia</strong>
+                  <span>Carrinho, dados do cliente e checkout simulados com sucesso.</span>
+                </div>
+              </label>
+
+              <label className={`checklist-item ${checkSoundAndNotification ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkSoundAndNotification}
+                  onChange={(e) => setCheckSoundAndNotification(e.target.checked)}
+                />
+                <div className="checklist-item-content">
+                  <strong>4. Gestor de pedidos do lojista testado operacionalmente</strong>
+                  <span>Alerta sonoro, aceite de pedido e impressão de comanda conferidos.</span>
+                </div>
+              </label>
+
+              <label className={`checklist-item ${checkClientFormalApproval ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkClientFormalApproval}
+                  onChange={(e) => setCheckClientFormalApproval(e.target.checked)}
+                />
+                <div className="checklist-item-content">
+                  <strong>5. Aprovação formal do lojista obtida (COM-05)</strong>
+                  <span>Rodadas de revisão concluídas com aceite explícito via WhatsApp ou e-mail.</span>
+                </div>
+              </label>
+
+              <label className={`checklist-item ${checkFinalPayment ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={checkFinalPayment}
+                  onChange={(e) => setCheckFinalPayment(e.target.checked)}
+                  disabled={!checkClientFormalApproval}
+                />
+                <div className="checklist-item-content">
+                  <strong>6. Quitação da 2ª parcela (50% restante) confirmada</strong>
+                  <span>Pagamento final registrado antes de qualquer apontamento de DNS externo.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Painel de Veredito / Liberação de Domínio */}
+          <div className="verdict-card">
+            {checkEntryPayment &&
+            checkCatalogValid &&
+            checkOrderFlowTested &&
+            checkSoundAndNotification &&
+            checkClientFormalApproval &&
+            checkFinalPayment ? (
+              <div className="verdict-banner success">
+                <BadgeCheck size={28} />
+                <div className="verdict-content">
+                  <h4>LOJA 100% HOMOLOGADA — LIBERADA PARA PUBLICAÇÃO</h4>
+                  <p>
+                    Todas as 6 etapas técnicas e comerciais foram concluídas com sucesso.
+                    O apontamento de DNS (Registrador do cliente ➔ Vercel/Supabase) pode ser realizado com segurança jurídica e comercial total.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-action-primary"
+                  onClick={() => {
+                    const selSite = sites.find((s) => s.id === homologStoreId)
+                    const text = `*NOVAESWEB — TERMO DE HOMOLOGAÇÃO E LIBERAÇÃO DE PUBLICAÇÃO*\n\n` +
+                      `Loja: ${selSite?.name || 'Cliente'}\n` +
+                      `ID NX: ${selSite?.nx_id || 'NX-LOJA'}\n` +
+                      `Data de Homologação: ${new Date().toLocaleDateString('pt-BR')}\n\n` +
+                      `STATUS DO PROJETO:\n` +
+                      `[OK] 1ª Parcela (50% Entrada) Quitada\n` +
+                      `[OK] Catálogo e Cardápio Homologados\n` +
+                      `[OK] Testes de Pedidos e Carrinho Concluídos\n` +
+                      `[OK] Painel Operacional e Alerta Sonoro Validados\n` +
+                      `[OK] Aceite Formal do Lojista Concluído\n` +
+                      `[OK] 2ª Parcela (50% Final) Quitada\n\n` +
+                      `*Veredito:* Site aprovado para publicação oficial com apontamento de domínio DNS.`
+                    void navigator.clipboard.writeText(text)
+                    setCopiedHomologReport(true)
+                    setTimeout(() => setCopiedHomologReport(false), 2500)
+                  }}
+                >
+                  {copiedHomologReport ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copiedHomologReport ? 'Copiado!' : 'Copiar Termo de Liberação'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="verdict-banner warning">
+                <AlertCircle size={28} />
+                <div className="verdict-content">
+                  <h4>PUBLICAÇÃO BLOQUEADA (REGRA DE PROTEÇÃO COMERCIAL)</h4>
+                  <p>
+                    Para proteger o cliente e a NovaesWeb, o domínio só pode ser publicado quando todas as 6 etapas estiverem marcadas,
+                    garantindo a aprovação formal do lojista e o recebimento integral dos 50% finais da criação.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

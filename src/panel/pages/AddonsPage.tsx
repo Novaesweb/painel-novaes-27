@@ -1,7 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BadgeCheck, Building2, Check, CircleDollarSign, Clock3, Edit3, Layers3, PackagePlus, Plus, RefreshCw, Search, ShieldAlert, Store, X } from 'lucide-react'
+import { BadgeCheck, Building2, Check, CircleDollarSign, Clock3, Edit3, Layers3, PackagePlus, Plus, RefreshCw, Search, ShieldAlert, Store, X, Copy, FileText, Sparkles, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import './AddonsPage.css'
+
+export const OFFICIAL_19_ADDONS = [
+  { code: 'ADD-01', internalCode: 'novaes_fideliza', name: 'Novaes Fideliza', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 50, billing: 'monthly', description: 'Programa de pontos, benefícios e recompensas para clientes recorrentes.' },
+  { code: 'ADD-02', internalCode: 'novaes-gift', name: 'Novaes Gift', category: 'fidelidade', categoryLabel: 'Fidelização', price: 25, setup: 40, billing: 'monthly', description: 'Emissão e resgate de cartões-presente e vouchers digitais com saldo.' },
+  { code: 'ADD-03', internalCode: 'novaes-promo', name: 'Novaes Promo', category: 'vendas', categoryLabel: 'Vendas & Marketing', price: 15, setup: 30, billing: 'monthly', description: 'Campanhas promocionais com banners, combos e ofertas no site.' },
+  { code: 'ADD-04', internalCode: 'novaes-marketing', name: 'Novaes Marketing', category: 'vendas', categoryLabel: 'Vendas & Marketing', price: 35, setup: 50, billing: 'monthly', description: 'Links rastreáveis, campanhas segmentadas e métricas de canais.' },
+  { code: 'ADD-05', internalCode: 'novaes-grupo', name: 'Novaes Pedido em Grupo', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 19, setup: 40, billing: 'monthly', description: 'Link compartilhável para pedidos coletivos entre amigos e colegas.' },
+  { code: 'ADD-06', internalCode: 'novaes-mesa', name: 'Novaes Mesa', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 39, setup: 60, billing: 'monthly', description: 'Cardápio digital via QR Code nas mesas integrado ao painel da cozinha.' },
+  { code: 'ADD-07', internalCode: 'novaes-tv', name: 'Novaes TV', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 25, setup: 40, billing: 'monthly', description: 'Painel em tela cheia para monitor ou TV com pedidos na cozinha ou vitrine.' },
+  { code: 'ADD-08', internalCode: 'novaes-whatsapp-notify', name: 'Novaes WhatsApp Notify', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 25, setup: 50, billing: 'monthly', description: 'Notificações automáticas de status de pedido via WhatsApp para o cliente.' },
+  { code: 'ADD-09', internalCode: 'novaes-360', name: 'Novaes 360°', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 40, billing: 'monthly', description: 'Visão unificada do consumidor com histórico de compras e preferências.' },
+  { code: 'ADD-10', internalCode: 'novaes-finance', name: 'Novaes Finance', category: 'gestao', categoryLabel: 'Gestão Financeira', price: 30, setup: 50, billing: 'monthly', description: 'Controle operacional de receitas, despesas e conciliação de recebíveis.' },
+  { code: 'ADD-11', internalCode: 'novaes-insights', name: 'Novaes Insights', category: 'gestao', categoryLabel: 'Gestão & Relatórios', price: 20, setup: 30, billing: 'monthly', description: 'Relatórios de vendas, itens populares, horários de pico e ticket médio.' },
+  { code: 'ADD-12', internalCode: 'novaes-commerce-insights', name: 'Novaes Commerce Insights', category: 'gestao', categoryLabel: 'Gestão & Relatórios', price: 39, setup: 60, billing: 'monthly', description: 'Análises preditivas avançadas de giro de cardápio e sazonalidade.' },
+  { code: 'ADD-13', internalCode: 'novaes-voz', name: 'Novaes Voz do Cliente', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 40, billing: 'monthly', description: 'Pesquisa de satisfação pós-entrega (NPS) e moderação de avaliações.' },
+  { code: 'ADD-14', internalCode: 'novaes-os', name: 'Novaes OS', category: 'gestao', categoryLabel: 'Gestão Operacional', price: 39, setup: 50, billing: 'monthly', description: 'Gestão de Ordens de Serviço com etapas, técnicos responsáveis e prazos.' },
+  { code: 'ADD-15', internalCode: 'novaes-equipe', name: 'Novaes Equipe', category: 'gestao', categoryLabel: 'Gestão de Pessoas', price: 20, setup: 30, billing: 'monthly', description: 'Escalas de funcionários, turnos e permissões de acesso da equipe.' },
+  { code: 'ADD-16', internalCode: 'novaes-multiusuario', name: 'Novaes Multiusuário', category: 'escala', categoryLabel: 'Escala & Infra', price: 15, setup: 20, billing: 'monthly', description: 'Pack de +3 acessos administrativos extras com login independente.' },
+  { code: 'ADD-17', internalCode: 'novaes-multiunidade', name: 'Novaes Multiunidade', category: 'escala', categoryLabel: 'Escala & Infra', price: 39, setup: 70, billing: 'monthly', description: 'Gestão de filial adicional integrada com cardápios independentes.' },
+  { code: 'ADD-18', internalCode: 'novaes-backup-plus', name: 'Novaes Backup Plus', category: 'escala', categoryLabel: 'Escala & Infra', price: 19, setup: 0, billing: 'monthly', description: 'Retenção estendida de backups sem substituir os backups essenciais de segurança.' },
+  { code: 'ADD-19', internalCode: 'novaes-import', name: 'Novaes Import', category: 'escala', categoryLabel: 'Escala & Infra', price: 49, setup: 49, billing: 'one_time', description: 'Importação assistida e saneamento de cardápios/planilhas em carga única.' },
+]
 
 type CatalogAddon = {
   id: string; code: string; name: string; summary: string; description: string; icon: string; category: string
@@ -29,7 +51,7 @@ const date = (value: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'm
 
 export function AddonsPage() {
   const [data, setData] = useState<State>({ addons: [], requests: [], assignments: [], installations: [], stores: [], history: [] })
-  const [tab, setTab] = useState<'catalog' | 'requests' | 'companies' | 'history'>('catalog')
+  const [tab, setTab] = useState<'catalog' | 'requests' | 'companies' | 'proposals' | 'history'>('catalog')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -38,6 +60,11 @@ export function AddonsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [editing, setEditing] = useState<Draft | null>(null)
+
+  // Estado da Proposta de Adicionais
+  const [proposalStoreId, setProposalStoreId] = useState<string>('')
+  const [selectedAddonCodes, setSelectedAddonCodes] = useState<string[]>([])
+  const [copiedProposalText, setCopiedProposalText] = useState(false)
 
   const call = useCallback(async (action: string, payload: Record<string, unknown> = {}) => {
     if (!supabase) throw new Error('O Supabase não está configurado neste ambiente.')
@@ -135,7 +162,13 @@ export function AddonsPage() {
     return data.installations.find((item) => item.store_id === siteId && item.addon_id === addonId)
   }
 
-  const tabs = [{ key: 'catalog', label: 'Catálogo' }, { key: 'requests', label: `Solicitações${metrics.pending ? ` (${metrics.pending})` : ''}` }, { key: 'companies', label: 'Adicionais por Empresa' }, { key: 'history', label: 'Histórico' }] as const
+  const tabs = [
+    { key: 'catalog', label: 'Catálogo' },
+    { key: 'requests', label: `Solicitações${metrics.pending ? ` (${metrics.pending})` : ''}` },
+    { key: 'companies', label: 'Adicionais por Empresa' },
+    { key: 'proposals', label: 'Proposta Comercial (19 Adicionais)' },
+    { key: 'history', label: 'Histórico' }
+  ] as const
 
   return <section className="addons-page">
     <div className="page-heading addons-heading"><div><span className="eyebrow small-eyebrow">NOVAESWEB · GESTÃO DE FUNCIONALIDADES</span><h1>Central de Adicionais</h1><p>Cadastre uma vez no catálogo central para as lojas compatíveis encontrarem o adicional na página Adicionais.</p></div><div className="addons-heading-actions"><button className="secondary-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={14} />Atualizar</button><button className="primary-compact" onClick={() => beginEdit()}><Plus size={15} />Novo adicional</button></div></div>
@@ -177,6 +210,141 @@ export function AddonsPage() {
         })}</div>
       </article>
     })}</div>}</section>}
+
+    {tab === 'proposals' && (() => {
+      const selectedStore = data.stores.find((st) => st.id === proposalStoreId) || data.stores[0]
+      const chosen = OFFICIAL_19_ADDONS.filter((item) => selectedAddonCodes.includes(item.code))
+      const totalSetup = chosen.reduce((acc, cur) => acc + cur.setup, 0)
+      const totalMonthly = chosen.filter((c) => c.billing === 'monthly').reduce((acc, cur) => acc + cur.price, 0)
+      const totalOneTime = chosen.filter((c) => c.billing === 'one_time').reduce((acc, cur) => acc + cur.price, 0)
+
+      const toggleAddon = (code: string) => {
+        setSelectedAddonCodes((prev) =>
+          prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+        )
+      }
+
+      const copyToClipboard = () => {
+        const text = `*NOVAESWEB — PROPOSTA DE MÓDULOS ADICIONAIS (CADERNO 05)*\n` +
+          `Loja: ${selectedStore?.name || 'Cliente'}\n` +
+          `ID NX: ${selectedStore?.nx_id || 'NX-LOJA'}\n` +
+          `Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}\n\n` +
+          `*MÓDULOS CONTRATADOS (${chosen.length}):*\n` +
+          (chosen.length > 0
+            ? chosen.map((c) => `• [${c.code}] ${c.name}: ${money(c.price)}${c.billing === 'monthly' ? '/mês' : ' (único)'} (Setup: ${money(c.setup)})\n  _${c.description}_`).join('\n\n')
+            : 'Nenhum módulo selecionado no momento.') +
+          `\n\n*RESUMO FINANCEIRO:*\n` +
+          `• Taxa de Implantação Total (Setup Único): ${money(totalSetup)}\n` +
+          `• Mensalidade Adicional Recorrente: ${money(totalMonthly)}/mês` +
+          (totalOneTime > 0 ? `\n• Pagamento Único: ${money(totalOneTime)}` : '') +
+          `\n\n*REGRAS COMERCIAIS (COM-09 / COM-10):*\n` +
+          `• Sem fidelidade ou multas por cancelamento.\n` +
+          `• Ativação vinculada ao check-in técnico e aprovação no Master.\n` +
+          `• Suporte oficial de segunda a sexta, das 9h às 18h.`
+
+        void navigator.clipboard.writeText(text)
+        setCopiedProposalText(true)
+        setTimeout(() => setCopiedProposalText(false), 2500)
+      }
+
+      return (
+        <section className="panel addons-panel">
+          <div className="addons-list-heading">
+            <div>
+              <h2>Proposta Comercial de Módulos Adicionais (19 Oficiais)</h2>
+              <p>Monte pacotes de adicionais sob medida para cada estabelecimento com valores oficiais da NovaesWeb.</p>
+            </div>
+
+            <div className="proposal-top-controls">
+              <label className="store-select-label">
+                <Store size={15} />
+                <span>Loja:</span>
+                <select
+                  value={proposalStoreId || selectedStore?.id || ''}
+                  onChange={(e) => setProposalStoreId(e.target.value)}
+                >
+                  {data.stores.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.nx_id} · {st.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                className="primary-compact"
+                onClick={copyToClipboard}
+                disabled={chosen.length === 0}
+              >
+                {copiedProposalText ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedProposalText ? 'Copiado p/ WhatsApp!' : 'Copiar Proposta WhatsApp'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Cards de Resumo da Proposta */}
+          <div className="addons-proposal-summary-grid">
+            <div className="summary-pill-box">
+              <span>Módulos Selecionados</span>
+              <strong>{chosen.length} de 19</strong>
+              <small>adicionais no pacote</small>
+            </div>
+
+            <div className="summary-pill-box">
+              <span>Implantação (Setup Único)</span>
+              <strong className="text-purple">{money(totalSetup)}</strong>
+              <small>pagamento inicial</small>
+            </div>
+
+            <div className="summary-pill-box">
+              <span>Mensalidade Adicional</span>
+              <strong className="text-pink">{money(totalMonthly)}/mês</strong>
+              <small>somado ao plano da loja</small>
+            </div>
+          </div>
+
+          {/* Grade dos 19 Adicionais Oficiais com Seleção Rápida */}
+          <div className="addons-official-grid">
+            {OFFICIAL_19_ADDONS.map((addon) => {
+              const isSelected = selectedAddonCodes.includes(addon.code)
+              return (
+                <article
+                  key={addon.code}
+                  className={`addon-official-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => toggleAddon(addon.code)}
+                >
+                  <div className="addon-card-top">
+                    <span className="addon-official-code">{addon.code}</span>
+                    <span className="addon-cat-tag">{addon.categoryLabel}</span>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}} // controlado pelo onClick do card
+                    />
+                  </div>
+
+                  <h4>{addon.name}</h4>
+                  <p>{addon.description}</p>
+
+                  <div className="addon-card-bottom">
+                    <div className="addon-pricing">
+                      <span className="price-tag">
+                        <b>{money(addon.price)}</b>
+                        <small>{addon.billing === 'monthly' ? '/mês' : ' única'}</small>
+                      </span>
+                      {addon.setup > 0 && (
+                        <span className="setup-tag">Setup: {money(addon.setup)}</span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )
+    })()}
 
     {tab === 'history' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Histórico de alterações</h2><p>Auditoria das ações do catálogo e das ativações por empresa.</p></div></div>{loading ? <Loading /> : data.history.length === 0 ? <Empty text="Ainda não há alterações registradas." /> : <div className="addons-history-list">{data.history.map((item) => <div key={item.id}><span className="addons-history-dot" /><span><strong>{item.action.replaceAll('_', ' ')}</strong><small>{item.store?.name ? `${item.store.name} · ` : ''}{item.addon?.name ?? 'Catálogo'} · {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.created_at))}</small></span><BadgeCheck size={15} /></div>)}</div>}</section>}
 

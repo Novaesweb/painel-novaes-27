@@ -6,3 +6,31 @@
 .addon-implementation-list{margin-top:14px;border-top:1px solid rgba(148,163,184,.1);padding-top:10px}.addon-implementation-list h3{margin:0 0 7px;color:#aab4c5;font:600 10px Manrope,sans-serif}.addon-implementation-row{display:grid;grid-template-columns:minmax(160px,1.6fr) minmax(140px,1.1fr) minmax(90px,.7fr) minmax(100px,.7fr);align-items:center;gap:9px;min-height:44px;padding:7px 2px;border-bottom:1px solid rgba(148,163,184,.07);color:#8793a8;font-size:8px}.addon-implementation-row>span:first-child{min-width:0}.addon-implementation-row strong,.addon-implementation-row small{display:block}.addon-implementation-row strong{color:#dfe5ef;font-size:9px}.addon-implementation-row small{margin-top:3px;color:#77849b}.addon-implementation-row code{color:#a78bfa}.addon-compatibility{color:#8996aa}.addon-tech-sheet{margin-top:5px;color:#8491a7;font-size:8px}.addon-tech-sheet summary{width:max-content;color:#b89ae8;cursor:pointer}.addon-tech-sheet dl{display:grid;grid-template-columns:minmax(95px,.6fr) minmax(150px,1.6fr);gap:4px 8px;max-width:520px;margin:8px 0;padding:9px;border:1px solid rgba(148,163,184,.1);border-radius:7px;background:rgba(2,6,18,.45);white-space:normal}.addon-tech-sheet dt{color:#728099}.addon-tech-sheet dd{margin:0;color:#aab5c8;overflow-wrap:anywhere}.addon-tech-sheet dd code{display:inline;margin:0;color:#c4a6ff;font-size:8px}
 @media(max-width:760px){.addon-implementation-row{grid-template-columns:minmax(120px,1fr) minmax(130px,1fr);gap:7px}.addon-tech-sheet dl{grid-template-columns:1fr}.addon-tech-sheet dd{margin-bottom:4px}}
 .status-approved{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06);color:#fcd34d}
+
+/* ABA PROPOSTAS DE ADICIONAIS (19 ADICIONAIS) */
+.proposal-top-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.store-select-label{display:flex;align-items:center;gap:8px;background:rgba(2,6,18,.6);padding:6px 12px;border-radius:8px;border:1px solid rgba(148,163,184,.15);color:#c4b5fd;font-size:11px}
+.store-select-label select{background:transparent;border:0;color:#fff;font-size:11px;outline:none}
+.addons-proposal-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.summary-pill-box{background:rgba(13,16,32,.7);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+.summary-pill-box span{font-size:11px;color:#94a3b8}
+.summary-pill-box strong{font-size:18px;color:#fff}
+.summary-pill-box strong.text-purple{color:#c084fc}
+.summary-pill-box strong.text-pink{color:#f472b6}
+.summary-pill-box small{font-size:10px;color:#64748b}
+.addons-official-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:14px}
+.addon-official-card{background:rgba(10,14,28,.6);border:1px solid rgba(148,163,184,.12);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s ease;display:flex;flex-direction:column;gap:8px;user-select:none}
+.addon-official-card:hover{border-color:rgba(168,85,247,.4);transform:translateY(-2px);background:rgba(168,85,247,.05)}
+.addon-official-card.selected{border-color:#a855f7;background:rgba(168,85,247,.12);box-shadow:0 0 16px rgba(168,85,247,.2)}
+.addon-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.addon-official-code{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;background:rgba(168,85,247,.2);color:#e9d5ff}
+.addon-cat-tag{font-size:10px;color:#94a3b8;margin-right:auto;margin-left:6px}
+.addon-official-card input[type="checkbox"]{accent-color:#a855f7;width:16px;height:16px;cursor:pointer}
+.addon-official-card h4{margin:0;font-size:13px;font-weight:700;color:#fff}
+.addon-official-card p{margin:0;font-size:11px;color:#94a3b8;line-height:1.4;flex:1}
+.addon-card-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)}
+.addon-pricing{display:flex;justify-content:space-between;width:100%;align-items:center}
+.price-tag b{font-size:14px;color:#4ade80}
+.price-tag small{font-size:10px;color:#94a3b8}
+.setup-tag{font-size:10px;color:#fca5a5;background:rgba(239,68,68,.1);padding:2px 6px;border-radius:4px}
+@media(max-width:768px){.addons-proposal-summary-grid{grid-template-columns:1fr}}

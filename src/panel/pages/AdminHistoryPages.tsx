@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bell, MessageSquare, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { Bell, MessageSquare, RefreshCw, Send, ShieldCheck, Clock, Sparkles, Check, Copy } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './AdminHistoryPages.css'
 import { PushSettings } from '../../components/PushSettings'
@@ -51,10 +51,23 @@ function dateLabel(value: string) {
 
 export function NotificationsPage({ role }: { role: string }) {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'feed' | 'regua' | 'franchise'>('feed')
   const [items, setItems] = useState<Notification[]>([])
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  // Estado do Simulador da Régua de Cobrança
+  const [simStoreName, setSimStoreName] = useState('Pizzaria do Bairro')
+  const [simDueDate, setSimDueDate] = useState('10/11/2026')
+  const [simPixKey, setSimPixKey] = useState('financeiro@novaesweb.com.br')
+  const [copiedStage, setCopiedStage] = useState<string | null>(null)
+
+  const copyReguaMessage = (stageId: string, text: string) => {
+    void navigator.clipboard.writeText(text)
+    setCopiedStage(stageId)
+    setTimeout(() => setCopiedStage(null), 2500)
+  }
 
   const load = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured) {
@@ -93,20 +106,275 @@ export function NotificationsPage({ role }: { role: string }) {
     setBusyId(null)
   }
 
+  // Modelos Oficiais da Régua de Cobrança (Caderno 04 e Caderno 08)
+  const reguaStages = [
+    {
+      id: 'd_minus_3',
+      label: 'D-3 · Lembrete Amigável Prévio',
+      badgeColor: 'neutral',
+      timing: '3 dias antes do vencimento',
+      channel: 'WhatsApp + E-mail',
+      title: 'Lembrete de Vencimento de Mensalidade NovaesWeb',
+      text: `Olá, ${simStoreName}!\n\nPassando para lembrar que sua mensalidade de manutenção da plataforma NovaesWeb vence em 3 dias (${simDueDate}).\n\nChave Pix Oficial: ${simPixKey}\n\nCaso já tenha realizado o pagamento ou cadastrado em débito recorrente, favor desconsiderar. Dúvidas? Estamos à disposição!`,
+    },
+    {
+      id: 'd_zero',
+      label: 'D-0 · Dia do Vencimento',
+      badgeColor: 'blue',
+      timing: 'No dia do vencimento às 09h00',
+      channel: 'WhatsApp + E-mail + Notificação no Painel',
+      title: 'Vencimento Hoje da Mensalidade NovaesWeb',
+      text: `Olá, ${simStoreName}!\n\nHoje (${simDueDate}) é a data de vencimento da sua mensalidade NovaesWeb.\n\nPara manter seu site de delivery ativo e seguro, realize o pagamento através da chave Pix oficial:\n${simPixKey}\n\nApós o pagamento, envie o comprovante para confirmação automática. Muito obrigado pela parceria!`,
+    },
+    {
+      id: 'd_plus_3',
+      label: 'D+3 · Aviso de Tolerância e Carência Ativa',
+      badgeColor: 'warning',
+      timing: '3 dias após o vencimento sem compensação',
+      channel: 'WhatsApp Urgente + Notificação de Alerta',
+      title: 'Aviso de Pendência — Período de Tolerância Ativo',
+      text: `Atenção, ${simStoreName}!\n\nIdentificamos que sua mensalidade com vencimento em ${simDueDate} ainda consta em aberto.\n\n*Seu site e delivery continuam funcionando normalmente* através da nossa política de tolerância de 5 dias.\n\nPor favor, regularize via Pix: ${simPixKey} para evitar o bloqueio preventivo de novos acessos ao painel.\nQualquer dificuldade financeira, fale conosco para auxiliarmos.`,
+    },
+    {
+      id: 'd_plus_5',
+      label: 'D+5 · Último Aviso Pré-Suspensão',
+      badgeColor: 'danger',
+      timing: '5 dias após o vencimento (Término da Carência)',
+      channel: 'WhatsApp Gestor + E-mail Oficial',
+      title: 'Último Aviso de Cobrança antes de Suspensão Administrativa',
+      text: `*COMUNICADO IMPORTANTE: ${simStoreName}*\n\nInformamos que o prazo de tolerância da sua fatura vencida em ${simDueDate} encerra-se hoje.\n\nPara restabelecer ou evitar a suspensão temporária dos serviços, realize a quitação imediata via Pix: ${simPixKey}.\n\n*Garantia de Dados (COM-10):* Conforme nosso contrato, seu catálogo e histórico de pedidos permanecem preservados em segurança por até 30 dias para backup ou reativação sem perda de dados.`,
+    },
+  ]
+
+  // Modelos de Alerta de Franquia de Pedidos (Caderno 08 e Caderno 09)
+  const franchiseAlerts = [
+    {
+      id: 'alert_80',
+      label: 'Alerta Preventivo de Franquia (80%)',
+      badgeColor: 'warning',
+      trigger: 'Ao atingir 80% dos pedidos aceitos no mês (272 no Business / 600 no Premium)',
+      target: 'Painel do Lojista (Banner discreto em Configurações → Meu Plano)',
+      message: 'Você já utilizou 80% da sua franquia de pedidos inclusa no plano para este mês. Fique tranquilo: o recebimento de novos pedidos nunca é bloqueado!',
+    },
+    {
+      id: 'alert_100',
+      label: 'Alerta de Franquia Atingida (100% — Zero Bloqueio)',
+      badgeColor: 'purple',
+      trigger: 'Ao atingir 100% da franquia (340 no Business / 750 no Premium)',
+      target: 'Painel do Lojista + E-mail do Proprietário',
+      message: 'Parabéns pelas vendas! Sua franquia mensal foi 100% preenchida. O sistema NovaesWeb opera com ZERO BLOQUEIO: seus clientes continuam comprando normalmente. Os pedidos excedentes serão contabilizados na tarifa especial no fechamento do mês.',
+    },
+  ]
+
   return <div className="admin-history-page">
-    <div className="page-heading"><div><div className="eyebrow small-eyebrow">ADMINISTRAÇÃO</div><h1>Notificações</h1><p>Mensagens vinculadas ao seu usuário autenticado no Supabase.</p></div><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Atualizar</button></div>
+    <div className="page-heading">
+      <div>
+        <div className="eyebrow small-eyebrow">ADMINISTRAÇÃO</div>
+        <h1>Notificações & Régua de Comunicação</h1>
+        <p>Histórico em tempo real, régua oficial de cobrança/tolerância (Caderno 04) e matriz de alertas (Caderno 08).</p>
+      </div>
+      <button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Atualizar</button>
+    </div>
+
     {message && <div className="admin-history-message" role="status">{message}</div>}
-    {role === 'MASTER' && <PushSettings />}
-    <section className="panel admin-history-list" aria-live="polite">
-      {loading ? <div className="admin-history-empty"><span className="loader" /><p>Carregando notificações…</p></div>
-        : items.length === 0 ? <div className="admin-history-empty"><Bell size={22} /><strong>Nenhuma notificação</strong><p>Novas mensagens aparecerão aqui quando forem enviadas ao seu usuário.</p></div>
-          : items.map((item) => <article className={`admin-notification${item.read_at ? ' is-read' : ''}`} key={item.id}>
-            <span className="notification-dot" aria-hidden="true" />
-            {item.action_url && <button className="secondary-button" onClick={() => { void markRead(item); navigate(notificationPath(item.action_url)) }}>Abrir</button>}
-            <div className="admin-notification-content"><div><strong>{item.title}</strong><time>{dateLabel(item.created_at)}</time></div><p>{item.body}</p><small>{item.category}</small></div>
-            {!item.read_at && <button className="secondary-button" onClick={() => void markRead(item)} disabled={busyId === item.id}>{busyId === item.id ? 'Salvando…' : 'Marcar como lida'}</button>}
-          </article>)}
-    </section>
+
+    {/* Seletor de Abas de Notificação */}
+    <div className="admin-history-tabs" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <button
+        type="button"
+        className={`secondary-button ${activeTab === 'feed' ? 'active' : ''}`}
+        onClick={() => setActiveTab('feed')}
+        style={{ background: activeTab === 'feed' ? 'rgba(168, 85, 247, 0.25)' : undefined, borderColor: activeTab === 'feed' ? '#a855f7' : undefined }}
+      >
+        <Bell size={14} />
+        Feed de Notificações Master ({items.length})
+      </button>
+
+      <button
+        type="button"
+        className={`secondary-button ${activeTab === 'regua' ? 'active' : ''}`}
+        onClick={() => setActiveTab('regua')}
+        style={{ background: activeTab === 'regua' ? 'rgba(168, 85, 247, 0.25)' : undefined, borderColor: activeTab === 'regua' ? '#a855f7' : undefined }}
+      >
+        <Clock size={14} />
+        Régua de Tolerância e Cobrança (D-3 a D+5)
+      </button>
+
+      <button
+        type="button"
+        className={`secondary-button ${activeTab === 'franchise' ? 'active' : ''}`}
+        onClick={() => setActiveTab('franchise')}
+        style={{ background: activeTab === 'franchise' ? 'rgba(168, 85, 247, 0.25)' : undefined, borderColor: activeTab === 'franchise' ? '#a855f7' : undefined }}
+      >
+        <Sparkles size={14} />
+        Alertas de Franquia de Pedidos (80% / 100%)
+      </button>
+    </div>
+
+    {role === 'MASTER' && activeTab === 'feed' && <PushSettings />}
+
+    {/* ABA 1: FEED DE NOTIFICAÇÕES */}
+    {activeTab === 'feed' && (
+      <section className="panel admin-history-list" aria-live="polite">
+        {loading ? <div className="admin-history-empty"><span className="loader" /><p>Carregando notificações…</p></div>
+          : items.length === 0 ? <div className="admin-history-empty"><Bell size={22} /><strong>Nenhuma notificação</strong><p>Novas mensagens aparecerão aqui quando forem enviadas ao seu usuário.</p></div>
+            : items.map((item) => <article className={`admin-notification${item.read_at ? ' is-read' : ''}`} key={item.id}>
+              <span className="notification-dot" aria-hidden="true" />
+              {item.action_url && <button className="secondary-button" onClick={() => { void markRead(item); navigate(notificationPath(item.action_url)) }}>Abrir</button>}
+              <div className="admin-notification-content"><div><strong>{item.title}</strong><time>{dateLabel(item.created_at)}</time></div><p>{item.body}</p><small>{item.category}</small></div>
+              {!item.read_at && <button className="secondary-button" onClick={() => void markRead(item)} disabled={busyId === item.id}>{busyId === item.id ? 'Salvando…' : 'Marcar como lida'}</button>}
+            </article>)}
+      </section>
+    )}
+
+    {/* ABA 2: RÉGUA DE COBRANÇA E TOLERÂNCIA (D-3, D-0, D+3, D+5) */}
+    {activeTab === 'regua' && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Painel de Variáveis de Simulação */}
+        <div style={{ background: 'rgba(18, 11, 28, 0.7)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 12, padding: 18 }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: 15, color: '#fff' }}>Simulador de Mensagens da Régua</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <label style={{ fontSize: 11, color: '#94a3b8' }}>
+              Nome da Loja
+              <input
+                value={simStoreName}
+                onChange={(e) => setSimStoreName(e.target.value)}
+                style={{ width: '100%', marginTop: 4, padding: '6px 10px', background: 'rgba(2, 6, 18, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+              />
+            </label>
+
+            <label style={{ fontSize: 11, color: '#94a3b8' }}>
+              Data de Vencimento
+              <input
+                value={simDueDate}
+                onChange={(e) => setSimDueDate(e.target.value)}
+                style={{ width: '100%', marginTop: 4, padding: '6px 10px', background: 'rgba(2, 6, 18, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+              />
+            </label>
+
+            <label style={{ fontSize: 11, color: '#94a3b8' }}>
+              Chave Pix de Cobrança
+              <input
+                value={simPixKey}
+                onChange={(e) => setSimPixKey(e.target.value)}
+                style={{ width: '100%', marginTop: 4, padding: '6px 10px', background: 'rgba(2, 6, 18, 0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Lista dos 4 Estágios Oficiais da Régua */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {reguaStages.map((stage) => {
+            const isCopied = copiedStage === stage.id
+            return (
+              <div
+                key={stage.id}
+                style={{
+                  background: 'rgba(10, 6, 16, 0.75)',
+                  border: '1px solid rgba(168, 85, 247, 0.18)',
+                  borderRadius: 12,
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 13, color: '#e9d5ff' }}>{stage.label}</strong>
+                  <span style={{ fontSize: 10, color: '#94a3b8', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 999 }}>
+                    {stage.timing}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: 11, color: '#64748b' }}>
+                  Canal: <b>{stage.channel}</b>
+                </div>
+
+                <div style={{
+                  background: 'rgba(2, 6, 18, 0.95)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 11,
+                  color: '#cbd5e1',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.5,
+                  flex: 1,
+                }}>
+                  {stage.text}
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => copyReguaMessage(stage.id, stage.text)}
+                  style={{ alignSelf: 'flex-end', fontSize: 11 }}
+                >
+                  {isCopied ? <Check size={13} /> : <Copy size={13} />}
+                  <span>{isCopied ? 'Copiado!' : 'Copiar Texto para Envio'}</span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )}
+
+    {/* ABA 3: ALERTAS DE FRANQUIA (80% / 100%) */}
+    {activeTab === 'franchise' && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ background: 'rgba(18, 11, 28, 0.7)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 12, padding: 18 }}>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: 16, color: '#fff' }}>Diretrizes da Matriz de Notificações de Franquia (Caderno 08)</h3>
+          <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+            Alertas automáticos disparados para o painel do lojista e por e-mail para manter a previsibilidade financeira sem causar sustos.
+            Lembrando: <b>Zero Bloqueio</b> é regra fundamental — o delivery do cliente nunca é interrompido.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {franchiseAlerts.map((alert) => (
+            <div
+              key={alert.id}
+              style={{
+                background: 'rgba(10, 6, 16, 0.75)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                borderRadius: 12,
+                padding: 18,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: 14, color: '#ffffff' }}>{alert.label}</strong>
+              </div>
+
+              <div style={{ fontSize: 11, color: '#c4b5fd' }}>
+                <b>Gatilho de Disparo:</b> {alert.trigger}
+              </div>
+
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                <b>Destino:</b> {alert.target}
+              </div>
+
+              <div style={{
+                background: 'rgba(139, 92, 246, 0.08)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: 8,
+                padding: 12,
+                fontSize: 12,
+                color: '#e2e8f0',
+                lineHeight: 1.5,
+              }}>
+                "{alert.message}"
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>
 }
 

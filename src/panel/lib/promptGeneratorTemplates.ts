@@ -222,7 +222,7 @@ Proporcionar uma experiência de compra e delivery rápida e intuitiva para o cl
 - Cadastro de produtos (até 200 produtos) e categorias
 - Gestão de horários de funcionamento e formas de entrega/retirada
 - Até 2 administradores cadastrados com login seguro
-- Aba Configurações → Meu Plano → Consumo de Pedidos (demonstrativo de franquia, pedidos aceitos e avisos de 80%/100%)
+- Aba Configurações → Meu Plano → Consumo de Pedidos: embutir obrigatoriamente o componente StoreOrderUsageWidget (exibindo a barra de consumo da franquia de 340 pedidos, alertas visuais discretos de 80% e 100%, e aviso de Zero Bloqueio da NovaesWeb conforme o documento oficial PROMPT_LOJA_CONSUMO_CUPONS_AGENDADOS.md).
 
 11. REGRAS DE CONTAGEM E FATURAMENTO DA FRANQUIA
 - Apenas pedidos ACEITOS entram na franquia e no faturamento da NovaesWeb.
@@ -245,8 +245,9 @@ Proporcionar uma experiência de compra e delivery rápida e intuitiva para o cl
 {{DADOS_DEMONSTRATIVOS}}
 
 15. TECNOLOGIA E INTEGRAÇÕES CENTRAIS
+- Identificação automática pelo Painel Master: Configurar VITE_STORE_ID e VITE_STORE_NX_ID no .env da loja.
 - Conexão oficial ao Supabase central NovaesWeb.
-- Registro de pedidos aceitos via RPC novaesweb_record_order_event / novaesweb_record_order_accepted.
+- Ao aceitar cada pedido, invocar a função RPC novaesweb_record_order_event (ou novaesweb_record_order_accepted) para que o Painel Master identifique e contabilize o estabelecimento em tempo real sem expor dados financeiros.
 - Privacidade total: NUNCA trafegar faturamento de vendas, valores de carrinho ou dados pessoais de consumidores para o painel de franquias da NovaesWeb.
 
 16. TESTES NECESSÁRIOS
@@ -309,10 +310,10 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 - Limite expandido: até 500 produtos cadastrados no catálogo.
 - Limite de equipe: até 5 administradores/atendentes com perfis de acesso.
 - Franquia robusta: 750 pedidos aceitos inclusos no mês (excedente reduzido a R$ 0,15).
-- Sistema de Cupons de Desconto Simples (criação de cupons promocionais pelo painel).
-- Acompanhamento do Pedido pelo Consumidor (tela dinâmica de status: Recebido → Confirmado → Em Preparo → Saiu para Entrega / Disponível para Retirada).
-- Pedidos Agendados (permitir ao cliente agendar data/horário de entrega ou retirada).
-- Gráficos Básicos de Desempenho no painel do lojista (volume diário de pedidos e produtos mais vendidos).
+- Sistema de Cupons de Desconto Simples (LOJA-08): Criação e gestão de cupons promocionais (valor fixo R$ ou porcentagem %, validade e valor mínimo). Validação imediata no checkout público da loja com dedução no subtotal dos produtos (sem descontar taxa de entrega).
+- Acompanhamento do Pedido pelo Consumidor (LOJA-09): tela dinâmica de status (Recebido → Confirmado → Em Preparo → Saiu para Entrega / Disponível para Retirada).
+- Pedidos Agendados (LOJA-10): Opção no checkout para o cliente agendar entrega ou retirada com data e faixa de horário, respeitando rigorosamente horários de funcionamento e antecedência mínima. Fila dedicada de agendados no painel do lojista.
+- Gráficos Básicos de Desempenho no painel do lojista (LOJA-11): volume diário de pedidos e produtos mais vendidos.
 
 9. FORMAS DE PAGAMENTO ACEITAS (SEM GATEWAY ONLINE AUTOMÁTICO)
 - Pix Manual (com chave Pix do estabelecimento e instrução de comprovante)
@@ -321,12 +322,12 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 
 10. PAINEL DO LOJISTA COMPLETO
 - Gestão de Pedidos em tempo real com alerta sonoro e impressão de comandas
-- Aba Cupons de Desconto (criar cupom com valor fixo ou porcentagem simples)
-- Aba Gráficos Básicos Operacionais
-- Controle de pedidos agendados em fila dedicada
+- Aba Cupons de Desconto (criar cupom com valor fixo ou porcentagem simples, conferir usos)
+- Aba Gráficos Básicos Operacionais (volume e itens populares)
+- Controle de pedidos agendados em fila dedicada com aviso sonoro na hora do preparo
 - Cadastro de até 500 produtos com complementos/opcionais
-- Gestão de até 5 administradores
-- Aba Configurações → Meu Plano → Consumo de Pedidos (franquia de 750, excedentes e suporte)
+- Gestão de até 5 administradores com senhas e acessos seguros
+- Aba Configurações → Meu Plano → Consumo de Pedidos: embutir obrigatoriamente o componente StoreOrderUsageWidget (exibindo a franquia de 750 pedidos, pedidos aceitos, barra de consumo, alertas de 80% e 100%, e aviso de Zero Bloqueio da NovaesWeb conforme o documento oficial PROMPT_LOJA_CONSUMO_CUPONS_AGENDADOS.md).
 
 11. REGRAS DE CONTAGEM E AUDITORIA DA FRANQUIA
 - Somente pedidos ACEITOS são contabilizados para a franquia de 750 pedidos.
@@ -346,13 +347,14 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 {{DADOS_DEMONSTRATIVOS}}
 
 15. TECNOLOGIA E INTEGRAÇÕES CENTRAIS
-- Supabase central NovaesWeb com RLS de segurança estrita.
-- Registro via RPC novaesweb_record_order_event / novaesweb_record_order_accepted.
+- Identificação automática pelo Painel Master: Configurar VITE_STORE_ID e VITE_STORE_NX_ID no .env da loja.
+- Conexão oficial ao Supabase central NovaesWeb com RLS de segurança estrita.
+- Ao aceitar cada pedido, invocar a função RPC novaesweb_record_order_event (ou novaesweb_record_order_accepted) para que o Painel Master identifique e contabilize o estabelecimento em tempo real sem expor dados financeiros.
 - Privacidade total de dados de faturamento e consumidores finais.
 
 16. TESTES NECESSÁRIOS
-- Teste de cupom de desconto no checkout.
-- Teste de agendamento de pedido para horário futuro.
+- Teste de cupom de desconto no checkout (aplicar cupom válido e conferir abatimento).
+- Teste de agendamento de pedido para horário futuro e aparição na fila de agendados.
 - Teste da tela de acompanhamento pelo consumidor.
 - Teste de aceite com deduplicação.
 

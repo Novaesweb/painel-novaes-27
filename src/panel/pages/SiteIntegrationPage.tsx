@@ -47,7 +47,7 @@ export function SiteIntegrationPage() {
           onClick={() => setActiveTab('prompts')}
         >
           <Layers size={14} />
-          <span>Prompts de Conexão e Controle (1 a 5)</span>
+          <span>Prompts de Conexão e Controle (1 a 6)</span>
         </button>
 
         <button

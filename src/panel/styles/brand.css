@@ -54,3 +54,14 @@ h1,h2,h3,h4{color:#f8f5fb}
 .nav-group-title{display:flex;align-items:center;gap:8px;letter-spacing:.14em}
 .nav-group-title:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--brand-gradient)}
 @media (max-width:760px){.app-shell:before{background-position:50% 12%}.app-shell:after{background:linear-gradient(180deg,rgba(5,3,7,.7),rgba(5,3,7,.86))}}
+
+/* Leitura e aproveitamento da tela: o conteúdo do Master usa toda a área livre
+   ao lado do menu, com uma escala de texto confortável em telas maiores. */
+.page-content{width:100%;max-width:none;margin:0;padding:clamp(30px,2.7vw,52px) clamp(26px,3.4vw,64px) 52px}
+.page-heading h1{font-size:32px}.page-heading p{font-size:13px;line-height:1.55}.eyebrow{font-size:10px}
+.metric-top{font-size:11px}.metric-value{font-size:28px}.metric-foot{font-size:10px}.panel-heading h2,.module-intro h2,.operational-panel h2{font-size:14px}.panel-heading p,.module-intro p,.operational-panel>p{font-size:11px;line-height:1.55}
+.secondary-button,.primary-compact,.select-button{font-size:11px}.operational-message,.operational-note{font-size:11px}.operational-toolbar strong{font-size:12px}.operational-toolbar span,.operational-subtitle{font-size:10px}
+.operational-table th,.store-table th,.audit-table th{font-size:9px}.operational-table td,.store-table td,.audit-table td{font-size:11px}.operational-table td b,.store-table td b,.audit-table td b{font-size:11px}.operational-table td small,.store-table td small,.audit-table td small{font-size:9px}
+.store-list-heading h2{font-size:14px}.store-list-heading p,.integration-guide p,.official-registration p{font-size:11px}.store-name-cell strong,.store-info strong{font-size:11px}.store-name-cell small,.store-info span,.store-related p,.store-related li{font-size:10px}.store-status{font-size:10px}
+.site-integration-guide h2,.site-integration-card h2{font-size:16px}.site-integration-guide p,.site-integration-card>p{font-size:13px}.site-integration-preview summary{font-size:12px}.site-integration-preview pre{font-size:12px}
+@media(max-width:760px){.page-content{padding:22px 15px 32px}.page-heading h1{font-size:25px}.page-heading p{font-size:12px}.metric-top{font-size:10px}.metric-value{font-size:24px}.metric-foot{font-size:9px}.operational-table td,.store-table td,.audit-table td{font-size:10px}}

@@ -24,10 +24,10 @@ export function useSearchParams(): [URLSearchParams, (next: URLSearchParams | Re
   return [params, set]
 }
 
-type NavLinkProps = { to: string; onClick?: () => void; className?: string | ((s: { isActive: boolean }) => string); children: ReactNode }
-export function NavLink({ to, onClick, className, children }: NavLinkProps) {
+type NavLinkProps = { to: string; title?: string; onClick?: () => void; className?: string | ((s: { isActive: boolean }) => string); children: ReactNode }
+export function NavLink({ to, title, onClick, className, children }: NavLinkProps) {
   const { pathname } = useTLocation()
   const isActive = pathname === to
   const cls = typeof className === 'function' ? className({ isActive }) : className
-  return <Link to={to as never} onClick={onClick} className={cls}>{children}</Link>
+  return <Link title={title} to={to as never} onClick={onClick} className={cls}>{children}</Link>
 }

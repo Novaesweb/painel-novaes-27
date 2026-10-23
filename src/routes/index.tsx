@@ -9,6 +9,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Painel de gestão NovaesWeb: lojas, sites, clientes e auditoria." },
       { property: "og:title", content: "Painel Master — NovaesWeb" },
       { property: "og:description", content: "Painel de gestão NovaesWeb: lojas, sites, clientes e auditoria." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: App,

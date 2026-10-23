@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep sidebar collapse as presentation-only state in DashboardLayout; it must not change module access or data operations.
+- Keep shared panel typography and full-width layout overrides in the final brand stylesheet so all modules inherit the same presentation.

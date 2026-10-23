@@ -34,9 +34,9 @@ Antes da conexão, audite o projeto e peça ao responsável os valores do cadast
 
 Não escolha loja por nome de forma ambígua. Não crie loja, ID NX, UUID, owner, vínculo ou entitlement. Se ainda não houver cadastro oficial, oriente o responsável a usar o fluxo autorizado no Master e aguarde os identificadores retornados. O `store_id` confiável deve ser derivado/validado pelo backend a partir do usuário e vínculo ativo, nunca aceito como autorização só porque veio do navegador.
 
-## Catálogo central disponível
+## Catálogo comercial e propostas em avaliação
 
-Os códigos abaixo são os 25 códigos semeados no catálogo inicial. Consulte sempre os registros atuais de `addon_catalog` no Supabase; novos adicionais criados pelo Master também devem aparecer nessa consulta sem alteração do código. Nome, preço, descrição, visibilidade, compatibilidade, status de desenvolvimento e rota podem ter sido atualizados. Não copie preços desta lista para uma tabela local nem trate a lista como fonte de autorização.
+O catálogo comercial aprovado contém 19 adicionais. Consulte sempre os registros atuais de `addon_catalog` no Supabase; não use esta lista como autorização, não copie preços para arrays locais e não crie registros ausentes. Os candidatos NOV-01 a NOV-17 e EXT-01 a EXT-03 ficam somente na seção “Em avaliação” do Master: não aparecem como adicionais contratáveis, não possuem preço e não devem ser implementados ou ativados por este prompt.
 
 | Código estável | Nome comercial inicial |
 |---|---|
@@ -66,7 +66,7 @@ Os códigos abaixo são os 25 códigos semeados no catálogo inicial. Consulte s
 | `novaes-multiunidade` | Novaes Multiunidade |
 | `novaes-import` | Novaes Import |
 
-Esses são os 25 itens cadastrados no catálogo central verificado. Sempre consulte os registros atuais de `addon_catalog`; não crie seed local, catálogo duplicado ou código para itens ausentes. Itens como domínio, treinamento, ajustes, banners, cadastro de produtos e desenvolvimento sob medida são serviços avulsos: exiba-os como solicitações de serviço, sem criar feature gate.
+Os identificadores atuais devem sempre ser confirmados no catálogo oficial. Não crie seed local, catálogo duplicado ou código para itens ausentes. Serviços avulsos não justificam feature gate ou tela operacional fictícia. A solicitação aceita fica Em preparo; a implementação é feita posteriormente no chat do projeto da loja e a ativação final continua sendo exclusiva do Master.
 
 ## Tabelas e limites de escrita
 

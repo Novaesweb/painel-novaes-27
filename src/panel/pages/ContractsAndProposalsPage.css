@@ -1,0 +1,450 @@
+/* Estilos do Módulo de Contratos, Propostas Comerciais e Pró-rata */
+
+.contracts-proposals-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.contracts-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  border-radius: 12px;
+  background: radial-gradient(circle at top right, rgba(139, 44, 255, 0.12), transparent 45%),
+              linear-gradient(135deg, rgba(18, 11, 28, 0.95), rgba(10, 6, 16, 0.95));
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.contracts-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.contracts-page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.contracts-page-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #a1a1aa;
+}
+
+.contracts-header-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  color: #a7f3d0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.contracts-header-tag svg {
+  flex-shrink: 0;
+  color: #34d399;
+}
+
+.contracts-header-tag b {
+  color: #ffffff;
+}
+
+/* Abas de Navegação */
+.contracts-navigation-tabs {
+  display: flex;
+  gap: 10px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.18);
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.contracts-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(18, 11, 28, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  color: #a1a1aa;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.contracts-tab-btn:hover {
+  color: #ffffff;
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.contracts-tab-btn.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(124, 58, 237, 0.28));
+  border-color: #a855f7;
+  color: #f3e8ff;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+}
+
+.contracts-tab-btn svg {
+  color: #c084fc;
+}
+
+/* ABA 1: Layout da Proposta */
+.proposals-layout-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.proposal-form-card,
+.proposal-preview-card,
+.prorata-container-card,
+.terms-container-card {
+  padding: 22px;
+  border-radius: 14px;
+  background: rgba(18, 11, 28, 0.7);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-header-line h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.form-grid-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plan-picker-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picker-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d4d4d8;
+}
+
+.plan-radio-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.plan-radio-card {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(10, 6, 16, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.plan-radio-card:hover {
+  border-color: rgba(168, 85, 247, 0.45);
+}
+
+.plan-radio-card.selected {
+  background: rgba(168, 85, 247, 0.16);
+  border-color: #a855f7;
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.25);
+}
+
+.plan-card-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #c084fc;
+  text-transform: uppercase;
+}
+
+.plan-card-tag.highlight {
+  color: #fbbf24;
+}
+
+.plan-radio-card strong {
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.plan-radio-card small {
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.plan-feature-sub {
+  font-size: 10px;
+  color: #34d399;
+  margin-top: 4px;
+}
+
+.proposal-calc-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(10, 6, 16, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.14);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-item span {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.summary-item b {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+/* Painel de Visualização */
+.card-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-title h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.btn-group-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.proposal-code-preview {
+  margin: 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: rgba(2, 6, 18, 0.95);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  color: #d1d5db;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  max-height: 540px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ABA 2: Calculadora de Pró-rata */
+.prorata-header,
+.terms-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.prorata-header h3,
+.terms-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.prorata-header p,
+.terms-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #a1a1aa;
+  line-height: 1.5;
+}
+
+.prorata-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 16px;
+  border-radius: 10px;
+  background: rgba(10, 6, 16, 0.5);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+.prorata-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #d4d4d8;
+  font-weight: 600;
+}
+
+.month-year-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.prorata-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.prorata-stat-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(18, 11, 28, 0.85);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prorata-stat-card .stat-label {
+  font-size: 11px;
+  color: #a1a1aa;
+  text-transform: uppercase;
+}
+
+.prorata-stat-card strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.prorata-stat-card small {
+  font-size: 10px;
+  color: #71717a;
+}
+
+.prorata-explanation-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #a7f3d0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prorata-explanation-box svg {
+  flex-shrink: 0;
+  color: #34d399;
+}
+
+/* ABA 3: Termos Contratuais */
+.terms-accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.term-item-card {
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: rgba(10, 6, 16, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.term-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.term-number {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+}
+
+.term-title-row strong {
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.term-item-card p {
+  margin: 0;
+  color: #d4d4d8;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.term-item-card b {
+  color: #ffffff;
+}
+
+/* Responsividade Mobile */
+@media (max-width: 900px) {
+  .proposals-layout-grid {
+    grid-template-columns: 1fr;
+  }
+  .plan-radio-cards {
+    grid-template-columns: 1fr;
+  }
+}

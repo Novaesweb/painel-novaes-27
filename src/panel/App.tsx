@@ -105,7 +105,7 @@ export function App() {
   </DashboardLayout>
 }
 
-const operational = ['/suporte','/clientes','/planos','/financeiro','/dominios','/backups','/configuracoes','/usuarios','/controle-pedidos']
+const operational = ['/suporte','/clientes','/planos','/financeiro','/dominios','/backups','/configuracoes','/usuarios','/controle-pedidos','/contratos']
 function renderPage(page: string, role: string) {
   if (page === '/') return <DashboardPage />
   if (page === '/lojas') return <StoresPage role={role} />

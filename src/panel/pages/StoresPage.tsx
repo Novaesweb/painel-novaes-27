@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, Store } from 'lucide-react'
+import { useNavigate, useSearchParams } from '../lib/router-compat'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, Store } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
 import './StoreAdministration.css'
@@ -34,6 +34,7 @@ function dateLabel(value: string) {
 }
 
 export function StoresPage({ role }: { role: string }) {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const appliedDeepLink = useRef<string | null>(null)
   const [sites, setSites] = useState<Site[]>([])
@@ -307,7 +308,7 @@ export function StoresPage({ role }: { role: string }) {
 
     {selected ? <section className="panel store-detail">
       <button className="back-to-stores" onClick={() => { setSelectedId(null); if (searchParams.has('site_id')) { const next = new URLSearchParams(searchParams); next.delete('site_id'); setSearchParams(next, { replace: true }) } }}><ArrowLeft size={15} /> Voltar à Central Multi-Loja</button>
-      <div className="store-detail-title"><span className="store-avatar"><Store size={21} /></span><div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div><StatusBadge status={selected.status} /></div>
+      <div className="store-detail-title"><span className="store-avatar"><Store size={21} /></span><div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div><StatusBadge status={selected.status} /><button type="button" className="secondary-button" style={{ marginLeft: 'auto' }} onClick={() => navigate('/controle-pedidos')}><ShoppingBag size={14} /> Franquia de pedidos</button></div>
       <div className="store-detail-grid">
         <Info label="Proprietário" value={selected.owner_name || (selected.owner_id ? `Usuário ${selected.owner_id.slice(0, 8)}…` : 'Não vinculado')} />
         <Info label="Vínculo do proprietário" value={selected.owner_membership_status} />

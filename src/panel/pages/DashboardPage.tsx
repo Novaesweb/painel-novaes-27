@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Blocks, CircleAlert, CreditCard, Globe2, Inbox, MessageSquare, PackagePlus, RefreshCw, ShieldCheck, Store } from 'lucide-react'
+import { ArrowUpRight, Blocks, CircleAlert, CreditCard, Globe2, Inbox, MessageSquare, PackagePlus, RefreshCw, ShieldCheck, ShoppingBag, Store } from 'lucide-react'
 import { useNavigate } from '../lib/router-compat'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
@@ -104,6 +104,7 @@ export function DashboardPage() {
     { label: 'Em criação', value: metrics.pending, detail: 'Aguardando conexão', icon: Store, tone: 'blue', path: '/lojas' },
     { label: 'Com domínio vinculado', value: metrics.domains, detail: 'Domínios cadastrados', icon: Globe2, tone: 'pink', path: '/dominios' },
     { label: 'Planos ativos', value: metrics.plans, detail: 'Plano e contrato ativos', icon: CreditCard, tone: 'green', path: '/planos' },
+    { label: 'Franquias de Pedidos', value: 'Monitor', detail: 'Consumo mensal de pedidos', icon: ShoppingBag, tone: 'purple', path: '/controle-pedidos' },
     { label: 'Mensalidades pendentes', value: metrics.overdue, detail: 'Pagamento informado como atrasado', icon: CreditCard, tone: 'pink', path: '/financeiro' },
     { label: 'Vencimento próximo', value: metrics.dueSoon, detail: 'Próximos três dias', icon: CreditCard, tone: 'blue', path: '/financeiro' },
     { label: 'Leads recentes', value: snapshot.leads, detail: 'Contatos do site oficial', icon: Inbox, tone: 'purple', path: '/leads' },

@@ -1,6 +1,6 @@
 import {
   Activity, Bell, Blocks, BriefcaseBusiness, Cable, CircleHelp, CreditCard, Gauge, Inbox, PackagePlus,
-  Globe2, HardDrive, Settings2, ShieldCheck, Users,
+  Globe2, HardDrive, Settings2, ShieldCheck, ShoppingBag, Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -9,6 +9,7 @@ export type NavItem = { label: string; path: string; icon: LucideIcon; group: st
 export const navigation: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: Gauge, group: 'VISÃO GERAL' },
   { label: 'Central Multi-Loja', path: '/lojas', icon: Blocks, group: 'LOJAS E SITES' },
+  { label: 'Controle de Pedidos', path: '/controle-pedidos', icon: ShoppingBag, group: 'LOJAS E SITES' },
   { label: 'Integração de Sites', path: '/integracao-sites', icon: Cable, group: 'LOJAS E SITES' },
   { label: 'Central de Adicionais', path: '/adicionais', icon: PackagePlus, group: 'LOJAS E SITES' },
   { label: 'Domínios e Publicações', path: '/dominios', icon: Globe2, group: 'LOJAS E SITES' },

@@ -114,6 +114,6 @@ function renderPage(page: string, role: string, sessionUserId: string) {
   if (page === '/leads') return <LeadsPage role={role} />
   if (page === '/notificacoes') return <NotificationsPage role={role} />
   if (page === '/auditoria') return <AuditPage role={role} />
-  if (operational.includes(page)) return <OperationalModulePage path={page as never} role={role} />
+  if (operational.includes(page)) return <OperationalModulePage path={page as never} role={role} sessionUserId={sessionUserId} />
   return <ModulePage path={page} />
 }

@@ -1,0 +1,14 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test
+> vitest run
+
+
+ RUN  v4.1.12 /workspace/scratch/d17950cb357b/painel-novaes-27
+
+
+ Test Files  15 passed (15)
+      Tests  117 passed (117)
+   Start at  00:51:13
+   Duration  5.10s (transform 2.94s, setup 1.23s, import 6.72s, tests 8.87s, environment 8.28s)
+

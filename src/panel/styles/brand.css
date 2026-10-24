@@ -130,3 +130,10 @@ h1,h2,h3,h4{color:#f8f5fb}
 .app-shell .page-content .store-integration-central button,
 .app-shell .page-content .integration-navigation-tabs button { min-height: 48px; touch-action: manipulation; }
 .app-shell .page-content .store-integration-central .integration-prompt-text { line-height: 1.7; }
+
+/* Simulador financeiro: controles de toque limitados ao módulo. */
+.app-shell .page-content .income-simulator button,
+.app-shell .page-content .income-finance-tabs button { min-height:48px; touch-action:manipulation; }
+.income-finance-tabs { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
+.income-finance-tabs button { border:1px solid #60417a; color:#eaddf5; background:#21162e; border-radius:10px; padding:12px 18px; cursor:pointer; }
+.income-finance-tabs button[aria-pressed="true"] { background:linear-gradient(105deg,#7c25e8,#e52f67); color:white; }

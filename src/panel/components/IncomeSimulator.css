@@ -1,0 +1,250 @@
+.income-simulator {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+  color: #ede7f5;
+}
+.income-heading,
+.income-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.income-heading h2,
+.income-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+}
+.income-simulator p {
+  color: #c4b9d0;
+  line-height: 1.65;
+  margin: 8px 0 14px;
+}
+.income-card {
+  min-width: 0;
+  border: 1px solid #3c2d4d;
+  border-radius: 18px;
+  background: rgba(17, 12, 26, 0.94);
+  padding: 24px;
+}
+.income-notice {
+  padding: 18px;
+  border: 1px solid #60417a;
+  background: #241831;
+  border-radius: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.income-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 18px 0;
+}
+.income-simulator label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #dcd2e8;
+}
+.income-simulator input,
+.income-simulator select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #584167;
+  border-radius: 10px;
+  background: #110c1c;
+  color: #f5effa;
+  padding: 12px;
+  min-height: 48px;
+  font: inherit;
+  box-sizing: border-box;
+}
+.income-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.income-simulator button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #55406b;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: #241b32;
+  color: #f3ecfc;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  white-space: normal;
+}
+.income-simulator button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.income-simulator :is(button, input, select):focus-visible {
+  outline: 2px solid #d5a7ff;
+  outline-offset: 3px;
+}
+.income-simulator .primary-button {
+  background: linear-gradient(105deg, #7c25e8, #e52f67);
+  border-color: transparent;
+}
+.income-groups {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+.income-group,
+.income-goal {
+  border: 1px solid #44314f;
+  padding: 20px;
+  border-radius: 14px;
+  background: #181021;
+  min-width: 0;
+}
+.income-group h4,
+.income-goal h4 {
+  margin: 0;
+  font-size: 17px;
+}
+.income-simulator .income-check {
+  flex-direction: row;
+  align-items: center;
+}
+.income-simulator .income-check input {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+}
+.income-group-totals {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.income-group-totals span {
+  color: #c2b2d2;
+  display: grid;
+  gap: 5px;
+}
+.income-group-totals strong {
+  color: #faf3ff;
+  font-size: 19px;
+}
+.income-source {
+  font-size: 12px;
+}
+.income-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.income-metrics > div {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #3f2d50;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.income-metrics span {
+  color: #c4b5d2;
+  line-height: 1.5;
+  font-size: 13px;
+}
+.income-metrics strong {
+  font-size: 23px;
+}
+.income-highlight {
+  background: #332044;
+  border-color: #8855a9 !important;
+}
+.income-answer {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f7eaff !important;
+}
+.income-goal small {
+  color: #bfb1cd;
+  line-height: 1.6;
+}
+.income-comparison {
+  overflow-x: auto;
+}
+.income-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.income-comparison :is(th, td) {
+  padding: 14px 10px;
+  border-bottom: 1px solid #3f2d50;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .income-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .income-comparison thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .income-comparison :is(table, tbody, tr) {
+    display: block;
+  }
+  .income-comparison tr {
+    padding: 16px;
+    border: 1px solid #59406f;
+    border-radius: 12px;
+    margin: 12px 0;
+  }
+  .income-comparison :is(th, td) {
+    display: block;
+    padding: 10px 0;
+  }
+  .income-comparison td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: #b6a8c5;
+    margin-bottom: 5px;
+  }
+}
+@media (max-width: 600px) {
+  .income-grid,
+  .income-metrics {
+    grid-template-columns: 1fr;
+  }
+  .income-card {
+    padding: 18px 14px;
+  }
+  .income-group,
+  .income-goal {
+    padding: 16px 12px;
+  }
+  .income-actions {
+    width: 100%;
+  }
+  .income-actions button,
+  .income-heading > button {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .income-simulator h2 {
+    font-size: 23px;
+  }
+}

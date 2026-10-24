@@ -1,0 +1,39 @@
+{
+  "environment": "Interface local, sem login real, sem dados remotos",
+  "results": [
+    {
+      "viewport": {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      "passed": true,
+      "totalClients": 20,
+      "recurringRevenueCents": 489000,
+      "recurringNetCents": 329880,
+      "scenarioSwitchPreserved": true,
+      "reloadPreserved": true,
+      "touchTargetsAtLeast44px": true,
+      "horizontalOverflow": false,
+      "externalRequests": [],
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "totalClients": 20,
+      "recurringRevenueCents": 489000,
+      "recurringNetCents": 329880,
+      "scenarioSwitchPreserved": true,
+      "reloadPreserved": true,
+      "touchTargetsAtLeast44px": true,
+      "horizontalOverflow": false,
+      "externalRequests": [],
+      "consoleErrors": []
+    }
+  ]
+}

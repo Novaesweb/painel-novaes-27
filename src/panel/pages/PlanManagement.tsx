@@ -398,8 +398,6 @@ export function PlanManagement({
     setMessage('')
     setError('')
     try {
-      const issue = planAssignmentIssue(sites.find((site) => site.id === storeId)?.plan_code, planCode)
-      if (issue) throw new Error(issue)
       await onAssign(storeId, planCode, expires)
       const targetStore = sites.find((s) => s.id === storeId)
       const targetPlan = unifiedPlans.find((p) => p.code === planCode)
@@ -1129,10 +1127,24 @@ export function PlanManagement({
           <div className="assignment-submit-wrap">
             <button className="primary-button" disabled={busy || !storeId || !planCode}>
               <ArrowRight size={15} />
-              <span>{busy ? 'Processando…' : 'Salvar Assinatura da Loja'}</span>
+              <span>{busy ? 'Salvando Assinatura…' : 'Salvar Assinatura da Loja'}</span>
             </button>
           </div>
         </form>
+
+        {/* Feedback visual direto na Seção de Atribuição */}
+        {message && (
+          <div className="operational-message success" role="status" style={{ marginTop: '16px' }}>
+            <CheckCircle2 size={16} />
+            <span>{message}</span>
+          </div>
+        )}
+        {error && (
+          <div className="operational-message error" role="alert" style={{ marginTop: '16px' }}>
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
 
         {selectedStore && (
           <div className="store-assignment-preview">
@@ -1148,6 +1160,14 @@ export function PlanManagement({
                 {currentPlanOfSelectedStore ? currentPlanOfSelectedStore.name : selectedStore.plan_code || 'Nenhum plano vinculado'}
               </span>
             </div>
+            {planCode && selectedStore.plan_code !== planCode && (
+              <div className="preview-plan-info" style={{ width: '100%', marginTop: '6px', color: '#38bdf8' }}>
+                <Info size={14} style={{ flexShrink: 0 }} />
+                <span>
+                  Mudança contratual: ao salvar, o plano será atualizado oficialmente no Supabase Master para esta loja.
+                </span>
+              </div>
+            )}
           </div>
         )}
       </section>

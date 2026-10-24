@@ -714,3 +714,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Regras de Impressão e Exportação em PDF (COM-02) */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .sidebar,
+  .topbar,
+  .contracts-page-header,
+  .contracts-navigation-tabs,
+  .proposal-form-card,
+  .btn-group-actions,
+  .app-shell:before,
+  .app-shell:after,
+  .mobile-menu,
+  .page-heading {
+    display: none !important;
+  }
+  .main-shell,
+  .page-content,
+  .contracts-proposals-page,
+  .proposal-preview-card {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .card-header-actions {
+    display: none !important;
+  }
+  .proposal-code-preview {
+    background: transparent !important;
+    color: #111827 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
+

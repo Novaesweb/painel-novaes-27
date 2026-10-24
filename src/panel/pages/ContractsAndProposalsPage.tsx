@@ -19,6 +19,7 @@ import {
   AlertCircle,
   BadgeCheck,
   Globe,
+  Download,
 } from 'lucide-react'
 import './ContractsAndProposalsPage.css'
 
@@ -206,8 +207,55 @@ Proposta válida por 15 dias a contar da data de emissão.`
     }
   }
 
+  const [downloadingProposal, setDownloadingProposal] = useState(false)
+
   const handlePrintProposal = () => {
+    try {
+      const printWindow = window.open('', '_blank', 'width=800,height=600')
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8">
+              <title>Proposta Comercial NovaesWeb — ${proposalClientName || 'Cliente'}</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif; font-size: 13px; line-height: 1.6; color: #111; padding: 28px; white-space: pre-wrap; word-wrap: break-word; background: #fff; }
+                @media print { body { padding: 10mm; } }
+              </style>
+            </head>
+            <body>${proposalText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
+          </html>
+        `)
+        printWindow.document.close()
+        printWindow.focus()
+        setTimeout(() => {
+          printWindow.print()
+        }, 300)
+        return
+      }
+    } catch {
+      // Fallback
+    }
     window.print()
+  }
+
+  const handleDownloadProposal = () => {
+    setDownloadingProposal(true)
+    try {
+      const blob = new Blob([proposalText], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const safeName = (proposalClientName.trim() || 'Cliente').replace(/[^a-zA-Z0-9_-]/g, '_')
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Proposta_NovaesWeb_${safeName}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setTimeout(() => setDownloadingProposal(false), 2000)
+    }
   }
 
   return (
@@ -396,6 +444,16 @@ Proposta válida por 15 dias a contar da data de emissão.`
                 >
                   <Printer size={13} />
                   <span>Imprimir / PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-button btn-action-sm"
+                  onClick={handleDownloadProposal}
+                  title="Baixar arquivo da proposta"
+                >
+                  <Download size={13} />
+                  <span>{downloadingProposal ? 'Baixando…' : 'Baixar Arquivo'}</span>
                 </button>
 
                 <button

@@ -50,7 +50,18 @@ export function AddonsPage() {
   const call = useCallback(async (action: string, payload: Record<string, unknown> = {}) => {
     if (!supabase) throw new Error('O Supabase não está configurado neste ambiente.')
     const { data: result, error: invokeError } = await supabase.functions.invoke('novaesweb-addons-admin', { body: { action, ...payload } })
-    if (invokeError) throw new Error(invokeError.message || 'Não foi possível comunicar com o serviço de adicionais.')
+    if (invokeError) {
+      let detail = invokeError.message || 'Não foi possível comunicar com o serviço de adicionais.'
+      try {
+        const response = (invokeError as Error & { context?: Response }).context
+        const payloadData = (await response?.clone().json()) as { error?: string; message?: string } | undefined
+        if (payloadData?.error) detail = payloadData.error
+        else if (payloadData?.message) detail = payloadData.message
+      } catch {
+        /* Preserva mensagem da função */
+      }
+      throw new Error(detail)
+    }
     if (result?.error) throw new Error(result.error)
     return result as Record<string, unknown>
   }, [])
@@ -97,7 +108,15 @@ export function AddonsPage() {
     if (duplicate) { setError('Já existe um adicional correspondente. Edite o registro existente para preservar ID e código.'); return }
     if (approved?.code === 'ADD-18' && (editing.price !== null || editing.billing_type !== 'quote')) { setError('Backup Plus: preço e escopo pendentes. Use Sob orçamento, sem preço.'); return }
     const published = editing.is_visible && editing.is_active && editing.development_status !== 'unavailable'
-    await mutate('save_catalog', { addon: { ...editing, price: ['quote', 'free'].includes(editing.billing_type) ? null : editing.price } }, published
+    const addonPayload = {
+      ...editing,
+      description: editing.description?.trim() || editing.summary?.trim() || editing.name?.trim(),
+      summary: editing.summary?.trim() || editing.name?.trim(),
+      setup_fee: Number.isFinite(editing.setup_fee) ? editing.setup_fee : 0,
+      compatible_site_types: editing.compatible_site_types?.length ? editing.compatible_site_types : ['*'],
+      price: ['quote', 'free'].includes(editing.billing_type) ? null : editing.price
+    }
+    await mutate('save_catalog', { addon: addonPayload }, published
       ? 'Salvo no catálogo central. Lojas compatíveis poderão encontrá-lo em Adicionais.'
       : 'Adicional salvo. Ele ficará fora do catálogo das lojas enquanto estiver oculto, inativo ou indisponível.')
   }

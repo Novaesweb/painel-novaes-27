@@ -1,0 +1,105 @@
+{
+  "head": "89fd181e134243c79c57ac1e2ad7a9d24b600de5",
+  "changedPreexistingFiles": [
+    "src/panel/App.tsx",
+    "src/panel/pages/SiteIntegrationPage.tsx",
+    "src/panel/styles/brand.css"
+  ],
+  "preservedBaselineFiles": 198,
+  "newSourceAndDocumentationFiles": [
+    "AUDITORIA_CENTRAL_INTEGRACAO_POR_LOJA.md",
+    "src/panel/components/StoreIntegrationCentral.tsx",
+    "src/panel/components/StoreIntegrationCentral.css",
+    "src/panel/components/StoreIntegrationCentral.test.tsx",
+    "src/panel/lib/storeIntegrationData.ts",
+    "src/panel/lib/storeIntegrationData.test.ts",
+    "src/panel/lib/storeIntegrationPrompts.ts",
+    "src/panel/lib/storeIntegrationPrompts.test.ts",
+    "src/test/store-integration-fixtures.ts",
+    "supabase/proposals/store_integration_instruction_history.sql",
+    "docs/PROPOSTA_HISTORICO_INTEGRACAO_POR_LOJA.md",
+    "scripts/test-integration-history-proposal.mjs",
+    "scripts/integration-central-browser-fixture.tsx",
+    "scripts/verify-integration-central.mjs",
+    "audit/integration-central/browser.html",
+    "audit/integration-central/exemplo-burger-house-pedidos.md",
+    "audit/integration-central/exemplo-fogo-na-brasa-meu-plano.md"
+  ],
+  "remoteActionsThisTask": [],
+  "otherRepositoriesModified": false,
+  "hashes": {
+    "src/panel/App.tsx": "63c3dd7eac7ccda5562216228c4363a0ba37169b8776708b6e48cd6a039a3d8d",
+    "src/panel/pages/SiteIntegrationPage.tsx": "82d2c6a61b57f0daa0da9c8787d0a56b2029a84d7ef055dcf27f6e955f3a673c",
+    "src/panel/styles/brand.css": "3aedf7225ea94ec069d2891b6c444e6d73d7cc2decc18856a975b7f7bf182694",
+    "AUDITORIA_CENTRAL_INTEGRACAO_POR_LOJA.md": "32206c5660c08aecc2221320494e2f59c13dd08bea225863a9934eb2b6ddf508",
+    "src/panel/components/StoreIntegrationCentral.tsx": "a53e6f0ddd487730fe7dc770df8608f455733f88ae3b10942da02f193aa05786",
+    "src/panel/components/StoreIntegrationCentral.css": "ee1574323fea575d92c8aaed0c7cfaa9bb797e8b727de02998708b63334e789e",
+    "src/panel/components/StoreIntegrationCentral.test.tsx": "a2a88d6a8624764004fc2dd885ec310cf32db5acdec9bea9d8c2035afd5f36d6",
+    "src/panel/lib/storeIntegrationData.ts": "340a9cb94a48261a88b74bc56f4a258d212fd20d37d3fc6a24ae1af8c0a5ca3b",
+    "src/panel/lib/storeIntegrationData.test.ts": "d9de710bc53d794778fb1b0da2891413b70c931ee6e5dbe558f87227ce1a5abb",
+    "src/panel/lib/storeIntegrationPrompts.ts": "4d2b73ee36c6c9cf69ead5a5ec972fed9cc9fd5885dafa81ba00a362cc1367f1",
+    "src/panel/lib/storeIntegrationPrompts.test.ts": "9d8b417bf9a4dc918e7b58d6935120832eafff8b1253bf820a7bc945332df366",
+    "src/test/store-integration-fixtures.ts": "08a4e8705af1899367a15430e2044cbdbdb700d0dcb5da7ed03167dda8199103",
+    "supabase/proposals/store_integration_instruction_history.sql": "7b8734c60ceccc40275649b319525adfb0aa8f4eec9d47b1b0a378826bf1e0bf",
+    "docs/PROPOSTA_HISTORICO_INTEGRACAO_POR_LOJA.md": "2911410f51d73dbaff23be416cfefb211a049d3c02bf74c59f553ae7533f9ad2",
+    "scripts/test-integration-history-proposal.mjs": "4ee6fec3150a7a9ee20ea4c795b4aafb4b2a7068f7495c71c469d5f97269e169",
+    "scripts/integration-central-browser-fixture.tsx": "5f6257a76be1f019ab927124e5a8f7e9c68c3cd2b191ee8f167932e96e7bec68",
+    "scripts/verify-integration-central.mjs": "7567defc2df655818772bb81558249fd7af62d14127dfff8a7e897e42ad2981c",
+    "audit/integration-central/browser.html": "cc053f9f73e7b9e003523f222b9e057b4af51bdc1ca36ef61a1f9d9e7ba12838",
+    "audit/integration-central/exemplo-burger-house-pedidos.md": "7295d891552832161e2acf85090d4a29105da8fca90d9a022ea6372cba6b9641",
+    "audit/integration-central/exemplo-fogo-na-brasa-meu-plano.md": "bbb53738d5cea78cf2da17eb8b2b075b54669475c6478b5260ea6bf351d34ae2"
+  },
+  "browserResults": {
+    "environment": "Fixture local, sem Supabase e sem login real",
+    "results": [
+      {
+        "viewport": {
+          "name": "tablet-portrait",
+          "width": 768,
+          "height": 1024
+        },
+        "passed": true,
+        "clipboardCharacters": 9415,
+        "editedClipboardComplete": true,
+        "identityIsolation": true,
+        "horizontalOverflow": false,
+        "touchTargetsAtLeast44px": true,
+        "manualSelectionComplete": true,
+        "consoleErrors": [],
+        "externalRequests": []
+      },
+      {
+        "viewport": {
+          "name": "tablet-landscape",
+          "width": 1024,
+          "height": 768
+        },
+        "passed": true,
+        "clipboardCharacters": 9415,
+        "editedClipboardComplete": true,
+        "identityIsolation": true,
+        "horizontalOverflow": false,
+        "touchTargetsAtLeast44px": true,
+        "manualSelectionComplete": true,
+        "consoleErrors": [],
+        "externalRequests": []
+      },
+      {
+        "viewport": {
+          "name": "mobile",
+          "width": 390,
+          "height": 844
+        },
+        "passed": true,
+        "clipboardCharacters": 9415,
+        "editedClipboardComplete": true,
+        "identityIsolation": true,
+        "horizontalOverflow": false,
+        "touchTargetsAtLeast44px": true,
+        "manualSelectionComplete": true,
+        "consoleErrors": [],
+        "externalRequests": []
+      }
+    ]
+  }
+}

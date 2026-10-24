@@ -1,0 +1,338 @@
+import { createClient } from 'npm:@supabase/supabase-js@2.75.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json; charset=utf-8',
+}
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+function reply(status: number, payload: Record<string, unknown>) {
+  return new Response(JSON.stringify(payload), { status, headers: corsHeaders })
+}
+Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (request.method !== 'POST') return reply(405, { error: 'Método não permitido.' })
+
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const token = request.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
+  if (!url || !anonKey || !serviceKey) return reply(500, { error: 'Configuração segura incompleta.' })
+  if (!token) return reply(401, { error: 'Sessão autenticada obrigatória.' })
+
+  const userClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const { data: auth, error: authError } = await userClient.auth.getUser(token)
+  if (authError || !auth.user) return reply(401, { error: 'Sessão inválida ou expirada.' })
+  const actorId = auth.user.id
+
+  let body: Record<string, unknown>
+  try { body = await request.json() } catch { return reply(400, { error: 'JSON inválido.' }) }
+
+  const { data: master, error: masterError } = await admin.from('master_profiles')
+    .select('role,is_active').eq('user_id', actorId).maybeSingle()
+  if (masterError || master?.is_active !== true || master.role !== 'MASTER') {
+    return reply(403, { error: 'Ação exclusiva do perfil MASTER ativo.' })
+  }
+
+  const audit = async (storeId: string, action: string, result: 'success' | 'denied' | 'failure', reason: string | null = null, metadata: Record<string, unknown> = {}) => {
+    const { error } = await admin.from('master_audit_log').insert({
+      actor_user_id: actorId, store_id: storeId, action, entity_type: 'managed_site',
+      entity_id: storeId, result, reason, metadata,
+    })
+    return !error
+  }
+
+  if (body.action === 'list_sites') {
+    const { data: sites, error } = await admin.from('managed_sites')
+      .select('id,nx_id,name,owner_id,owner_name,status,plan_code,billing_active,created_at,updated_at,plan_started_at,plan_expires_at,grace_days,payment_status,payment_status_updated_at,block_mode,block_reason,block_message,block_until,backup_status,last_backup_at')
+      .order('created_at', { ascending: false }).limit(500)
+    if (error) return reply(500, { error: 'Não foi possível listar os cadastros.' })
+    const ids = (sites ?? []).map((site: { id: string }) => site.id)
+    if (!ids.length) return reply(200, { sites: [] })
+    const [domainsResult, integrationsResult, membersResult, plansResult, ticketsResult, schedulesResult] = await Promise.all([
+      admin.from('store_domains').select('store_id,domain,is_primary,verification_status').in('store_id', ids),
+      admin.from('store_integrations').select('store_id,provider,status,last_seen_at,contract_version,last_error_code').in('store_id', ids),
+      admin.from('store_members').select('store_id,user_id,role,is_active').in('store_id', ids),
+      admin.from('master_plan_catalog').select('id,code,name,description,price_cents,billing_period,duration_days,limits,features,is_active').eq('is_active', true).order('price_cents'),
+      admin.from('master_support_tickets').select('id,store_id,subject,priority,status,created_at,updated_at').in('store_id', ids).order('created_at', { ascending: false }).limit(100),
+      admin.from('master_scheduled_site_actions').select('id,store_id,action,payload,run_at,status,created_at').in('store_id', ids).eq('status','scheduled').order('run_at'),
+    ])
+    if (domainsResult.error || integrationsResult.error || membersResult.error || plansResult.error || ticketsResult.error || schedulesResult.error) {
+      return reply(500, { error: 'Não foi possível carregar os metadados administrativos.' })
+    }
+    const sitesWithAdminMetadata = (sites ?? []).map((site: { id: string }) => ({
+      ...site,
+      domains: (domainsResult.data ?? []).filter((x: { store_id: string }) => x.store_id === site.id),
+      integrations: (integrationsResult.data ?? []).filter((x: { store_id: string }) => x.store_id === site.id),
+      members: (membersResult.data ?? []).filter((x: { store_id: string }) => x.store_id === site.id),
+      support_tickets: (ticketsResult.data ?? []).filter((x: { store_id: string }) => x.store_id === site.id),
+      scheduled_actions: (schedulesResult.data ?? []).filter((x: { store_id: string }) => x.store_id === site.id),
+    }))
+    return reply(200, { sites: sitesWithAdminMetadata, plans: plansResult.data ?? [] })
+  }
+
+  if (body.action === 'create_plan') {
+    const codeValue = typeof body.code === 'string' ? body.code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0,40) : '';
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0,100) : '';
+    const price = Number(body.price_cents ?? 0);
+    const period = String(body.billing_period ?? 'monthly');
+    const days = body.duration_days === null || body.duration_days === undefined || body.duration_days === '' ? null : Number(body.duration_days);
+    if (!codeValue || !name) return reply(400, { error: 'Código e nome do plano são obrigatórios.' });
+    if (!Number.isInteger(price) || price < 0) return reply(400, { error: 'Preço deve ser informado em centavos inteiros, sem valores negativos.' });
+    if (!['monthly','quarterly','yearly','custom'].includes(period)) return reply(400, { error: 'Periodicidade inválida.' });
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > 3650)) return reply(400, { error: 'Duração deve ficar entre 1 e 3650 dias.' });
+    const { data, error } = await admin.from('master_plan_catalog').insert({ code: codeValue, name, description: typeof body.description === 'string' ? body.description.slice(0,500) : null, price_cents: price, billing_period: period, duration_days: days, limits: body.limits && typeof body.limits === 'object' ? body.limits : {}, features: body.features && typeof body.features === 'object' ? body.features : {}, is_active: true }).select('code,name').single();
+    if (error) return reply(400, { error: 'Não foi possível criar o plano. Verifique se o código já existe.' });
+    const { error: auditError } = await admin.from('master_audit_log').insert({ actor_user_id: actorId, store_id: null, action: 'master_plan_created', entity_type: 'master_plan', entity_id: data.code, result: 'success', reason: null, metadata: { code: data.code, name: data.name } });
+    if (auditError) return reply(500, { error: 'Plano criado, mas falhou o registro de auditoria.' });
+    return reply(200, { message: 'Plano criado no catálogo Master.', plan: data });
+  }
+
+  const storeId = typeof body.store_id === 'string' ? body.store_id.trim() : ''
+  if (!uuidPattern.test(storeId)) return reply(400, { error: 'store_id inválido.' })
+  const { data: site, error: siteError } = await admin.from('managed_sites')
+    .select('id,nx_id,name,owner_id,status,billing_active').eq('id', storeId).maybeSingle()
+  if (siteError) return reply(500, { error: 'Não foi possível validar a loja.' })
+  if (!site) return reply(404, { error: 'Loja não encontrada.' })
+
+  if (body.action === 'set_site_status') {
+    const status = body.status
+    if (!['active', 'maintenance', 'suspended', 'archived'].includes(String(status))) {
+      return reply(400, { error: 'Status permitido: active, maintenance, suspended ou archived.' })
+    }
+    const { error } = await admin.from('managed_sites').update({ status, updated_at: new Date().toISOString() })
+      .eq('id', storeId)
+    if (error) { await audit(storeId, 'site_status_change', 'failure', 'Database update failed'); return reply(500, { error: 'Não foi possível alterar o status.' }) }
+    const logged = await audit(storeId, 'site_status_change', 'success', null, { from: site.status, to: status })
+    if (!logged) return reply(500, { error: 'Status atualizado, mas falhou o registro de auditoria. Verifique o log.' })
+    return reply(200, { store_id: storeId, nx_id: site.nx_id, status })
+  }
+
+  if (body.action === 'set_billing_active') {
+    if (typeof body.billing_active !== 'boolean') return reply(400, { error: 'billing_active deve ser booleano.' })
+    const { error } = await admin.from('managed_sites')
+      .update({ billing_active: body.billing_active, updated_at: new Date().toISOString() }).eq('id', storeId)
+    if (error) { await audit(storeId, 'site_billing_state_change', 'failure', 'Database update failed'); return reply(500, { error: 'Não foi possível alterar a situação contratual.' }) }
+    const logged = await audit(storeId, 'site_billing_state_change', 'success', null, { from: site.billing_active, to: body.billing_active })
+    if (!logged) return reply(500, { error: 'Situação alterada, mas falhou o registro de auditoria. Verifique o log.' })
+    return reply(200, { store_id: storeId, billing_active: body.billing_active })
+  }
+
+
+
+  if (body.action === 'set_plan') {
+    const planCode = typeof body.plan_code === 'string' ? body.plan_code.trim() : '';
+    if (!planCode) return reply(400, { error: 'Informe o código do plano.' });
+    const { data: plan, error: planError } = await admin.from('master_plan_catalog')
+      .select('code,name,duration_days').eq('code', planCode).eq('is_active', true).maybeSingle();
+    if (planError || !plan) return reply(404, { error: 'Plano ativo não encontrado no catálogo Master.' });
+    const now = new Date();
+    const expires = body.plan_expires_at ? new Date(String(body.plan_expires_at)) :
+      (plan.duration_days ? new Date(now.getTime() + plan.duration_days * 86400000) : null);
+    if (body.plan_expires_at && (!expires || Number.isNaN(expires.getTime()))) return reply(400, { error: 'Data de vencimento inválida.' });
+    const patch: Record<string, unknown> = { plan_code: plan.code, plan_started_at: now.toISOString(), plan_expires_at: expires?.toISOString() ?? null, updated_at: now.toISOString() };
+    if (typeof body.grace_days === 'number') {
+      if (!Number.isInteger(body.grace_days) || body.grace_days < 0 || body.grace_days > 90) return reply(400, { error: 'A tolerância deve ser de 0 a 90 dias.' });
+      patch.grace_days = body.grace_days;
+    }
+    const { error } = await admin.from('managed_sites').update(patch).eq('id', storeId);
+    if (error) { await audit(storeId, 'site_plan_change', 'failure', 'Database update failed'); return reply(500, { error: 'Não foi possível atualizar o plano.' }); }
+    const logged = await audit(storeId, 'site_plan_change', 'success', typeof body.reason === 'string' ? body.reason.slice(0,500) : null, { plan_code: plan.code, plan_name: plan.name, plan_expires_at: patch.plan_expires_at, grace_days: patch.grace_days });
+    if (!logged) return reply(500, { error: 'Plano atualizado, mas falhou o registro de auditoria.' });
+    return reply(200, { store_id: storeId, message: 'Plano, vencimento e tolerância atualizados.' });
+  }
+
+  if (body.action === 'set_billing_details') {
+    const allowed = ['paid','pending','overdue','waived','unknown'];
+    if (!allowed.includes(String(body.payment_status))) return reply(400, { error: 'Status de pagamento inválido.' });
+    const patch: Record<string, unknown> = { payment_status: body.payment_status, payment_status_updated_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    if (body.plan_expires_at !== undefined) {
+      const dt = body.plan_expires_at ? new Date(String(body.plan_expires_at)) : null;
+      if (dt && Number.isNaN(dt.getTime())) return reply(400, { error: 'Vencimento inválido.' });
+      patch.plan_expires_at = dt?.toISOString() ?? null;
+    }
+    if (body.grace_days !== undefined) {
+      const n = Number(body.grace_days);
+      if (!Number.isInteger(n) || n < 0 || n > 90) return reply(400, { error: 'A tolerância deve ser de 0 a 90 dias.' });
+      patch.grace_days = n;
+    }
+    const { error } = await admin.from('managed_sites').update(patch).eq('id', storeId);
+    if (error) { await audit(storeId, 'site_billing_details_change', 'failure', 'Database update failed'); return reply(500, { error: 'Não foi possível atualizar o contrato.' }); }
+    const logged = await audit(storeId, 'site_billing_details_change', 'success', typeof body.reason === 'string' ? body.reason.slice(0,500) : null, patch);
+    if (!logged) return reply(500, { error: 'Dados atualizados, mas falhou a auditoria.' });
+    return reply(200, { store_id: storeId, message: 'Status de pagamento e regras de vencimento atualizados.' });
+  }
+
+  if (body.action === 'set_block_details') {
+    const mode = String(body.block_mode ?? 'message');
+    if (!['message','maintenance','suspension'].includes(mode)) return reply(400, { error: 'Modo de bloqueio inválido.' });
+    const reason = typeof body.block_reason === 'string' ? body.block_reason.trim().slice(0,1000) : '';
+    const message = typeof body.block_message === 'string' ? body.block_message.trim().slice(0,2000) : '';
+    if (!reason) return reply(400, { error: 'O motivo do bloqueio é obrigatório.' });
+    if (!message) return reply(400, { error: 'A mensagem exibida ao cliente é obrigatória.' });
+    const until = body.block_until ? new Date(String(body.block_until)) : null;
+    if (until && Number.isNaN(until.getTime())) return reply(400, { error: 'Data final do bloqueio inválida.' });
+    const status = mode === 'maintenance' ? 'maintenance' : mode === 'suspension' ? 'suspended' : 'suspended';
+    const patch = { block_mode: mode, block_reason: reason, block_message: message, block_until: until?.toISOString() ?? null, status, updated_at: new Date().toISOString() };
+    const { error } = await admin.from('managed_sites').update(patch).eq('id', storeId);
+    if (error) { await audit(storeId, 'site_block_configuration', 'failure', 'Database update failed'); return reply(500, { error: 'Não foi possível configurar o bloqueio.' }); }
+    const logged = await audit(storeId, 'site_block_configuration', 'success', reason, { mode, block_until: patch.block_until });
+    if (!logged) return reply(500, { error: 'Bloqueio aplicado, mas falhou a auditoria.' });
+    const hasOwner = Boolean(site.owner_id);
+    const title = mode === 'maintenance' ? 'Loja em manutenção' : 'Acesso à loja suspenso';
+    const messageType = mode === 'maintenance' ? 'maintenance' : 'block';
+    const { error: msgError } = await admin.from('master_site_messages').insert({
+      store_id: storeId, message_type: messageType, title, message, reason,
+      status: hasOwner ? 'sent' : 'draft', sent_at: hasOwner ? new Date().toISOString() : null, created_by: actorId,
+    });
+    if (msgError) return reply(500, { error: 'Bloqueio aplicado, mas a mensagem não foi registrada.' });
+    if (hasOwner) {
+      const { error: inboxError } = await admin.from('store_owner_messages').insert({
+        store_id: storeId, recipient_user_id: site.owner_id, category: messageType, title, body: message, created_by: actorId,
+      });
+      if (inboxError) return reply(500, { error: 'Bloqueio aplicado, mas a mensagem não chegou à caixa de entrada do proprietário.' });
+    }
+    return reply(200, { store_id: storeId, status, message: hasOwner ? 'Bloqueio aplicado e comunicado entregue à caixa de entrada do proprietário.' : 'Bloqueio aplicado. O comunicado ficou como rascunho porque não há proprietário vinculado.' });
+  }
+
+  if (body.action === 'send_message') {
+    const title = typeof body.title === 'string' ? body.title.trim().slice(0,160) : '';
+    const message = typeof body.message === 'string' ? body.message.trim().slice(0,3000) : '';
+    const type = String(body.message_type ?? 'general');
+    if (!title || !message || !['block','maintenance','plan','billing','general'].includes(type)) return reply(400, { error: 'Título, mensagem ou tipo inválido.' });
+    const scheduleAt = body.scheduled_at ? new Date(String(body.scheduled_at)) : null;
+    if (scheduleAt && Number.isNaN(scheduleAt.getTime())) return reply(400, { error: 'Data programada inválida.' });
+    if (scheduleAt && scheduleAt.getTime() <= Date.now()) return reply(400, { error: 'Escolha uma data futura para agendar.' });
+    const hasOwner = Boolean(site.owner_id);
+    const { data, error } = await admin.from('master_site_messages').insert({
+      store_id: storeId, message_type: type, title, message,
+      reason: typeof body.reason === 'string' ? body.reason.slice(0,1000) : null,
+      scheduled_at: scheduleAt?.toISOString() ?? null,
+      sent_at: null, status: scheduleAt || !hasOwner ? (scheduleAt ? 'scheduled' : 'draft') : 'sent',
+      created_by: actorId,
+    }).select('id,status').single();
+    if (error) { await audit(storeId, 'site_message', 'failure', 'Database insert failed'); return reply(500, { error: 'Não foi possível registrar o comunicado.' }); }
+    if (scheduleAt) {
+      const { error: scheduleError } = await admin.from('master_scheduled_site_actions').insert({
+        store_id: storeId, action: 'send_message',
+        payload: { title, message, message_type: type, message_record_id: data.id },
+        run_at: scheduleAt.toISOString(), created_by: actorId,
+      });
+      if (scheduleError) return reply(500, { error: 'Comunicado salvo, mas não foi possível agendar o envio.' });
+    } else if (hasOwner) {
+      const { error: inboxError } = await admin.from('store_owner_messages').insert({
+        store_id: storeId, recipient_user_id: site.owner_id, category: type, title, body: message, created_by: actorId,
+      });
+      if (inboxError) {
+        await admin.from('master_site_messages').update({ status: 'draft', sent_at: null }).eq('id', data.id);
+        await audit(storeId, 'site_message', 'failure', 'Owner inbox insert failed');
+        return reply(500, { error: 'O comunicado foi registrado, mas não foi possível entregar à caixa de entrada do proprietário.' });
+      }
+      await admin.from('master_site_messages').update({ sent_at: new Date().toISOString() }).eq('id', data.id);
+    }
+    await audit(storeId, 'site_message', 'success', null, { message_id: data.id, message_type: type, status: data.status, inbox_delivered: Boolean(hasOwner && !scheduleAt) });
+    return reply(200, { store_id: storeId, message: scheduleAt ? 'Comunicado agendado para envio à caixa de entrada do proprietário.' : hasOwner ? 'Comunicado entregue à caixa de entrada do proprietário.' : 'Comunicado salvo como rascunho porque ainda não há proprietário vinculado.', item: data });
+  }
+
+  if (body.action === 'schedule_action') {
+    const action = String(body.scheduled_action ?? '');
+    if (!['set_status','set_plan','set_payment_status','send_message'].includes(action)) return reply(400, { error: 'Ação programável inválida.' });
+    const runAt = new Date(String(body.run_at ?? ''));
+    if (Number.isNaN(runAt.getTime()) || runAt.getTime() < Date.now() + 60000) return reply(400, { error: 'Agende para pelo menos 1 minuto no futuro.' });
+    const payload = body.payload && typeof body.payload === 'object' ? body.payload as Record<string, unknown> : {};
+    const { data, error } = await admin.from('master_scheduled_site_actions').insert({ store_id: storeId, action, payload, run_at: runAt.toISOString(), created_by: actorId }).select('id').single();
+    if (error) return reply(500, { error: 'Não foi possível agendar a ação.' });
+    await audit(storeId, 'site_action_scheduled', 'success', null, { scheduled_action_id: data.id, action, run_at: runAt.toISOString() });
+    return reply(200, { store_id: storeId, message: 'Ação agendada. Para executá-la automaticamente, é necessário habilitar um processador agendado.', scheduled_action_id: data.id });
+  }
+
+  if (body.action === 'create_support_ticket') {
+    const subject = typeof body.subject === 'string' ? body.subject.trim().slice(0,200) : '';
+    const message = typeof body.message === 'string' ? body.message.trim().slice(0,3000) : '';
+    const priority = String(body.priority ?? 'normal');
+    if (!subject || !message || !['low','normal','high','urgent'].includes(priority)) return reply(400, { error: 'Assunto, mensagem ou prioridade inválida.' });
+    const { data, error } = await admin.from('master_support_tickets').insert({ store_id: storeId, subject, message, priority, created_by: actorId }).select('id').single();
+    if (error) { await audit(storeId, 'support_ticket_create', 'failure', 'Database insert failed'); return reply(500, { error: 'Não foi possível criar o chamado.' }); }
+    await audit(storeId, 'support_ticket_create', 'success', null, { ticket_id: data.id, priority });
+    return reply(200, { store_id: storeId, message: 'Chamado administrativo registrado.', ticket_id: data.id });
+  }
+
+  if (body.action === 'update_backup_status') {
+    const status = String(body.backup_status ?? '');
+    if (!['unknown','healthy','warning','failed'].includes(status)) return reply(400, { error: 'Status de backup inválido.' });
+    const lastBackup = body.last_backup_at ? new Date(String(body.last_backup_at)) : null;
+    if (lastBackup && Number.isNaN(lastBackup.getTime())) return reply(400, { error: 'Data de backup inválida.' });
+    const { error } = await admin.from('managed_sites').update({ backup_status: status, last_backup_at: lastBackup?.toISOString() ?? null, updated_at: new Date().toISOString() }).eq('id', storeId);
+    if (error) return reply(500, { error: 'Não foi possível atualizar o status de backup.' });
+    await audit(storeId, 'backup_status_change', 'success', null, { backup_status: status, last_backup_at: lastBackup?.toISOString() ?? null });
+    return reply(200, { store_id: storeId, message: 'Status de backup atualizado.' });
+  }
+
+  if (body.action === 'link_store_owner') {
+    const email = typeof body.owner_email === 'string' ? body.owner_email.trim().toLowerCase() : '';
+    const ownerName = typeof body.owner_name === 'string' ? body.owner_name.trim().slice(0,160) : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply(400, { error: 'Informe um e-mail válido do proprietário.' });
+    if (site.owner_id) return reply(409, { error: 'Esta loja já possui proprietário vinculado. Use o fluxo de recuperação ou desvinculação autorizado.' });
+
+    let ownerId: string | null = null;
+    let inviteSent = false;
+    const { data: usersPage, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (usersError) return reply(500, { error: 'Não foi possível verificar se o e-mail já possui conta.' });
+    const existingUser = usersPage.users.find((user) => user.email?.toLowerCase() === email);
+    if (existingUser) {
+      ownerId = existingUser.id;
+    } else {
+      const redirectTo = Deno.env.get('OWNER_INVITE_REDIRECT_URL') || undefined;
+      const { data: invite, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+        data: { store_id: storeId, store_name: site.name, owner_name: ownerName, role: 'owner' },
+        ...(redirectTo ? { redirectTo } : {}),
+      });
+      if (inviteError || !invite.user) {
+        await audit(storeId, 'owner_link', 'failure', 'Invite failed');
+        return reply(400, { error: 'Não foi possível convidar este e-mail. Confira o serviço de e-mail do Supabase Auth.' });
+      }
+      ownerId = invite.user.id;
+      inviteSent = true;
+    }
+
+    const { error: memberError } = await admin.from('store_members').upsert(
+      { store_id: storeId, user_id: ownerId, role: 'owner', is_active: true },
+      { onConflict: 'store_id,user_id' },
+    );
+    if (memberError) {
+      await audit(storeId, 'owner_link', 'failure', 'Store membership creation failed');
+      return reply(500, { error: 'A conta foi localizada/criada, mas não foi possível registrar a associação à loja.' });
+    }
+    const { error: ownerUpdateError } = await admin.from('managed_sites')
+      .update({ owner_id: ownerId, owner_name: ownerName || null, updated_at: new Date().toISOString() })
+      .eq('id', storeId);
+    if (ownerUpdateError) {
+      await audit(storeId, 'owner_link', 'failure', 'Store owner update failed');
+      return reply(500, { error: 'A associação foi criada, mas não foi possível atualizar o proprietário da loja.' });
+    }
+    const logged = await audit(storeId, 'owner_link', 'success', null, { owner_user_id: ownerId, invite_sent: inviteSent });
+    if (!logged) return reply(500, { error: 'Proprietário vinculado, mas falhou o registro de auditoria.' });
+    return reply(200, { store_id: storeId, message: inviteSent ? 'Convite enviado ao e-mail do proprietário e acesso vinculado à loja.' : 'Conta existente vinculada à loja; nenhum convite novo foi enviado.', invite_sent: inviteSent });
+  }
+
+  if (body.action === 'send_owner_access_recovery') {
+    if (!site.owner_id) return reply(409, { error: 'Esta loja ainda não possui proprietário vinculado.' })
+    const { data: ownerData, error: ownerError } = await admin.auth.admin.getUserById(site.owner_id)
+    if (ownerError || !ownerData.user?.email) {
+      await audit(storeId, 'owner_access_recovery', 'failure', 'Owner email unavailable')
+      return reply(409, { error: 'O proprietário não possui e-mail disponível no Supabase Auth.' })
+    }
+    const { error } = await userClient.auth.resetPasswordForEmail(ownerData.user.email)
+    if (error) {
+      await audit(storeId, 'owner_access_recovery', 'failure', 'Recovery email request failed')
+      return reply(500, { error: 'Não foi possível solicitar o e-mail de recuperação. Verifique a configuração de e-mail do Supabase Auth.' })
+    }
+    const logged = await audit(storeId, 'owner_access_recovery', 'success', null, { method: 'password_recovery_email' })
+    if (!logged) return reply(500, { error: 'E-mail solicitado, mas falhou o registro de auditoria. Verifique o log.' })
+    return reply(200, { store_id: storeId, message: 'Solicitação de recuperação enviada ao e-mail cadastrado do proprietário.' })
+  }
+
+  return reply(400, { error: 'Ação não suportada.' })
+})

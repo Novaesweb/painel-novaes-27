@@ -115,3 +115,18 @@ h1,h2,h3,h4{color:#f8f5fb}
 .operational-note{border-color:rgba(168,85,247,.28)!important;background:linear-gradient(100deg,rgba(139,44,255,.14),rgba(255,45,85,.08))!important;color:#f1edfa!important}
 .operational-note svg{color:var(--brand-violet)!important}
 .operational-toolbar input:focus{border-color:rgba(255,45,85,.6)!important;box-shadow:0 0 0 3px rgba(255,45,85,.12)!important}
+
+/* Saúde exibida pela apuração: verde exige check-in válido, nunca só evento recente. */
+.order-control-container .sync-indicator.confirmed { color: #6ee7b7; background: rgba(16,185,129,.1); }
+.order-control-container .sync-indicator.confirmed .sync-dot { background: #34d399; }
+.order-control-container .sync-indicator.stale,
+.order-control-container .sync-indicator.insufficient { color: #fcd34d; background: rgba(245,158,11,.1); }
+.order-control-container .sync-indicator.stale .sync-dot,
+.order-control-container .sync-indicator.insufficient .sync-dot { background: #fbbf24; }
+.order-control-container .sync-indicator.error { color: #fda4af; background: rgba(244,63,94,.1); }
+.order-control-container .sync-indicator.error .sync-dot { background: #fb7185; }
+
+/* Central por loja: alvos de toque sem mudar a tipografia ou as permissões globais. */
+.app-shell .page-content .store-integration-central button,
+.app-shell .page-content .integration-navigation-tabs button { min-height: 48px; touch-action: manipulation; }
+.app-shell .page-content .store-integration-central .integration-prompt-text { line-height: 1.7; }

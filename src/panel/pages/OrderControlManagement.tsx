@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   AlertTriangle,
@@ -26,12 +26,16 @@ import {
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { StoreOrderUsageWidget, StoreOrderUsageData } from '../components/StoreOrderUsageWidget'
 
+import { aggregateOrderStats, billingForCompetence, emptyOrderStats, orderCompetence, orderSyncStatus, syncLabels, INSUFFICIENT_BILLING, type OrderStats, type CompetenceTerms, type SyncStatus, type IntegrationCheckin, orderCsvCell } from '../lib/orderAccounting'
+import { loadOrderAccounting } from '../lib/loadOrderAccounting'
+
 export type StoreSite = {
   id: string
   nx_id: string
   name: string
   plan_code: string | null
   status: string
+  integrations?: IntegrationCheckin[]
 }
 
 export type PlanItem = {
@@ -54,7 +58,13 @@ export type OrderStoreRow = {
   cancelled_count: number
   hidden_count: number
   last_event_at: string | null
-  sync_status: 'online' | 'synced' | 'pending'
+  sync_status: SyncStatus
+  counts_sufficient: boolean
+  billing_sufficient: boolean
+  overage_tariff: number | null
+  overage_amount: number | null
+  registered_count: number
+  corrections: OrderStats['corrections']
   daily_breakdown: Record<string, number>
   cancellations: Array<{ order_ref: string; occurred_at: string; reason_category: string }>
 }
@@ -62,13 +72,13 @@ export type OrderStoreRow = {
 // Meses de competência disponíveis
 function getAvailableCompetences() {
   const list: Array<{ label: string; value: string; date: Date }> = []
-  const now = new Date()
+  const now = new Date(`${orderCompetence(new Date())}-15T12:00:00Z`)
   for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 15))
+    const year = d.getUTCFullYear()
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0')
     const value = `${year}-${month}`
-    const label = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(d)
+    const label = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' }).format(d)
     const formatted = label.charAt(0).toUpperCase() + label.slice(1)
     list.push({ label: formatted, value, date: d })
   }
@@ -90,232 +100,71 @@ export function OrderControlManagement({
   const [detailTab, setDetailTab] = useState<'consumption' | 'daily' | 'cancellations' | 'audit'>('consumption')
   const [clientSimulationStore, setClientSimulationStore] = useState<OrderStoreRow | null>(null)
   const [loading, setLoading] = useState(false)
-  const [lifecycleEvents, setLifecycleEvents] = useState<
-    Record<
-      string,
-      {
-        received: number
-        accepted: number
-        rejected: number
-        delivered: number
-        cancelled: number
-        hidden: number
-        last: string | null
-        daily: Record<string, number>
-        cancellations: Array<{ order_ref: string; occurred_at: string; reason_category: string }>
-      }
-    >
-  >({})
+  const [lifecycleEvents, setLifecycleEvents] = useState<Record<string, OrderStats>>({})
+  const [terms, setTerms] = useState<CompetenceTerms[]>([])
+  const [loadedCompetence, setLoadedCompetence] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [sourcesAvailable, setSourcesAvailable] = useState(false)
+  const requestId = useRef(0)
 
-  const planFranchises: Record<string, { franchise: number | null; name: string }> = {
-    NOVAES_START: { franchise: null, name: 'Novaes Start' },
-    NOVAES_BUSINESS: { franchise: 340, name: 'Novaes Business' },
-    NOVAES_PREMIUM: { franchise: 750, name: 'Novaes Premium' },
-    NOVAES_EMPRESARIAL: { franchise: null, name: 'Novaes Empresarial' },
-    delivery: { franchise: 340, name: 'Novaes Business' },
-    '130': { franchise: 340, name: 'Novaes Business' },
-  }
-
-  // Carrega eventos e sincronização no Supabase
-  const loadOrderStats = async () => {
-    if (!supabase || !isSupabaseConfigured) return
+  const loadOrderStats = useCallback(async () => {
+    const request = ++requestId.current
     setLoading(true)
-
+    setLoadError('')
+    setSelectedStoreDetail(null)
+    setClientSimulationStore(null)
     try {
-      const [year = '2026', month = '10'] = selectedCompetence.split('-')
-      const startDate = `${year}-${month}-01T00:00:00.000Z`
-      const nextMonth = Number(month) === 12 ? 1 : Number(month) + 1
-      const nextYear = Number(month) === 12 ? Number(year) + 1 : Number(year)
-      const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00.000Z`
-
-      const storeCounts: Record<
-        string,
-        {
-          received: number
-          accepted: number
-          rejected: number
-          delivered: number
-          cancelled: number
-          hidden: number
-          last: string | null
-          daily: Record<string, number>
-          cancellations: Array<{ order_ref: string; occurred_at: string; reason_category: string }>
-        }
-      > = {}
-
-      const getInit = (sId: string) => {
-        if (!storeCounts[sId]) {
-          storeCounts[sId] = {
-            received: 0,
-            accepted: 0,
-            rejected: 0,
-            delivered: 0,
-            cancelled: 0,
-            hidden: 0,
-            last: null,
-            daily: {},
-            cancellations: [],
-          }
-        }
-        return storeCounts[sId]
+      if (!supabase || !isSupabaseConfigured) throw new Error('Supabase não configurado.')
+      const result = await loadOrderAccounting(supabase, selectedCompetence)
+      if (request !== requestId.current) return
+      setLifecycleEvents(aggregateOrderStats(selectedCompetence, result.usage, result.lifecycle, result.sources))
+      setTerms(result.terms)
+      setSourcesAvailable(result.sources.usage && result.sources.lifecycle)
+      setLoadedCompetence(selectedCompetence)
+      if (!result.sources.usage || !result.sources.lifecycle) {
+        setLoadError('Falha na consulta dos eventos mínimos. ' + INSUFFICIENT_BILLING + '.')
+      } else if (!result.termsAvailable) {
+        setLoadError('Condições históricas por competência ainda não disponíveis. ' + INSUFFICIENT_BILLING + '.')
       }
-
-      // 1. Tenta buscar da tabela store_order_lifecycle_events se existir
-      const { data: lcEvents, error: lcError } = await supabase
-        .from('store_order_lifecycle_events')
-        .select('store_id, order_ref, event_type, reason_category, occurred_at')
-        .gte('occurred_at', startDate)
-        .lt('occurred_at', endDate)
-
-      if (!lcError && lcEvents && lcEvents.length > 0) {
-        lcEvents.forEach((ev: any) => {
-          const cur = getInit(ev.store_id)
-          if (!cur.last || ev.occurred_at > cur.last) cur.last = ev.occurred_at
-
-          if (ev.event_type === 'created') cur.received += 1
-          if (ev.event_type === 'accepted') {
-            cur.accepted += 1
-            const day = ev.occurred_at.slice(0, 10)
-            cur.daily[day] = (cur.daily[day] || 0) + 1
-          }
-          if (ev.event_type === 'rejected') cur.rejected += 1
-          if (ev.event_type === 'delivered') cur.delivered += 1
-          if (ev.event_type === 'cancelled') {
-            cur.cancelled += 1
-            cur.cancellations.push({
-              order_ref: ev.order_ref,
-              occurred_at: ev.occurred_at,
-              reason_category: ev.reason_category || 'outros',
-            })
-          }
-          if (ev.event_type === 'hidden') cur.hidden += 1
-        })
-      } else {
-        // Fallback 1: store_order_usage_events
-        const { data: usageEvents } = await supabase
-          .from('store_order_usage_events')
-          .select('store_id, order_ref, accepted_at, is_voided')
-          .gte('accepted_at', startDate)
-          .lt('accepted_at', endDate)
-
-        if (usageEvents && usageEvents.length > 0) {
-          usageEvents.forEach((ev: any) => {
-            const cur = getInit(ev.store_id)
-            if (!ev.is_voided) {
-              cur.accepted += 1
-              cur.received += 1
-              const day = ev.accepted_at.slice(0, 10)
-              cur.daily[day] = (cur.daily[day] || 0) + 1
-              if (!cur.last || ev.accepted_at > cur.last) cur.last = ev.accepted_at
-            }
-          })
-        } else {
-          // Fallback 2: delivery_orders operacional
-          const { data: deliveryOrders } = await supabase
-            .from('delivery_orders')
-            .select('id, store_id, status, created_at')
-            .gte('created_at', startDate)
-            .lt('created_at', endDate)
-
-          if (deliveryOrders && deliveryOrders.length > 0) {
-            deliveryOrders.forEach((order: any) => {
-              const cur = getInit(order.store_id)
-              cur.received += 1
-              if (!cur.last || order.created_at > cur.last) cur.last = order.created_at
-              const st = (order.status || '').toLowerCase()
-              const isRejected = st === 'rejeitado' || st === 'recusado' || st === 'cancelled_by_restaurant'
-              const isCancelled = st === 'cancelado' || st === 'cancelled'
-              const isDelivered = st === 'entregue' || st === 'concluido' || st === 'finalizado'
-
-              if (isRejected) {
-                cur.rejected += 1
-              } else if (isCancelled) {
-                cur.cancelled += 1
-                cur.cancellations.push({
-                  order_ref: order.id,
-                  occurred_at: order.created_at,
-                  reason_category: 'outros',
-                })
-              } else {
-                cur.accepted += 1
-                const day = order.created_at.slice(0, 10)
-                cur.daily[day] = (cur.daily[day] || 0) + 1
-                if (isDelivered) cur.delivered += 1
-              }
-            })
-          }
-        }
-      }
-
-      setLifecycleEvents(storeCounts)
-    } catch {
-      // Falha suave
+    } catch (cause) {
+      if (request !== requestId.current) return
+      setLifecycleEvents({})
+      setTerms([])
+      setSourcesAvailable(false)
+      setLoadedCompetence('')
+      setLoadError(cause instanceof Error ? cause.message : 'Falha na apuração.')
     } finally {
-      setLoading(false)
+      if (request === requestId.current) setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    void loadOrderStats()
   }, [selectedCompetence])
 
-  // Montagem das linhas consolidadas por loja
-  const storeRows: OrderStoreRow[] = useMemo(() => {
-    const now = new Date().getTime()
-    const oneDayMs = 24 * 60 * 60 * 1000
+  const invalidatePending = useCallback(() => { requestId.current++ }, [])
+  useEffect(() => {
+    void loadOrderStats()
+    return invalidatePending
+  }, [loadOrderStats, invalidatePending])
 
-    return sites.map((site) => {
-      const planCode = site.plan_code || 'NOVAES_BUSINESS'
-      const matchedPlan = plans.find((p) => p.code === planCode)
-      const planConfig = planFranchises[planCode] || { franchise: null, name: planCode }
-
-      let franchise = planConfig.franchise
-      if (matchedPlan?.limits && typeof matchedPlan.limits['orders_monthly_limit'] === 'number') {
-        franchise = matchedPlan.limits['orders_monthly_limit']
-      }
-
-      const st = lifecycleEvents[site.id] || {
-        received: 0,
-        accepted: 0,
-        rejected: 0,
-        delivered: 0,
-        cancelled: 0,
-        hidden: 0,
-        last: null,
-        daily: {},
-        cancellations: [],
-      }
-
-      let sync_status: 'online' | 'synced' | 'pending' = 'pending'
-      if (st.last) {
-        const lastMs = new Date(st.last).getTime()
-        if (now - lastMs < oneDayMs) {
-          sync_status = 'online'
-        } else {
-          sync_status = 'synced'
-        }
-      }
-
-      return {
-        store_id: site.id,
-        store_name: site.name,
-        nx_id: site.nx_id,
-        plan_code: planCode,
-        plan_name: matchedPlan?.name || planConfig.name,
-        franchise_orders: franchise !== undefined ? franchise : null,
-        received_count: st.received,
-        accepted_count: st.accepted,
-        rejected_count: st.rejected,
-        delivered_count: st.delivered,
-        cancelled_count: st.cancelled,
-        hidden_count: st.hidden,
-        last_event_at: st.last,
-        sync_status,
-        daily_breakdown: st.daily,
-        cancellations: st.cancellations,
-      }
-    })
-  }, [sites, plans, lifecycleEvents])
+  const storeRows: OrderStoreRow[] = useMemo(() => sites.map((site) => {
+    const fresh = loadedCompetence === selectedCompetence && !loading
+    const st = fresh ? lifecycleEvents[site.id] || emptyOrderStats(sourcesAvailable) : emptyOrderStats()
+    const snapshot = terms.find((item) => item.store_id === site.id && item.competence === `${selectedCompetence}-01`)
+    const planCode = snapshot?.plan_code || site.plan_code || ''
+    const matchedPlan = plans.find((p) => p.code === planCode)
+    const datesConsistent = snapshot && Object.keys(st.daily).every((day) => day >= snapshot.activated_on)
+    const bill = billingForCompetence(selectedCompetence, st.accepted, st.sufficient && fresh && !!datesConsistent, snapshot)
+    return {
+      store_id: site.id, store_name: site.name, nx_id: site.nx_id,
+      plan_code: planCode, plan_name: planCode ? `${matchedPlan?.name || planCode}${snapshot ? '' : ' (plano atual; competência não confirmada)'}` : 'Plano não identificado',
+      franchise_orders: bill.franchise, overage_tariff: bill.tariff, overage_amount: bill.amount,
+      counts_sufficient: st.sufficient && fresh,
+      billing_sufficient: bill.amount !== null,
+      received_count: st.received, accepted_count: st.accepted, registered_count: st.registered,
+      rejected_count: st.rejected, delivered_count: st.delivered, cancelled_count: st.cancelled,
+      hidden_count: st.hidden, last_event_at: st.last,
+      sync_status: orderSyncStatus(st.last, fresh && !sourcesAvailable, Date.now(), site.status === 'active' ? site.integrations : undefined),
+      daily_breakdown: st.daily, cancellations: st.cancellations, corrections: st.corrections,
+    }
+  }), [sites, plans, lifecycleEvents, terms, loadedCompetence, selectedCompetence, sourcesAvailable, loading])
 
   // Filtros
   const filteredRows = useMemo(() => {
@@ -333,7 +182,8 @@ export function OrderControlManagement({
 
     if (statusFilter !== 'all') {
       result = result.filter((r) => {
-        if (r.franchise_orders === null || r.franchise_orders === 0) return statusFilter === 'normal'
+        if (!r.billing_sufficient || r.franchise_orders === null) return false
+        if (r.franchise_orders === 0) return statusFilter === (r.accepted_count > 0 ? 'overage' : 'normal')
         const pct = (r.accepted_count / r.franchise_orders) * 100
         if (statusFilter === 'normal') return pct < 80
         if (statusFilter === 'warning') return pct >= 80 && pct < 100
@@ -345,11 +195,6 @@ export function OrderControlManagement({
 
     return result
   }, [storeRows, searchQuery, statusFilter])
-
-  function getOverageTariff(planCode: string): number {
-    if (planCode === 'NOVAES_PREMIUM') return 0.15
-    return 0.2
-  }
 
   const formatCurrency = (reais: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(reais)
@@ -363,15 +208,15 @@ export function OrderControlManagement({
     let totalOverageValue = 0
 
     storeRows.forEach((r) => {
-      totalAccepted += r.accepted_count
+      if (r.counts_sufficient) totalAccepted += r.accepted_count
+      if (!r.billing_sufficient) return
       if (r.franchise_orders !== null && r.franchise_orders > 0) {
         const pct = (r.accepted_count / r.franchise_orders) * 100
         if (pct < 80) normalCount += 1
         if (pct >= 80 && pct <= 100) warningCount += 1
         if (pct > 100) {
           overageCount += 1
-          const over = r.accepted_count - r.franchise_orders
-          totalOverageValue += over * getOverageTariff(r.plan_code)
+          totalOverageValue += r.overage_amount ?? 0
         }
       } else {
         normalCount += 1
@@ -398,7 +243,8 @@ export function OrderControlManagement({
       'Competência',
       'Franquia Mensal',
       'Recebidos',
-      'Aceitos (Faturável)',
+      'Aceites registrados',
+      'Aceites não anulados (apuração provisória)',
       'Rejeitados',
       'Entregues',
       'Cancelados',
@@ -410,27 +256,28 @@ export function OrderControlManagement({
     ]
 
     const rows = filteredRows.map((r) => {
-      const overage = r.franchise_orders && r.accepted_count > r.franchise_orders ? r.accepted_count - r.franchise_orders : 0
-      const tariff = getOverageTariff(r.plan_code)
-      const overageValue = overage * tariff
+      const overage = r.franchise_orders !== null && r.accepted_count > r.franchise_orders ? r.accepted_count - r.franchise_orders : 0
+      const tariff = r.overage_tariff
+      const overageValue = r.overage_amount
 
       return [
-        `"${r.store_name.replace(/"/g, '""')}"`,
-        `"${r.nx_id}"`,
-        `"${r.plan_name}"`,
-        `"${competenceLabel}"`,
-        r.franchise_orders ?? 'Sem limite',
-        r.received_count,
-        r.accepted_count,
-        r.rejected_count,
-        r.delivered_count,
-        r.cancelled_count,
-        r.hidden_count,
-        overage,
-        tariff.toFixed(2).replace('.', ','),
-        overageValue.toFixed(2).replace('.', ','),
-        r.sync_status === 'online' ? 'Online' : r.sync_status === 'synced' ? 'Sincronizado' : 'Pendente',
-      ].join(';')
+        r.store_name,
+        r.nx_id,
+        r.plan_name,
+        competenceLabel,
+        r.franchise_orders ?? INSUFFICIENT_BILLING,
+        r.counts_sufficient ? r.received_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.registered_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.accepted_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.rejected_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.delivered_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.cancelled_count : 'Dados insuficientes',
+        r.counts_sufficient ? r.hidden_count : 'Dados insuficientes',
+        r.billing_sufficient ? overage : INSUFFICIENT_BILLING,
+        tariff === null ? INSUFFICIENT_BILLING : tariff.toFixed(2).replace('.', ','),
+        overageValue === null ? INSUFFICIENT_BILLING : overageValue.toFixed(2).replace('.', ','),
+        syncLabels[r.sync_status],
+      ].map(orderCsvCell).join(';')
     })
 
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n')
@@ -438,10 +285,11 @@ export function OrderControlManagement({
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `fechamento_pedidos_${selectedCompetence}.csv`)
+    link.setAttribute('download', `apuracao_provisoria_pedidos_${selectedCompetence}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const competenceLabel =
@@ -449,6 +297,7 @@ export function OrderControlManagement({
 
   return (
     <div className="order-control-container independent-order-portal">
+      <p role="status">Apuração provisória. {loadError || 'Cobrança depende da conferência dos eventos e das condições aprovadas para cada competência.'} Nenhum pedido é bloqueado por franquia.</p>
       {/* Tarja de Identidade e Privacidade (Documento 09) */}
       <div className="independent-portal-header">
         <div className="portal-brand-block">
@@ -462,7 +311,7 @@ export function OrderControlManagement({
         <div className="portal-privacy-tag">
           <ShieldCheck size={16} />
           <span>
-            <b>Privacidade Total (Documento 09):</b> Zero acesso a faturamento, valores de pratos, carrinhos ou
+            <b>Privacidade desta tela:</b> A apuração não consulta a faturamento, valores de pratos, carrinhos ou
             dados pessoais de consumidores.
           </span>
         </div>
@@ -496,13 +345,16 @@ export function OrderControlManagement({
                   </option>
                 ))}
               </select>
+              <input aria-label="Outra competência" type="month" value={selectedCompetence}
+                onChange={(event) => { if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) setSelectedCompetence(event.target.value) }} disabled={loading} />
             </label>
 
             <button
               type="button"
               className="secondary-button"
               onClick={exportCsv}
-              title="Baixar planilha CSV com o fechamento do mês (PED-10 e Documento 09)"
+              disabled={loading || loadedCompetence !== selectedCompetence}
+              title="Baixar CSV de apuração provisória; não representa fatura ou fechamento autorizado"
             >
               <Download size={14} />
               <span>Exportar CSV</span>
@@ -536,9 +388,9 @@ export function OrderControlManagement({
             <span className="kpi-label">Pedidos Aceitos no Mês</span>
             <div className="kpi-value-row">
               <TrendingUp size={20} className="kpi-icon text-emerald" />
-              <strong className="kpi-value text-emerald">{kpis.totalAccepted}</strong>
+              <strong className="kpi-value text-emerald">{storeRows.some((row) => row.counts_sufficient) ? kpis.totalAccepted : '—'}</strong>
             </div>
-            <small className="kpi-detail">Base de cálculo de franquias</small>
+            <small className="kpi-detail">{storeRows.some((row) => !row.counts_sufficient) ? "Total parcial — há fontes insuficientes" : "Aceites não anulados consultados"}</small>
           </div>
 
           <div className="order-kpi-card">
@@ -569,12 +421,12 @@ export function OrderControlManagement({
           </div>
 
           <div className="order-kpi-card">
-            <span className="kpi-label">Excedente Faturável Software</span>
+            <span className="kpi-label">Excedente estimado de software</span>
             <div className="kpi-value-row">
               <CircleDollarSign size={20} className="kpi-icon text-red" />
-              <strong className="kpi-value text-red">{formatCurrency(kpis.totalOverageValue)}</strong>
+              <strong className="kpi-value text-red">{storeRows.some((row) => row.billing_sufficient) ? formatCurrency(kpis.totalOverageValue) : '—'}</strong>
             </div>
-            <small className="kpi-detail">Tarifa software da NovaesWeb</small>
+            <small className="kpi-detail">{storeRows.some((row) => !row.billing_sufficient) ? "Total parcial — há lojas sem dados suficientes" : "Estimativa da NovaesWeb para o mês seguinte"}</small>
           </div>
         </div>
 
@@ -653,9 +505,9 @@ export function OrderControlManagement({
               {filteredRows.map((row) => {
                 const franchise = row.franchise_orders
                 const accepted = row.accepted_count
-                const pct = franchise && franchise > 0 ? Math.min(Math.round((accepted / franchise) * 100), 100) : 0
-                const overage = franchise && accepted > franchise ? accepted - franchise : 0
-                const tariff = getOverageTariff(row.plan_code)
+                const pct = franchise && franchise > 0 ? Math.min(Math.floor((accepted / franchise) * 100), 100) : 0
+                const overage = franchise !== null && accepted > franchise ? accepted - franchise : 0
+                const tariff = row.overage_tariff ?? 0
 
                 let statusBadge = (
                   <span className="order-status-tag normal">
@@ -688,16 +540,10 @@ export function OrderControlManagement({
                           <small className="store-nx-code">{row.nx_id}</small>
                           <span
                             className={`sync-indicator ${row.sync_status}`}
-                            title={
-                              row.sync_status === 'online'
-                                ? 'Sincronizado recentemente (online)'
-                                : row.sync_status === 'synced'
-                                ? 'Sincronizado nesta competência'
-                                : 'Sem eventos registrados nesta competência'
-                            }
+                            title={`${syncLabels[row.sync_status]}. Check-in do site não comprova completude dos eventos para cobrança.`}
                           >
                             <span className="sync-dot" />
-                            {row.sync_status === 'online' ? 'Online' : row.sync_status === 'synced' ? 'Sync' : 'Pendente'}
+                            {syncLabels[row.sync_status]}
                           </span>
                         </div>
                       </div>
@@ -710,32 +556,32 @@ export function OrderControlManagement({
                           {row.plan_name}
                         </span>
                         <small className="text-muted">
-                          {franchise ? `${franchise} pedidos/mês` : 'Institucional'}
+                          {franchise !== null ? `${franchise} pedidos/mês` : row.plan_code === 'NOVAES_START' ? 'Institucional, sem pedidos' : INSUFFICIENT_BILLING}
                         </small>
                       </div>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
-                      <span className="number-cell-val text-muted">{row.received_count}</span>
+                      <span className="number-cell-val text-muted">{row.counts_sufficient ? row.received_count : '—'}</span>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
                       <span className="number-cell-val text-emerald">
-                        <b>{row.accepted_count}</b>
+                        <b>{row.counts_sufficient ? row.accepted_count : '—'}</b>
                       </span>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
-                      <span className="number-cell-val text-muted">{row.rejected_count}</span>
+                      <span className="number-cell-val text-muted">{row.counts_sufficient ? row.rejected_count : '—'}</span>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
-                      <span className="number-cell-val text-muted">{row.delivered_count}</span>
+                      <span className="number-cell-val text-muted">{row.counts_sufficient ? row.delivered_count : '—'}</span>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
                       <span className={`number-cell-val ${row.cancelled_count > 0 ? 'text-amber' : 'text-muted'}`}>
-                        {row.cancelled_count}
+                        {row.counts_sufficient ? row.cancelled_count : '—'}
                       </span>
                     </td>
 
@@ -761,19 +607,19 @@ export function OrderControlManagement({
                           {overage > 0 && (
                             <div className="overage-fee-calc">
                               <span className="overage-billing-badge">
-                                Software: <b>{formatCurrency(overage * tariff)}</b> ({overage} × {formatCurrency(tariff)})
+                                Estimativa de software: <b>{formatCurrency(overage * tariff)}</b> ({overage} × {formatCurrency(tariff)})
                               </span>
                             </div>
                           )}
 
-                          {row.plan_code === 'NOVAES_BUSINESS' && accepted >= 740 && (
+                          {row.billing_sufficient && row.plan_code === 'NOVAES_BUSINESS' && accepted >= 740 && (
                             <div className="upgrade-suggestion-banner" title="Ponto de equilíbrio atingido: 340 franquia + 400 excedentes = R$ 270 (mesmo valor do Premium com 750 pedidos)">
                               💡 <b>Dica Comercial:</b> Upgrade Premium
                             </div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-muted text-xs">Sem delivery</span>
+                        <span className="text-muted text-xs">{row.plan_code === 'NOVAES_START' ? 'Plano institucional, sem pedidos incluídos' : INSUFFICIENT_BILLING}</span>
                       )}
                     </td>
 
@@ -820,7 +666,7 @@ export function OrderControlManagement({
       </section>
 
       {/* MODAL / PÁGINA DE DETALHES POR ESTABELECIMENTO (Documento 09 - Seção 2) */}
-      {selectedStoreDetail && (
+      {selectedStoreDetail && loadedCompetence === selectedCompetence && !loading && (
         <div className="modal-backdrop" onClick={() => setSelectedStoreDetail(null)}>
           <div className="store-detail-modal expanded-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -891,6 +737,7 @@ export function OrderControlManagement({
             </div>
 
             <div className="modal-body">
+              {!selectedStoreDetail.billing_sufficient && <p role="alert">{INSUFFICIENT_BILLING}. Os registros consultados não representam um fechamento autorizado.</p>}
               {/* ABA 1: RESUMO DO CONSUMO */}
               {detailTab === 'consumption' && (
                 <div className="tab-pane-content">
@@ -898,39 +745,39 @@ export function OrderControlManagement({
                     <div className="modal-stat-box">
                       <span className="stat-label">Franquia do Plano</span>
                       <strong className="stat-val">
-                        {selectedStoreDetail.franchise_orders ?? 'Sem limite'}
+                        {selectedStoreDetail.franchise_orders ?? INSUFFICIENT_BILLING}
                       </strong>
                     </div>
 
                     <div className="modal-stat-box">
                       <span className="stat-label">Recebidos</span>
-                      <strong className="stat-val text-muted">{selectedStoreDetail.received_count}</strong>
+                      <strong className="stat-val text-muted">{selectedStoreDetail.counts_sufficient ? selectedStoreDetail.received_count : '—'}</strong>
                     </div>
 
                     <div className="modal-stat-box">
-                      <span className="stat-label">Aceitos (Faturáveis)</span>
-                      <strong className="stat-val text-emerald">{selectedStoreDetail.accepted_count}</strong>
+                      <span className="stat-label">Aceites não anulados (provisório)</span>
+                      <strong className="stat-val text-emerald">{selectedStoreDetail.counts_sufficient ? selectedStoreDetail.accepted_count : '—'}</strong>
                     </div>
 
                     <div className="modal-stat-box">
                       <span className="stat-label">Rejeitados</span>
-                      <strong className="stat-val text-muted">{selectedStoreDetail.rejected_count}</strong>
+                      <strong className="stat-val text-muted">{selectedStoreDetail.counts_sufficient ? selectedStoreDetail.rejected_count : '—'}</strong>
                     </div>
 
                     <div className="modal-stat-box">
                       <span className="stat-label">Pedidos Excedentes</span>
                       <strong
                         className={`stat-val ${
-                          selectedStoreDetail.franchise_orders &&
+                          selectedStoreDetail.franchise_orders !== null &&
                           selectedStoreDetail.accepted_count > selectedStoreDetail.franchise_orders
                             ? 'text-red'
                             : 'text-emerald'
                         }`}
                       >
-                        {selectedStoreDetail.franchise_orders &&
+                        {selectedStoreDetail.franchise_orders !== null &&
                         selectedStoreDetail.accepted_count > selectedStoreDetail.franchise_orders
                           ? `+${selectedStoreDetail.accepted_count - selectedStoreDetail.franchise_orders}`
-                          : '0 (Na franquia)'}
+                          : selectedStoreDetail.billing_sufficient ? '0 (Na franquia)' : INSUFFICIENT_BILLING}
                       </strong>
                     </div>
 
@@ -938,29 +785,26 @@ export function OrderControlManagement({
                       <span className="stat-label">Tarifa Excedente Software</span>
                       <strong
                         className={`stat-val ${
-                          selectedStoreDetail.franchise_orders &&
+                          selectedStoreDetail.franchise_orders !== null &&
                           selectedStoreDetail.accepted_count > selectedStoreDetail.franchise_orders
                             ? 'text-red'
                             : 'text-muted'
                         }`}
                       >
-                        {selectedStoreDetail.franchise_orders &&
+                        {selectedStoreDetail.franchise_orders !== null &&
                         selectedStoreDetail.accepted_count > selectedStoreDetail.franchise_orders
-                          ? formatCurrency(
-                              (selectedStoreDetail.accepted_count - selectedStoreDetail.franchise_orders) *
-                                getOverageTariff(selectedStoreDetail.plan_code)
-                            )
-                          : 'R$ 0,00'}
+                          ? formatCurrency(selectedStoreDetail.overage_amount ?? 0)
+                          : selectedStoreDetail.billing_sufficient ? 'R$ 0,00' : INSUFFICIENT_BILLING}
                       </strong>
                     </div>
                   </div>
 
-                  {selectedStoreDetail.plan_code === 'NOVAES_BUSINESS' &&
+                  {selectedStoreDetail.billing_sufficient && selectedStoreDetail.plan_code === 'NOVAES_BUSINESS' &&
                     selectedStoreDetail.accepted_count >= 740 && (
                       <div className="upgrade-alert-box">
                         <TrendingUp size={20} className="text-amber" />
                         <div>
-                          <strong>Ponto de Equilíbrio Comercial Atingido ({selectedStoreDetail.accepted_count} pedidos)</strong>
+                          <strong>Ponto de Equilíbrio Comercial Atingido ({selectedStoreDetail.counts_sufficient ? selectedStoreDetail.accepted_count : '—'} pedidos)</strong>
                           <p>
                             340 pedidos inclusos + {selectedStoreDetail.accepted_count - 340} excedentes a R$ 0,20
                             totalizam custo adicional equivalente ou superior à mensalidade do <b>Plano Premium</b> (R$ 270,00 com 750 inclusos e excedente a R$ 0,15).
@@ -1040,7 +884,7 @@ export function OrderControlManagement({
                                 </td>
                                 <td>
                                   <span className="text-xs text-muted">
-                                    {new Date(c.occurred_at).toLocaleString('pt-BR')}
+                                    {new Date(c.occurred_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                   </span>
                                 </td>
                                 <td>
@@ -1058,7 +902,7 @@ export function OrderControlManagement({
                       <div className="empty-daily-box">
                         <CheckCircle2 size={24} className="text-emerald" />
                         <strong>Nenhum cancelamento registrado nesta competência</strong>
-                        <small>Operação 100% regular sem perdas operacionais informadas.</small>
+                        <small>A ausência de eventos não comprova operação regular ou sincronização.</small>
                       </div>
                     )}
                   </div>
@@ -1075,6 +919,8 @@ export function OrderControlManagement({
                       para auditoria contratual, sem retenção de dados pessoais desnecessários.
                     </p>
 
+                    <p>Aceites registrados: {selectedStoreDetail.registered_count}. Aceites não anulados: {selectedStoreDetail.counts_sufficient ? selectedStoreDetail.accepted_count : '—'}. Correções aprovadas: {selectedStoreDetail.corrections.length}.</p>
+                    {selectedStoreDetail.corrections.map((correction) => <p key={correction.order_ref}>Pedido técnico {correction.order_ref}: {correction.reason} · aprovação {correction.approved_at ? new Date(correction.approved_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'não comprovada'}</p>)}
                     <div className="audit-info-cards">
                       <div className="audit-info-card">
                         <Clock size={16} className="text-brand-purple" />
@@ -1082,7 +928,7 @@ export function OrderControlManagement({
                           <strong>Último Evento Registrado</strong>
                           <p>
                             {selectedStoreDetail.last_event_at
-                              ? new Date(selectedStoreDetail.last_event_at).toLocaleString('pt-BR')
+                              ? new Date(selectedStoreDetail.last_event_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
                               : 'Nenhum evento registrado ainda'}
                           </p>
                         </div>
@@ -1092,7 +938,7 @@ export function OrderControlManagement({
                         <ShieldCheck size={16} className="text-emerald" />
                         <div>
                           <strong>Integridade da Deduplicação</strong>
-                          <p>Restrição única ativa no banco: (store_id, order_ref, event_type). Reenvios ignorados.</p>
+                          <p>O código SQL prevê chaves únicas por loja e pedido. Implantação e concorrência no banco ainda precisam de validação.</p>
                         </div>
                       </div>
                     </div>
@@ -1113,7 +959,7 @@ export function OrderControlManagement({
       )}
 
       {/* MODAL SIMULADOR: VISÃO DO LOJISTA (Configurações → Meu Plano → Consumo de Pedidos) */}
-      {clientSimulationStore && (
+      {clientSimulationStore && loadedCompetence === selectedCompetence && !loading && (
         <div className="modal-backdrop" onClick={() => setClientSimulationStore(null)}>
           <div className="client-simulation-modal" onClick={(e) => e.stopPropagation()}>
             <div className="sim-modal-header">
@@ -1147,6 +993,8 @@ export function OrderControlManagement({
                   competence_label: competenceLabel,
                   franchise_orders: clientSimulationStore.franchise_orders,
                   accepted_count: clientSimulationStore.accepted_count,
+                  billing_sufficient: clientSimulationStore.billing_sufficient,
+                  overage_tariff: clientSimulationStore.overage_tariff,
                   rejected_count: clientSimulationStore.rejected_count,
                   delivered_count: clientSimulationStore.delivered_count,
                   cancelled_count: clientSimulationStore.cancelled_count,

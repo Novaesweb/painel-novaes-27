@@ -1,0 +1,67 @@
+[
+  {
+    "slug": "novaesweb-admin",
+    "version": 7,
+    "sha256": "c780482f3bbc939516e4ac649fd86b5ea35905754791dc1bea94ad38f0de5b94"
+  },
+  {
+    "slug": "novaesweb-master-sites",
+    "version": 11,
+    "sha256": "f665cf222f41ee4a426553a04447bb66fb1a4aad946f0f2f24a5c252dedd5a5e"
+  },
+  {
+    "slug": "novaesweb-site-status",
+    "version": 8,
+    "sha256": "e20740b3bff145d532d4bcd7f5ad2d19e09ab2198986a4c2883472af21ba4b97"
+  },
+  {
+    "slug": "novaesweb-site-register",
+    "version": 3,
+    "sha256": "8bd05ddf7b8a495269da4f53445d2bdb821ebb4c5b6884f4d09df7bf6e38ce27"
+  },
+  {
+    "slug": "novaesweb-master-operations",
+    "version": 6,
+    "sha256": "6221e6d64ac3a8297c94e4868ff5ebae43027aaf79aa43edcfbe3206a03f1b29"
+  },
+  {
+    "slug": "novaesweb-lead-intake",
+    "version": 3,
+    "sha256": "2a009a3102516fa1e9405fef49c7043199dade2b301aa63643d2024059db2fc2"
+  },
+  {
+    "slug": "novaesweb-addons-admin",
+    "version": 2,
+    "sha256": "395864fbb70d7e3cef98b3f3a5a3be213c6e93a72b29595ee0aac1f0fbe0147d"
+  },
+  {
+    "slug": "novaesweb-addon-checkin",
+    "version": 2,
+    "sha256": "03c5fab99054f494fcbc5ee4f450acf5f7438ea019415b85ba36f105ea108d36"
+  },
+  {
+    "slug": "novaesweb-push",
+    "version": 3,
+    "sha256": "fbc5ccb46110270b4a076058dedde73799be4c4d03469ce554627b9b4e77c669"
+  },
+  {
+    "slug": "novaesweb-auth-gateway",
+    "version": 2,
+    "sha256": "08c33ed39d5203dcaebf02e6c488c85a81c907cec7ea4b1d2438a70783d5b279"
+  },
+  {
+    "slug": "novaesweb-master-security",
+    "version": 2,
+    "sha256": "c04ede00ee1b6dc9bb1f86ce1252ee5c84058a39ac7c97fc168b1a7b1f33cf74"
+  },
+  {
+    "slug": "novaesweb-master-plans",
+    "version": 1,
+    "sha256": "c91d807112968a798b1de829d89072724622ead1c6056b4791ae741666a286b4"
+  },
+  {
+    "slug": "novaesweb-public-plans",
+    "version": 1,
+    "sha256": "09bf6401630b78860c041cf688480d12efca1b9563d15a239d170990664cd6df"
+  }
+]

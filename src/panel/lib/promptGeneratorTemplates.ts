@@ -466,35 +466,57 @@ export const INITIAL_PROMPT_TEMPLATES: PromptTemplateModel[] = [
   },
 ]
 
-// Carrega templates persistidos no localStorage ou padrão
+export const PROMPT_STORAGE_KEY = 'novaesweb_prompt_templates_v1'
+export const PROMPT_HISTORY_KEY = 'novaesweb_prompt_templates_history_v1'
+
+export function validPromptTemplates(value: unknown): value is PromptTemplateModel[] {
+  if (!Array.isArray(value) || value.length !== 3) return false
+  return INITIAL_PROMPT_TEMPLATES.every((base) => value.filter((item) => item?.id === base.id).length === 1) &&
+    value.every((item) => item && typeof item === 'object' &&
+      ['id', 'planCode', 'defaultName', 'displayName', 'description', 'creationPrice', 'monthlyPrice', 'supportPrice', 'templateText', 'updatedAt', 'updatedBy'].every((key) => typeof item[key] === 'string') &&
+      item.limits && ['products', 'admins', 'monthlyOrders', 'overageFee'].every((key) => typeof item.limits[key] === 'string') &&
+      Array.isArray(item.includedFeatures) && item.includedFeatures.every((text: unknown) => typeof text === 'string') &&
+      Array.isArray(item.excludedFeatures) && item.excludedFeatures.every((text: unknown) => typeof text === 'string'))
+}
+
 export function loadPromptTemplates(): PromptTemplateModel[] {
   try {
-    const raw = localStorage.getItem('novaesweb_prompt_templates_v1')
+    const raw = localStorage.getItem(PROMPT_STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length === 3) {
-        return parsed
-      }
+      const parsed: unknown = JSON.parse(raw)
+      if (validPromptTemplates(parsed)) return parsed
     }
-  } catch {
-    // fallback
-  }
-  return INITIAL_PROMPT_TEMPLATES
+  } catch { /* Manter o conteúdo original, mesmo se estiver inválido ou inacessível. */ }
+  return structuredClone(INITIAL_PROMPT_TEMPLATES)
 }
 
-// Salva templates modificados
+// Salvar só informa sucesso depois da gravação. Preserva até 20 versões locais anteriores.
 export function savePromptTemplates(templates: PromptTemplateModel[]): void {
-  try {
-    localStorage.setItem('novaesweb_prompt_templates_v1', JSON.stringify(templates))
-  } catch {
-    // fallback
+  if (!validPromptTemplates(templates)) throw new Error('Os três modelos precisam ser válidos e ter IDs distintos.')
+  const previous = localStorage.getItem(PROMPT_STORAGE_KEY)
+  if (previous) {
+    const parsed: unknown = JSON.parse(previous)
+    if (!validPromptTemplates(parsed)) throw new Error('Há personalizações locais inválidas. Exporte o conteúdo antes de substituir.')
+    const history: unknown = JSON.parse(localStorage.getItem(PROMPT_HISTORY_KEY) || '[]')
+    if (!Array.isArray(history)) throw new Error('Histórico local inválido. Preserve uma cópia antes de alterar.')
+    localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify([...history, { savedAt: new Date().toISOString(), templates: parsed }].slice(-20)))
   }
+  localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(templates))
 }
 
-// Restaura templates para a versão padrão de fábrica
+export function restorePreviousPromptTemplates(): PromptTemplateModel[] {
+  const history: unknown = JSON.parse(localStorage.getItem(PROMPT_HISTORY_KEY) || '[]')
+  if (!Array.isArray(history) || !history.length) throw new Error('Não há versão local anterior disponível.')
+  const previous = history[history.length - 1]?.templates
+  if (!validPromptTemplates(previous)) throw new Error('Versão local anterior inválida.')
+  savePromptTemplates(previous)
+  return previous
+}
+
 export function resetPromptTemplates(): PromptTemplateModel[] {
-  savePromptTemplates(INITIAL_PROMPT_TEMPLATES)
-  return INITIAL_PROMPT_TEMPLATES
+  const defaults = structuredClone(INITIAL_PROMPT_TEMPLATES)
+  savePromptTemplates(defaults)
+  return defaults
 }
 
 // Diretrizes específicas por segmento (Seção 7 do Briefing)

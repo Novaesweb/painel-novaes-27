@@ -3,27 +3,8 @@ import { BadgeCheck, Building2, Check, CircleDollarSign, Clock3, Edit3, Layers3,
 import { supabase } from '../lib/supabase'
 import './AddonsPage.css'
 
-export const OFFICIAL_19_ADDONS = [
-  { code: 'ADD-01', internalCode: 'novaes_fideliza', name: 'Novaes Fideliza', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 50, billing: 'monthly', description: 'Programa de pontos, benefícios e recompensas para clientes recorrentes.' },
-  { code: 'ADD-02', internalCode: 'novaes-gift', name: 'Novaes Gift', category: 'fidelidade', categoryLabel: 'Fidelização', price: 25, setup: 40, billing: 'monthly', description: 'Emissão e resgate de cartões-presente e vouchers digitais com saldo.' },
-  { code: 'ADD-03', internalCode: 'novaes-promo', name: 'Novaes Promo', category: 'vendas', categoryLabel: 'Vendas & Marketing', price: 15, setup: 30, billing: 'monthly', description: 'Campanhas promocionais com banners, combos e ofertas no site.' },
-  { code: 'ADD-04', internalCode: 'novaes-marketing', name: 'Novaes Marketing', category: 'vendas', categoryLabel: 'Vendas & Marketing', price: 35, setup: 50, billing: 'monthly', description: 'Links rastreáveis, campanhas segmentadas e métricas de canais.' },
-  { code: 'ADD-05', internalCode: 'novaes-grupo', name: 'Novaes Pedido em Grupo', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 19, setup: 40, billing: 'monthly', description: 'Link compartilhável para pedidos coletivos entre amigos e colegas.' },
-  { code: 'ADD-06', internalCode: 'novaes-mesa', name: 'Novaes Mesa', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 39, setup: 60, billing: 'monthly', description: 'Cardápio digital via QR Code nas mesas integrado ao painel da cozinha.' },
-  { code: 'ADD-07', internalCode: 'novaes-tv', name: 'Novaes TV', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 25, setup: 40, billing: 'monthly', description: 'Painel em tela cheia para monitor ou TV com pedidos na cozinha ou vitrine.' },
-  { code: 'ADD-08', internalCode: 'novaes-whatsapp-notify', name: 'Novaes WhatsApp Notify', category: 'vendas', categoryLabel: 'Vendas & Atendimento', price: 25, setup: 50, billing: 'monthly', description: 'Notificações automáticas de status de pedido via WhatsApp para o cliente.' },
-  { code: 'ADD-09', internalCode: 'novaes-360', name: 'Novaes 360°', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 40, billing: 'monthly', description: 'Visão unificada do consumidor com histórico de compras e preferências.' },
-  { code: 'ADD-10', internalCode: 'novaes-finance', name: 'Novaes Finance', category: 'gestao', categoryLabel: 'Gestão Financeira', price: 30, setup: 50, billing: 'monthly', description: 'Controle operacional de receitas, despesas e conciliação de recebíveis.' },
-  { code: 'ADD-11', internalCode: 'novaes-insights', name: 'Novaes Insights', category: 'gestao', categoryLabel: 'Gestão & Relatórios', price: 20, setup: 30, billing: 'monthly', description: 'Relatórios de vendas, itens populares, horários de pico e ticket médio.' },
-  { code: 'ADD-12', internalCode: 'novaes-commerce-insights', name: 'Novaes Commerce Insights', category: 'gestao', categoryLabel: 'Gestão & Relatórios', price: 39, setup: 60, billing: 'monthly', description: 'Análises preditivas avançadas de giro de cardápio e sazonalidade.' },
-  { code: 'ADD-13', internalCode: 'novaes-voz', name: 'Novaes Voz do Cliente', category: 'fidelidade', categoryLabel: 'Fidelização', price: 29, setup: 40, billing: 'monthly', description: 'Pesquisa de satisfação pós-entrega (NPS) e moderação de avaliações.' },
-  { code: 'ADD-14', internalCode: 'novaes-os', name: 'Novaes OS', category: 'gestao', categoryLabel: 'Gestão Operacional', price: 39, setup: 50, billing: 'monthly', description: 'Gestão de Ordens de Serviço com etapas, técnicos responsáveis e prazos.' },
-  { code: 'ADD-15', internalCode: 'novaes-equipe', name: 'Novaes Equipe', category: 'gestao', categoryLabel: 'Gestão de Pessoas', price: 20, setup: 30, billing: 'monthly', description: 'Escalas de funcionários, turnos e permissões de acesso da equipe.' },
-  { code: 'ADD-16', internalCode: 'novaes-multiusuario', name: 'Novaes Multiusuário', category: 'escala', categoryLabel: 'Escala & Infra', price: 15, setup: 20, billing: 'monthly', description: 'Pack de +3 acessos administrativos extras com login independente.' },
-  { code: 'ADD-17', internalCode: 'novaes-multiunidade', name: 'Novaes Multiunidade', category: 'escala', categoryLabel: 'Escala & Infra', price: 39, setup: 70, billing: 'monthly', description: 'Gestão de filial adicional integrada com cardápios independentes.' },
-  { code: 'ADD-18', internalCode: 'novaes-backup-plus', name: 'Novaes Backup Plus', category: 'escala', categoryLabel: 'Escala & Infra', price: 19, setup: 0, billing: 'monthly', description: 'Retenção estendida de backups sem substituir os backups essenciais de segurança.' },
-  { code: 'ADD-19', internalCode: 'novaes-import', name: 'Novaes Import', category: 'escala', categoryLabel: 'Escala & Infra', price: 49, setup: 49, billing: 'one_time', description: 'Importação assistida e saneamento de cardápios/planilhas em carga única.' },
-]
+import { OFFICIAL_19_ADDONS, officialAddon, addonCommercialPending, validateAddonCommercial } from '../lib/addonCommercialRules'
+export { OFFICIAL_19_ADDONS } from '../lib/addonCommercialRules'
 
 type CatalogAddon = {
   id: string; code: string; name: string; summary: string; description: string; icon: string; category: string
@@ -111,23 +92,31 @@ export function AddonsPage() {
   function changeDraft<K extends keyof Draft>(key: K, value: Draft[K]) { setEditing((current) => current ? { ...current, [key]: value } : current) }
   async function saveDraft(event: React.FormEvent) {
     event.preventDefault(); if (!editing) return
+    const approved = officialAddon(editing)
+    const duplicate = data.addons.find((addon) => addon.id !== editing.id && (addon.code === editing.code || (approved && officialAddon(addon)?.code === approved.code)))
+    if (duplicate) { setError('Já existe um adicional correspondente. Edite o registro existente para preservar ID e código.'); return }
+    if (approved?.code === 'ADD-18' && (editing.price !== null || editing.billing_type !== 'quote')) { setError('Backup Plus: preço e escopo pendentes. Use Sob orçamento, sem preço.'); return }
     const published = editing.is_visible && editing.is_active && editing.development_status !== 'unavailable'
     await mutate('save_catalog', { addon: { ...editing, price: ['quote', 'free'].includes(editing.billing_type) ? null : editing.price } }, published
       ? 'Salvo no catálogo central. Lojas compatíveis poderão encontrá-lo em Adicionais.'
       : 'Adicional salvo. Ele ficará fora do catálogo das lojas enquanto estiver oculto, inativo ou indisponível.')
   }
   async function review(item: Request, status: string) {
+    if (status === 'approved' && addonCommercialPending(item.addon)) { setError('Preço e escopo pendentes de aprovação.'); return }
     let reason: string | undefined
     if (status === 'rejected') { reason = window.prompt('Informe a justificativa da recusa:')?.trim(); if (!reason) return }
     await mutate('review_request', { request_id: item.id, status, ...(reason ? { reason } : {}) }, `Solicitação atualizada: ${statuses[status]}.`)
   }
   async function confirmCommercial(item: Request) {
-    const priceDefault = item.approved_price ?? item.addon?.price ?? 0
+    if (addonCommercialPending(item.addon)) { setError('Preço e escopo pendentes de aprovação.'); return }
+    const priceDefault = officialAddon(item.addon!)?.price ?? item.approved_price ?? item.addon?.price ?? 0
     const priceText = window.prompt('Preço acordado (R$):', String(priceDefault).replace('.', ','))
     if (priceText === null) return
-    const feeText = window.prompt('Taxa de implantação (R$):', String(item.setup_fee ?? item.addon?.setup_fee ?? 0).replace('.', ','))
+    const feeText = window.prompt('Taxa de implantação (R$):', String(0).replace('.', ','))
     if (feeText === null) return
     const toAmount = (value: string) => Number(value.replace(',', '.'))
+    const issue = validateAddonCommercial(item.addon!, toAmount(priceText), toAmount(feeText), item.addon!.billing_type)
+    if (issue) { setError(issue); return }
     await mutate('confirm_commercial', { request_id: item.id, approved_price: toAmount(priceText), setup_fee: toAmount(feeText) }, 'Condições comerciais registradas. Ative tecnicamente apenas após a confirmação do cliente.')
   }
   async function setSiteType(site: Site, site_type: string) {
@@ -135,7 +124,7 @@ export function AddonsPage() {
   }
   async function activateForSite(site: Site, currentAssignments: Assignment[]) {
     const installedAddonIds = new Set(data.installations.filter((item) => item.store_id === site.id && item.technical_status === 'available').map((item) => item.addon_id))
-    const options = data.addons.filter((addon) => addon.is_active && addon.development_status === 'ready'
+    const options = data.addons.filter((addon) => addon.is_active && addon.development_status === 'ready' && !addonCommercialPending(addon)
       && installedAddonIds.has(addon.id)
       && (addon.compatible_site_types.includes('*') || (site.site_type !== null && addon.compatible_site_types.includes(site.site_type)))
       && !currentAssignments.some((assignment) => assignment.addon_id === addon.id && assignment.status === 'active'))
@@ -144,16 +133,18 @@ export function AddonsPage() {
     if (choice === null) return
     const addon = options[Number(choice) - 1]
     if (!addon) { window.alert('Opção inválida.'); return }
-    const initialPrice = addon.price == null ? '' : String(addon.price).replace('.', ',')
+    const initialPrice = String(officialAddon(addon)?.price ?? addon.price ?? '').replace('.', ',')
     const priceText = window.prompt(`Preço comercial acordado para ${addon.name} (R$). Deixe vazio somente para Sob orçamento ou Gratuito.`, initialPrice)
     if (priceText === null) return
     const contractedPrice = priceText.trim() === '' ? null : Number(priceText.replace(',', '.'))
     if (contractedPrice !== null && (!Number.isFinite(contractedPrice) || contractedPrice < 0)) { window.alert('Informe um preço igual ou maior que zero.'); return }
     if (contractedPrice === null && ['monthly', 'one_time', 'per_use'].includes(addon.billing_type)) { window.alert('Este tipo de cobrança exige um preço contratado.'); return }
-    const feeText = window.prompt('Taxa de implantação acordada (R$):', String(addon.setup_fee).replace('.', ','))
+    const feeText = window.prompt('Taxa de implantação acordada (R$):', String(0).replace('.', ','))
     if (feeText === null) return
     const setupFee = Number(feeText.replace(',', '.'))
     if (!Number.isFinite(setupFee) || setupFee < 0) { window.alert('Informe uma taxa de implantação válida.'); return }
+    const issue = validateAddonCommercial(addon, contractedPrice, setupFee, addon.billing_type)
+    if (issue) { setError(issue); return }
     if (!window.confirm(`Confirmo as condições comerciais e autorizo ativar ${addon.name} somente para ${site.name}?`)) return
     await mutate('activate_direct', { store_id: site.id, addon_id: addon.id, contracted_price: contractedPrice, setup_fee: setupFee, commercial_confirmed: true }, `${addon.name} ativado para ${site.name}.`)
   }
@@ -184,14 +175,14 @@ export function AddonsPage() {
     <div className="addons-tabs" role="tablist" aria-label="Áreas da Central de Adicionais">{tabs.map((item) => <button key={item.key} role="tab" aria-selected={tab === item.key} className={tab === item.key ? 'active' : ''} onClick={() => setTab(item.key)}>{item.label}</button>)}</div>
 
     {tab === 'catalog' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Catálogo de adicionais</h2><p>Os itens iniciais estão planejados. Marque como prontos somente após validar a implementação.</p></div><div className="addons-filters"><label><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar adicional" /></label><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">Todas as categorias</option>{Object.entries(categories).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">Todos os status</option>{Object.entries(development).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></div></div>
-      {loading ? <Loading /> : filteredAddons.length === 0 ? <Empty text="Nenhum adicional encontrado." /> : <div className="addons-table-wrap"><table className="addons-table"><thead><tr><th>Adicional</th><th>Categoria</th><th>Preço</th><th>Desenvolvimento</th><th>Visibilidade</th><th></th></tr></thead><tbody>{filteredAddons.map((addon) => <tr key={addon.id}><td><strong>{addon.name}</strong><small>{addon.summary}</small><code>{addon.code}</code><details className="addon-tech-sheet"><summary>Ficha técnica</summary><dl><dt>UUID</dt><dd><code>{addon.id}</code></dd><dt>Tipos compatíveis</dt><dd>{addon.compatible_site_types.includes('*') ? 'Todos' : addon.compatible_site_types.map((type) => siteTypes[type] ?? type).join(', ')}</dd><dt>Local sugerido</dt><dd>{locations[addon.activation_location]}</dd><dt>Rota sugerida</dt><dd>{addon.suggested_route || 'A definir no projeto'}</dd><dt>Descrição funcional</dt><dd>{addon.description || addon.summary}</dd><dt>Requisitos</dt><dd>{addon.integration_requirements || 'A definir antes da integração'}</dd><dt>Ativação</dt><dd>{addon.activation_rules || 'Requer implementação confirmada, compatibilidade e autorização comercial do Master.'}</dd><dt>Bloqueio</dt><dd>{addon.disable_rules || 'O backend do módulo deve bloquear todas as operações quando a contratação não estiver ativa.'}</dd></dl></details></td><td>{categories[addon.category]}</td><td><strong>{money(addon.price)}</strong><small>{billing[addon.billing_type]}{addon.setup_fee > 0 ? ` · implantação ${money(addon.setup_fee)}` : ''}</small></td><td><span className={`addons-status status-${addon.development_status}`}>{development[addon.development_status]}</span><small>{locations[addon.activation_location]}</small></td><td><span className={`addons-status ${addon.is_active && addon.is_visible ? 'status-enabled' : 'status-muted'}`}>{addon.is_active && addon.is_visible ? 'Disponível' : 'Oculto'}</span></td><td><button className="icon-action" aria-label={`Editar ${addon.name}`} onClick={() => beginEdit(addon)}><Edit3 size={15} /></button></td></tr>)}</tbody></table></div>}
+      {loading ? <Loading /> : filteredAddons.length === 0 ? <Empty text="Nenhum adicional encontrado." /> : <div className="addons-table-wrap"><table className="addons-table"><thead><tr><th>Adicional</th><th>Categoria</th><th>Preço</th><th>Desenvolvimento</th><th>Visibilidade</th><th></th></tr></thead><tbody>{filteredAddons.map((addon) => <tr key={addon.id}><td><strong>{addon.name}</strong><small>{officialAddon(addon)?.description ?? addon.summary}</small><code>{addon.code}</code><details className="addon-tech-sheet"><summary>Ficha técnica</summary><dl><dt>UUID</dt><dd><code>{addon.id}</code></dd><dt>Tipos compatíveis</dt><dd>{addon.compatible_site_types.includes('*') ? 'Todos' : addon.compatible_site_types.map((type) => siteTypes[type] ?? type).join(', ')}</dd><dt>Local sugerido</dt><dd>{locations[addon.activation_location]}</dd><dt>Rota sugerida</dt><dd>{addon.suggested_route || 'A definir no projeto'}</dd><dt>Descrição funcional</dt><dd>{officialAddon(addon)?.description ?? addon.description ?? addon.summary}</dd><dt>Requisitos</dt><dd>{addon.integration_requirements || 'A definir antes da integração'}</dd><dt>Ativação</dt><dd>{addon.activation_rules || 'Requer implementação confirmada, compatibilidade e autorização comercial do Master.'}</dd><dt>Bloqueio</dt><dd>{addon.disable_rules || 'O backend do módulo deve bloquear todas as operações quando a contratação não estiver ativa.'}</dd></dl></details></td><td>{categories[addon.category]}</td><td><strong>{officialAddon(addon)?.price === null ? 'Preço pendente' : money(officialAddon(addon)?.price ?? addon.price)}</strong><small>{billing[officialAddon(addon)?.billing ?? addon.billing_type]} · implantação adicional não aprovada</small><small>Cadastro recebido: {money(addon.price)} · implantação {money(addon.setup_fee)} — conferir divergências; contratos preservados.</small></td><td><span className={`addons-status status-${addon.development_status}`}>{development[addon.development_status]}</span><small>{locations[addon.activation_location]}</small></td><td><span className={`addons-status ${addon.is_active && addon.is_visible ? 'status-enabled' : 'status-muted'}`}>{addon.is_active && addon.is_visible ? 'Disponível' : 'Oculto'}</span></td><td><button className="icon-action" aria-label={`Editar ${addon.name}`} onClick={() => beginEdit(addon)}><Edit3 size={15} /></button></td></tr>)}</tbody></table></div>}
     </section>}
 
     {tab === 'requests' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Solicitações de Adicionais</h2><p>A aprovação comercial e a ativação técnica são etapas distintas.</p></div></div>{loading ? <Loading /> : data.requests.length === 0 ? <Empty text="Ainda não há solicitações de adicionais." /> : <div className="addons-request-list">{data.requests.map((item) => <article className="addon-request-card" key={item.id}><div className="addon-request-main"><div className="addon-request-icon"><PackagePlus size={17} /></div><div className="addon-request-copy"><strong>{item.addon?.name ?? 'Adicional removido'}</strong><small>{item.store?.name ?? 'Empresa não encontrada'} · {item.store?.nx_id ?? 'sem ID NX'} · {date(item.created_at)}</small><p>{item.customer_notes || 'Sem observações do solicitante.'}</p><span>Preço de catálogo: {money(item.addon?.price)} · {billing[item.addon?.billing_type ?? 'quote']}</span>{item.decision_reason && <em>Justificativa: {item.decision_reason}</em>}</div><span className={`addons-status status-${item.status}`}>{statuses[item.status] ?? item.status}</span></div><div className="addon-request-actions">
         {item.status === 'pending' && <button className="secondary-button" onClick={() => void review(item, 'in_review')}>Iniciar análise</button>}
         {['pending', 'in_review', 'awaiting_confirmation'].includes(item.status) && <><button className="secondary-button" onClick={() => void review(item, 'rejected')}>Recusar</button><button className="primary-compact" onClick={() => void review(item, 'approved')}>Aprovar solicitação</button></>}
         {item.status === 'approved' && !item.commercial_confirmed_at && <button className="secondary-button" onClick={() => void confirmCommercial(item)}>Confirmar condições comerciais</button>}
-        {item.status === 'approved' && item.commercial_confirmed_at && <button className="primary-compact" disabled={saving || !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available')} onClick={() => void mutate('activate_request', { request_id: item.id }, 'Adicional ativado para esta empresa.')}>Ativar para esta empresa</button>}
+        {item.status === 'approved' && item.commercial_confirmed_at && <button className="primary-compact" disabled={saving || addonCommercialPending(item.addon) || !item.addon || !!validateAddonCommercial(item.addon, item.approved_price, item.setup_fee ?? 0, item.addon.billing_type) || !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available')} onClick={() => void mutate('activate_request', { request_id: item.id }, 'Adicional ativado para esta empresa.')}>Ativar para esta empresa</button>}
         {['pending', 'in_review', 'awaiting_confirmation', 'approved'].includes(item.status) && <button className="text-button" onClick={() => void review(item, 'awaiting_confirmation')}>Aguardar confirmação comercial</button>}
       </div>{item.status === 'approved' && !data.installations.some((install) => install.store_id === item.store_id && install.addon_id === item.addon_id && install.technical_status === 'available') && <div className="addons-note">A loja ainda não enviou check-in técnico disponível para este módulo.</div>}{item.status === 'approved' && !item.addon?.is_active && <div className="addons-note">Este adicional está desativado no catálogo. Reative-o antes da ativação técnica.</div>}{item.status === 'approved' && item.addon?.development_status !== 'ready' && <div className="addons-note">O módulo está marcado como {development[item.addon?.development_status ?? 'planned']}; a ativação será recusada até estar pronto.</div>}</article>)}</div>}</section>}
 
@@ -213,28 +204,28 @@ export function AddonsPage() {
 
     {tab === 'proposals' && (() => {
       const selectedStore = data.stores.find((st) => st.id === proposalStoreId) || data.stores[0]
-      const chosen = OFFICIAL_19_ADDONS.filter((item) => selectedAddonCodes.includes(item.code))
-      const totalSetup = chosen.reduce((acc, cur) => acc + cur.setup, 0)
-      const totalMonthly = chosen.filter((c) => c.billing === 'monthly').reduce((acc, cur) => acc + cur.price, 0)
-      const totalOneTime = chosen.filter((c) => c.billing === 'one_time').reduce((acc, cur) => acc + cur.price, 0)
+      const chosen = OFFICIAL_19_ADDONS.filter((item) => selectedAddonCodes.includes(item.code) && item.price !== null)
+      const totalMonthly = chosen.filter((c) => c.billing === 'monthly').reduce((acc, cur) => acc + (cur.price ?? 0), 0)
+      const totalOneTime = chosen.filter((c) => c.billing === 'one_time').reduce((acc, cur) => acc + (cur.price ?? 0), 0)
 
       const toggleAddon = (code: string) => {
+        if (OFFICIAL_19_ADDONS.find((item) => item.code === code)?.price === null) return
         setSelectedAddonCodes((prev) =>
           prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
         )
       }
 
-      const copyToClipboard = () => {
+      const copyToClipboard = async () => {
         const text = `*NOVAESWEB — PROPOSTA DE MÓDULOS ADICIONAIS (CADERNO 05)*\n` +
           `Loja: ${selectedStore?.name || 'Cliente'}\n` +
           `ID NX: ${selectedStore?.nx_id || 'NX-LOJA'}\n` +
           `Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}\n\n` +
-          `*MÓDULOS CONTRATADOS (${chosen.length}):*\n` +
+          `*MÓDULOS PROPOSTOS (${chosen.length}):*\n` +
           (chosen.length > 0
-            ? chosen.map((c) => `• [${c.code}] ${c.name}: ${money(c.price)}${c.billing === 'monthly' ? '/mês' : ' (único)'} (Setup: ${money(c.setup)})\n  _${c.description}_`).join('\n\n')
+            ? chosen.map((c) => `• [${c.code}] ${c.name}: ${money(c.price)}${c.billing === 'monthly' ? '/mês' : ' (único)'}\n  _${c.description}_`).join('\n\n')
             : 'Nenhum módulo selecionado no momento.') +
           `\n\n*RESUMO FINANCEIRO:*\n` +
-          `• Taxa de Implantação Total (Setup Único): ${money(totalSetup)}\n` +
+          `• Taxas de implantação: não aprovadas; não incluídas nesta proposta\n` +
           `• Mensalidade Adicional Recorrente: ${money(totalMonthly)}/mês` +
           (totalOneTime > 0 ? `\n• Pagamento Único: ${money(totalOneTime)}` : '') +
           `\n\n*REGRAS COMERCIAIS (COM-09 / COM-10):*\n` +
@@ -242,9 +233,11 @@ export function AddonsPage() {
           `• Ativação vinculada ao check-in técnico e aprovação no Master.\n` +
           `• Suporte oficial de segunda a sexta, das 9h às 18h.`
 
-        void navigator.clipboard.writeText(text)
-        setCopiedProposalText(true)
-        setTimeout(() => setCopiedProposalText(false), 2500)
+        try {
+          await navigator.clipboard.writeText(text)
+          setCopiedProposalText(true)
+          setTimeout(() => setCopiedProposalText(false), 2500)
+        } catch { setError('Não foi possível copiar a proposta. Confira a permissão da área de transferência.'); setCopiedProposalText(false) }
       }
 
       return (
@@ -274,7 +267,7 @@ export function AddonsPage() {
               <button
                 type="button"
                 className="primary-compact"
-                onClick={copyToClipboard}
+                onClick={() => void copyToClipboard()}
                 disabled={chosen.length === 0}
               >
                 {copiedProposalText ? <Check size={14} /> : <Copy size={14} />}
@@ -292,9 +285,9 @@ export function AddonsPage() {
             </div>
 
             <div className="summary-pill-box">
-              <span>Implantação (Setup Único)</span>
-              <strong className="text-purple">{money(totalSetup)}</strong>
-              <small>pagamento inicial</small>
+              <span>Implantação adicional</span>
+              <strong className="text-purple">Não aprovada</strong>
+              <small>não incluída na proposta</small>
             </div>
 
             <div className="summary-pill-box">
@@ -313,6 +306,8 @@ export function AddonsPage() {
                   key={addon.code}
                   className={`addon-official-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => toggleAddon(addon.code)}
+                  role="button" tabIndex={addon.price === null ? -1 : 0} aria-disabled={addon.price === null}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleAddon(addon.code) } }}
                 >
                   <div className="addon-card-top">
                     <span className="addon-official-code">{addon.code}</span>
@@ -320,6 +315,8 @@ export function AddonsPage() {
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={addon.price === null}
+                      aria-label={`Selecionar ${addon.name}`}
                       onChange={() => {}} // controlado pelo onClick do card
                     />
                   </div>
@@ -331,9 +328,9 @@ export function AddonsPage() {
                     <div className="addon-pricing">
                       <span className="price-tag">
                         <b>{money(addon.price)}</b>
-                        <small>{addon.billing === 'monthly' ? '/mês' : ' única'}</small>
+                        <small>{addon.price === null ? 'Preço pendente — contratação indisponível' : addon.billing === 'monthly' ? '/mês' : ' única'}</small>
                       </span>
-                      {addon.setup > 0 && (
+                      {addon.setup !== null && addon.setup > 0 && (
                         <span className="setup-tag">Setup: {money(addon.setup)}</span>
                       )}
                     </div>

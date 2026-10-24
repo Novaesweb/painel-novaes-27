@@ -1,0 +1,71 @@
+import { createClient } from 'npm:@supabase/supabase-js@2.75.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json; charset=utf-8',
+}
+const codePattern = /^[a-z0-9]+([_-][a-z0-9]+)*$/
+const statuses = new Set(['available', 'degraded', 'unavailable'])
+
+function reply(status: number, payload: Record<string, unknown>) {
+  return new Response(JSON.stringify(payload), { status, headers: corsHeaders })
+}
+
+Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (request.method !== 'POST') return reply(405, { error: 'Método não permitido.' })
+
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const token = request.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
+  if (!url || !anonKey || !serviceKey) return reply(500, { error: 'Configuração segura incompleta.' })
+  if (!token) return reply(401, { error: 'Sessão autenticada obrigatória.' })
+
+  let body: Record<string, unknown>
+  try { body = await request.json() } catch { return reply(400, { error: 'JSON inválido.' }) }
+  const nxId = typeof body.nx_id === 'string' ? body.nx_id.trim() : ''
+  if (!nxId || nxId.length > 64 || !Array.isArray(body.modules) || body.modules.length < 1 || body.modules.length > 50) {
+    return reply(400, { error: 'Informe o ID NX oficial e de 1 a 50 módulos.' })
+  }
+  const modules: Array<{ code: string; installed_version: string | null; technical_status: string }> = []
+  for (const item of body.modules) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return reply(400, { error: 'Cada módulo deve ser um objeto válido.' })
+    const value = item as Record<string, unknown>
+    const code = typeof value.code === 'string' ? value.code.trim().toLowerCase() : ''
+    const version = value.installed_version == null || value.installed_version === '' ? null : typeof value.installed_version === 'string' ? value.installed_version.trim() : null
+    const technicalStatus = typeof value.technical_status === 'string' ? value.technical_status : ''
+    if (!codePattern.test(code) || code.length > 80 || (value.installed_version != null && value.installed_version !== '' && version === null)
+      || (version !== null && version.length > 100) || !statuses.has(technicalStatus)) {
+      return reply(400, { error: 'Código, versão ou status técnico de módulo inválido.' })
+    }
+    modules.push({ code, installed_version: version, technical_status: technicalStatus })
+  }
+
+  const userClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const { data: auth, error: authError } = await userClient.auth.getUser(token)
+  if (authError || !auth.user) return reply(401, { error: 'Sessão inválida ou expirada.' })
+
+  const { data, error } = await admin.rpc('novaesweb_sync_store_addon_installations', {
+    p_nx_id: nxId,
+    p_reported_by: auth.user.id,
+    p_modules: modules,
+  })
+  if (error) {
+    const message = error.message ?? ''
+    if (message.includes('STORE_NOT_FOUND')) return reply(404, { error: 'Loja não encontrada pelo ID NX informado.' })
+    if (message.includes('ACTIVE_STORE_ADMIN_REQUIRED')) return reply(403, { error: 'É necessário ser proprietário ou administrador ativo desta loja.' })
+    if (message.includes('UNKNOWN_ADDON_CODE')) return reply(422, { error: 'Um ou mais códigos não existem no catálogo oficial do Master.' })
+    if (message.includes('INVALID_ADDON_CHECKIN')) return reply(400, { error: 'Manifesto de módulos inválido.' })
+    return reply(400, { error: 'Não foi possível registrar o check-in técnico.' })
+  }
+  return reply(200, {
+    message: 'Check-in técnico registrado. Isso não ativa nem contrata adicionais.',
+    store_id: (data as Record<string, unknown>)?.store_id,
+    received: (data as Record<string, unknown>)?.received,
+  })
+})
+

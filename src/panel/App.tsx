@@ -101,15 +101,15 @@ export function App() {
   if (denied || !profile || !canViewPage) return <AuthScreen accessDenied onSignOut={() => void signOut()} email={session.user.email ?? ''} />
 
   return <DashboardLayout profile={profile} onSignOut={() => void signOut()}>
-    {renderPage(page, profile.role)}
+    {renderPage(page, profile.role, session.user.id)}
   </DashboardLayout>
 }
 
 const operational = ['/suporte','/clientes','/planos','/financeiro','/dominios','/backups','/configuracoes','/usuarios','/controle-pedidos','/contratos']
-function renderPage(page: string, role: string) {
+function renderPage(page: string, role: string, sessionUserId: string) {
   if (page === '/') return <DashboardPage />
   if (page === '/lojas') return <StoresPage role={role} />
-  if (page === '/integracao-sites') return <SiteIntegrationPage />
+  if (page === '/integracao-sites') return <SiteIntegrationPage role={role} sessionUserId={sessionUserId} />
   if (page === '/adicionais') return <AddonsPage />
   if (page === '/leads') return <LeadsPage role={role} />
   if (page === '/notificacoes') return <NotificationsPage role={role} />

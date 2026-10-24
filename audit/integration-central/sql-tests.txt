@@ -1,0 +1,1 @@
+9 verificações da proposta passaram somente em PostgreSQL WASM local com fixtures. Nenhuma chamada remota.

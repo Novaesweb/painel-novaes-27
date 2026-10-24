@@ -51,7 +51,7 @@ export function ContractsAndProposalsPage({
 
   // Estado do Checklist de Homologação e Publicação (COM-03)
   const [homologStoreId, setHomologStoreId] = useState<string>(sites[0]?.id || '')
-  const [checkEntryPayment, setCheckEntryPayment] = useState<boolean>(true)
+  const [checkEntryPayment, setCheckEntryPayment] = useState<boolean>(false)
   const [checkCatalogValid, setCheckCatalogValid] = useState<boolean>(false)
   const [checkOrderFlowTested, setCheckOrderFlowTested] = useState<boolean>(false)
   const [checkSoundAndNotification, setCheckSoundAndNotification] = useState<boolean>(false)
@@ -626,10 +626,16 @@ Proposta válida por 15 dias a contar da data de emissão.`
 
             <div className="homologation-store-picker">
               <Building2 size={16} />
-              <label>Loja em Homologação:</label>
+              <label htmlFor="homologation-store">Loja em Homologação:</label>
               <select
+                id="homologation-store"
                 value={homologStoreId}
-                onChange={(e) => setHomologStoreId(e.target.value)}
+                onChange={(e) => {
+                  setHomologStoreId(e.target.value)
+                  setCheckEntryPayment(false); setCheckCatalogValid(false); setCheckOrderFlowTested(false)
+                  setCheckSoundAndNotification(false); setCheckClientFormalApproval(false); setCheckFinalPayment(false)
+                  setCopiedHomologReport(false)
+                }}
               >
                 {sites.map((st) => (
                   <option key={st.id} value={st.id}>
@@ -640,13 +646,14 @@ Proposta válida por 15 dias a contar da data de emissão.`
             </div>
           </div>
 
+          <p role="status">Checklist local de conferência, sem persistência central. As marcações são apagadas ao trocar de loja ou sair desta tela. Elas não conciliam recebimentos, não atualizam o histórico de pagamentos e não publicam o site.</p>
           {/* Cards das Parcelas Financeiras 50% / 50% */}
           <div className="installments-grid">
             <div className={`installment-card ${checkEntryPayment ? 'paid' : 'pending'}`}>
               <div className="installment-card-top">
                 <span className="installment-pill">1ª PARCELA · ENTRADA (50%)</span>
                 {checkEntryPayment ? (
-                  <span className="status-badge paid"><CheckCircle2 size={13} /> Confirmado</span>
+                  <span className="status-badge paid"><CheckCircle2 size={13} /> Informado neste checklist</span>
                 ) : (
                   <span className="status-badge pending"><Clock size={13} /> Pendente</span>
                 )}
@@ -667,7 +674,7 @@ Proposta válida por 15 dias a contar da data de emissão.`
               <div className="installment-card-top">
                 <span className="installment-pill">2ª PARCELA · PUBLICAÇÃO (50%)</span>
                 {checkFinalPayment ? (
-                  <span className="status-badge paid"><CheckCircle2 size={13} /> Quitado</span>
+                  <span className="status-badge paid"><CheckCircle2 size={13} /> Informado neste checklist</span>
                 ) : (
                   <span className="status-badge waiting"><AlertCircle size={13} /> Aguardando Homologação</span>
                 )}
@@ -776,10 +783,10 @@ Proposta válida por 15 dias a contar da data de emissão.`
               <div className="verdict-banner success">
                 <BadgeCheck size={28} />
                 <div className="verdict-content">
-                  <h4>LOJA 100% HOMOLOGADA — LIBERADA PARA PUBLICAÇÃO</h4>
+                  <h4>CHECKLIST LOCAL PREENCHIDO — CONFERIR REGISTROS OFICIAIS</h4>
                   <p>
-                    Todas as 6 etapas técnicas e comerciais foram concluídas com sucesso.
-                    O apontamento de DNS (Registrador do cliente ➔ Vercel/Supabase) pode ser realizado com segurança jurídica e comercial total.
+                    As 6 etapas foram marcadas manualmente nesta sessão.
+                    Antes da publicação, confira os comprovantes, o histórico financeiro e a aprovação formal. Este checklist local não autoriza nem executa publicação automaticamente.
                   </p>
                 </div>
                 <button
@@ -787,7 +794,7 @@ Proposta válida por 15 dias a contar da data de emissão.`
                   className="btn-action-primary"
                   onClick={() => {
                     const selSite = sites.find((s) => s.id === homologStoreId)
-                    const text = `*NOVAESWEB — TERMO DE HOMOLOGAÇÃO E LIBERAÇÃO DE PUBLICAÇÃO*\n\n` +
+                    const text = `*NOVAESWEB — REGISTRO LOCAL DE CONFERÊNCIA PARA HOMOLOGAÇÃO*\n\n` +
                       `Loja: ${selSite?.name || 'Cliente'}\n` +
                       `ID NX: ${selSite?.nx_id || 'NX-LOJA'}\n` +
                       `Data de Homologação: ${new Date().toLocaleDateString('pt-BR')}\n\n` +
@@ -798,7 +805,7 @@ Proposta válida por 15 dias a contar da data de emissão.`
                       `[OK] Painel Operacional e Alerta Sonoro Validados\n` +
                       `[OK] Aceite Formal do Lojista Concluído\n` +
                       `[OK] 2ª Parcela (50% Final) Quitada\n\n` +
-                      `*Veredito:* Site aprovado para publicação oficial com apontamento de domínio DNS.`
+                      `*Observação:* Marcações manuais desta sessão. Conferir recebimentos e aprovação formal nos registros oficiais antes de publicar.`
                     void navigator.clipboard.writeText(text)
                     setCopiedHomologReport(true)
                     setTimeout(() => setCopiedHomologReport(false), 2500)

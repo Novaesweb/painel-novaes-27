@@ -1,3 +1,4 @@
+import { validatePlanCommercial } from '../_shared/planCommercialRules.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2.75.0'
 
 const corsHeaders = {
@@ -62,6 +63,8 @@ Deno.serve(async (request: Request) => {
     features: jsonValue(incoming.features, []),
     is_active: incoming.is_active,
   }
+  const commercialIssue = validatePlanCommercial(payload)
+  if (commercialIssue) return reply(400, { error: commercialIssue })
   const { data, error } = await admin.from('master_plan_catalog')
     .upsert(payload, { onConflict: 'code' })
     .select('code,name,is_active').single()

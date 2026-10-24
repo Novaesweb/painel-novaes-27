@@ -25,6 +25,9 @@ import {
   loadPromptTemplates,
   savePromptTemplates,
   resetPromptTemplates,
+  restorePreviousPromptTemplates,
+  PROMPT_STORAGE_KEY,
+  PROMPT_HISTORY_KEY,
   compileClientSitePrompt,
 } from '../lib/promptGeneratorTemplates'
 import './PromptGeneratorSection.css'
@@ -171,29 +174,35 @@ export function PromptGeneratorSection() {
           displayName: templateNameDraft.trim() || t.defaultName,
           templateText: templateEditDraft,
           updatedAt: new Date().toISOString(),
-          updatedBy: 'NovaesWeb Master',
+          updatedBy: 'Edição neste navegador (identidade não verificada)',
         }
       }
       return t
     })
-    setTemplates(updated)
-    savePromptTemplates(updated)
-    setTemplateSaveSuccess(`Modelo ${templateNameDraft} salvo com sucesso!`)
-    setTimeout(() => setTemplateSaveSuccess(null), 3000)
+    try {
+      savePromptTemplates(updated)
+      setTemplates(updated)
+      setTemplateSaveSuccess(`Modelo ${templateNameDraft} salvo somente neste navegador.`)
+      setTimeout(() => setTemplateSaveSuccess(null), 3000)
+    } catch {
+      setTemplateSaveSuccess('Não foi possível salvar. Mantenha o editor aberto e exporte suas personalizações antes de sair.')
+    }
   }
 
   // Restaurar modelos padrão originais
   const handleResetAllTemplates = () => {
     if (window.confirm('Tem certeza de que deseja restaurar os 3 modelos de prompts para o padrão original de fábrica?')) {
-      const def = resetPromptTemplates()
-      setTemplates(def)
-      const current = def.find((t) => t.id === editingTemplateId)
-      if (current) {
-        setTemplateEditDraft(current.templateText)
-        setTemplateNameDraft(current.displayName)
-      }
-      setTemplateSaveSuccess('Modelos restaurados para a versão oficial com sucesso!')
-      setTimeout(() => setTemplateSaveSuccess(null), 3000)
+      try {
+        const def = resetPromptTemplates()
+        setTemplates(def)
+        const current = def.find((t) => t.id === editingTemplateId)
+        if (current) {
+          setTemplateEditDraft(current.templateText)
+          setTemplateNameDraft(current.displayName)
+        }
+        setTemplateSaveSuccess('Padrões restaurados neste navegador; versão anterior preservada no histórico local.')
+        setTimeout(() => setTemplateSaveSuccess(null), 3000)
+      } catch { setTemplateSaveSuccess('Falha ao restaurar. As personalizações não foram substituídas na tela.') }
     }
   }
 
@@ -282,7 +291,14 @@ export function PromptGeneratorSection() {
 
       {/* Botão de Atalho para Gerenciar Modelos Base */}
       <div className="manage-templates-action-bar">
-        <span>Quer personalizar as regras ou os textos-base dos modelos de cada plano?</span>
+        <span>Personalizações salvas somente neste navegador. Não há sincronização entre dispositivos. Exporte uma cópia para evitar perda ao limpar os dados do navegador.</span>
+        <button type="button" className="secondary-button" onClick={() => {
+          try {
+            const blob = new Blob([JSON.stringify({ templates, editorDraft: { editingTemplateId, templateNameDraft, templateEditDraft }, storedRaw: localStorage.getItem(PROMPT_STORAGE_KEY), historyRaw: localStorage.getItem(PROMPT_HISTORY_KEY) }, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a'); link.href = url; link.download = 'novaesweb-modelos-locais.json'; link.click(); URL.revokeObjectURL(url)
+          } catch { setTemplateSaveSuccess('Não foi possível exportar; copie o texto dos modelos manualmente.') }
+        }}>Exportar cópia local</button>
         <button
           type="button"
           className="secondary-button btn-manage-models"
@@ -379,6 +395,14 @@ export function PromptGeneratorSection() {
                     <span>Restaurar Padrão de Fábrica</span>
                   </button>
 
+                  <button type="button" className="secondary-button" onClick={() => {
+                    try {
+                      const previous = restorePreviousPromptTemplates(); setTemplates(previous)
+                      const current = previous.find((item) => item.id === editingTemplateId)
+                      if (current) { setTemplateEditDraft(current.templateText); setTemplateNameDraft(current.displayName) }
+                      setTemplateSaveSuccess('Versão anterior restaurada somente neste navegador.')
+                    } catch (cause) { setTemplateSaveSuccess(cause instanceof Error ? cause.message : 'Falha ao restaurar versão local.') }
+                  }}>Restaurar versão local anterior</button>
                   <div className="template-footer-right">
                     <button
                       type="button"

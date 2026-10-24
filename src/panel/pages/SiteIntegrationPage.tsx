@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store } from 'lucide-react'
 import { integrationPrompts } from '../lib/integrationPrompt'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
 import './SiteIntegrationPage.css'
+import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
 
-export function SiteIntegrationPage() {
-  const [activeTab, setActiveTab] = useState<'prompts' | 'generator'>('prompts')
+export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; sessionUserId?: string } = {}) {
+  const [activeTab, setActiveTab] = useState<'prompts' | 'generator' | 'stores'>('prompts')
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<{ id: string; message: string } | null>(null)
   const resetTimer = useRef<number | undefined>(undefined)
@@ -41,6 +42,7 @@ export function SiteIntegrationPage() {
 
       {/* Seletor de Abas da Página */}
       <div className="integration-navigation-tabs">
+        <button type="button" className={`integration-nav-tab ${activeTab === 'stores' ? 'active' : ''}`} onClick={() => setActiveTab('stores')}><Store size={16} /><span>Central de Integração por Loja</span></button>
         <button
           type="button"
           className={`integration-nav-tab ${activeTab === 'prompts' ? 'active' : ''}`}
@@ -65,6 +67,7 @@ export function SiteIntegrationPage() {
         <>
           <section className="panel site-integration-guide" aria-label="Ordem de envio dos prompts">
             <h2>Qual prompt enviar primeiro?</h2>
+            <p>Para instruções de uma empresa específica, use a Central de Integração por Loja. Os seis documentos gerais foram preservados; confira a auditoria consolidada antes de executar orientações antigas e nunca reaplique migrations automaticamente.</p>
             <p>
               Envie o <strong>1</strong> ao chat do site e espere concluir. Depois envie o <strong>2</strong> e,
               quando estiver pronto, o <strong>3</strong>. O <strong>4</strong> é para implementação de adicionais
@@ -119,6 +122,7 @@ export function SiteIntegrationPage() {
 
       {/* ABA 2: CRIADOR DE SITES — GERADOR DE PROMPTS */}
       {activeTab === 'generator' && <PromptGeneratorSection />}
+      {activeTab === 'stores' && <StoreIntegrationCentral key={sessionUserId ?? 'sem-sessao'} role={role} />}
     </div>
   )
 }

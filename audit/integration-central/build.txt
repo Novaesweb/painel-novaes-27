@@ -1,0 +1,95 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> build
+> vite build
+
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 2229 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/styles-DAmLTLyN.css   71.39 kB │ gzip:  12.07 kB
+.output/public/assets/App-_7bZS5Z3.css     153.51 kB │ gzip:  30.21 kB
+.output/public/assets/_-CK0P3q6G.js          0.06 kB │ gzip:   0.08 kB
+.output/public/assets/routes-CK0P3q6G.js     0.06 kB │ gzip:   0.08 kB
+.output/public/assets/index-Cyssan-U.js    370.40 kB │ gzip: 118.45 kB
+.output/public/assets/App-Bwnu2-QE.js      748.18 kB │ gzip: 202.88 kB
+
+✓ built in 722ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+vite v8.1.5 building ssr environment for production...
+[2Ktransforming...✓ 120 modules transformed.
+rendering chunks...
+computing gzip size...
+node_modules/.nitro/vite/services/ssr/assets/styles-DAmLTLyN.css                      71.39 kB │ gzip:  12.07 kB
+node_modules/.nitro/vite/services/ssr/assets/App-_7bZS5Z3.css                        153.51 kB │ gzip:  30.21 kB
+node_modules/.nitro/vite/services/ssr/assets/_-C9c19dEF.js                             0.17 kB │ gzip:   0.14 kB
+node_modules/.nitro/vite/services/ssr/assets/routes-CEv7mchn.js                        0.17 kB │ gzip:   0.14 kB
+node_modules/.nitro/vite/services/ssr/assets/empty-plugin-adapters-D9UWiqvJ.js         0.22 kB │ gzip:   0.16 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-D9BWFIsI.js    0.83 kB │ gzip:   0.37 kB
+node_modules/.nitro/vite/services/ssr/assets/start-RKGGYzjZ.js                         1.57 kB │ gzip:   0.71 kB
+node_modules/.nitro/vite/services/ssr/assets/createCsrfMiddleware-B2To0gPJ.js          3.19 kB │ gzip:   1.01 kB
+node_modules/.nitro/vite/services/ssr/index.js                                         4.61 kB │ gzip:   1.92 kB
+node_modules/.nitro/vite/services/ssr/assets/router-BO7C8Oam.js                        7.56 kB │ gzip:   2.32 kB
+node_modules/.nitro/vite/services/ssr/assets/server-CofWQ8nm.js                       66.34 kB │ gzip:  16.95 kB
+node_modules/.nitro/vite/services/ssr/assets/App-DR12df7C.js                         614.01 kB │ gzip: 140.95 kB
+
+✓ built in 268ms
+
+[nitro] ◐ Building [Nitro] (preset: cloudflare-module, compatibility: 2026-10-18)
+[nitro] ✔ Generated public .output/public
+vite v8.1.5 building nitro environment for production...
+
+ WARN  inlineDynamicImports option is ignored because the codeSplitting option is specified.
+
+[2Ktransforming...✓ 2235 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/server/_-C9c19dEF.mjs                                  0.20 kB │ gzip:   0.17 kB
+.output/server/_ssr/routes-CEv7mchn.mjs                        0.20 kB │ gzip:   0.17 kB
+.output/server/_ssr/empty-plugin-adapters-D9UWiqvJ.mjs         0.23 kB │ gzip:   0.16 kB
+.output/server/_chunks/ssr-renderer.mjs                        0.60 kB │ gzip:   0.36 kB
+.output/server/_tanstack-start-manifest_v-D9BWFIsI.mjs         0.89 kB │ gzip:   0.40 kB
+.output/server/_libs/hookable.mjs                              1.17 kB │ gzip:   0.52 kB
+.output/server/_runtime.mjs                                    1.18 kB │ gzip:   0.57 kB
+.output/server/_ssr/start-RKGGYzjZ.mjs                         1.53 kB │ gzip:   0.70 kB
+.output/server/_libs/react+tanstack__react-query.mjs           2.96 kB │ gzip:   1.24 kB
+.output/server/_ssr/createCsrfMiddleware-B2To0gPJ.mjs          3.11 kB │ gzip:   1.01 kB
+.output/server/_libs/class-variance-authority+clsx.mjs         3.17 kB │ gzip:   1.24 kB
+.output/server/_ssr/ssr.mjs                                    4.55 kB │ gzip:   1.92 kB
+.output/server/_libs/radix-ui__react-slot.mjs                  6.22 kB │ gzip:   1.92 kB
+.output/server/_ssr/router-BO7C8Oam.mjs                        8.19 kB │ gzip:   2.43 kB
+.output/server/_libs/h3-v2+rou3+srvx.mjs                       9.87 kB │ gzip:   3.06 kB
+.output/server/index.mjs                                      11.22 kB │ gzip:   3.51 kB
+.output/server/_libs/tanstack__history.mjs                    12.50 kB │ gzip:   3.70 kB
+.output/server/_libs/supabase__functions-js.mjs               12.54 kB │ gzip:   3.47 kB
+.output/server/_libs/h3+rou3+srvx.mjs                         17.32 kB │ gzip:   4.99 kB
+.output/server/_libs/@radix-ui/react-compose-refs+[...].mjs   17.67 kB │ gzip:   4.85 kB
+.output/server/_libs/@tanstack/router-core+[...].mjs          29.71 kB │ gzip:   7.98 kB
+.output/server/_libs/supabase__supabase-js.mjs                37.87 kB │ gzip:  11.18 kB
+.output/server/_libs/supabase__phoenix.mjs                    50.54 kB │ gzip:  12.76 kB
+.output/server/_libs/lucide-react.mjs                         56.38 kB │ gzip:  10.02 kB
+.output/server/_ssr/server-CofWQ8nm.mjs                       64.79 kB │ gzip:  16.84 kB
+.output/server/_libs/supabase__realtime-js+unenv.mjs          81.91 kB │ gzip:  20.93 kB
+.output/server/_libs/tailwind-merge.mjs                       88.92 kB │ gzip:  15.71 kB
+.output/server/_libs/zod.mjs                                  99.96 kB │ gzip:  17.28 kB
+.output/server/_libs/supabase__postgrest-js.mjs              110.46 kB │ gzip:  23.20 kB
+.output/server/_libs/tanstack__query-core.mjs                113.21 kB │ gzip:  26.68 kB
+.output/server/_libs/@supabase/storage-js+[...].mjs          127.52 kB │ gzip:  23.94 kB
+.output/server/_libs/supabase__auth-js+tslib.mjs             320.57 kB │ gzip:  65.13 kB
+.output/server/_ssr/App-DR12df7C.mjs                         683.86 kB │ gzip: 143.25 kB
+.output/server/_libs/@tanstack/react-router+[...].mjs        797.11 kB │ gzip: 170.24 kB
+
+✓ built in 393ms
+[nitro] ℹ Using auto generated worker name: novaesweb-painel-novaes-27
+ℹ Generated .output/server/wrangler.json
+ℹ Generated .wrangler/deploy/config.json
+ℹ Generated .output/public/_headers
+ℹ Generated .output/nitro.json
+
+[nitro] ✔ You can preview this build using npx vite preview
+[nitro] ✔ You can deploy this build using npx nitro deploy --prebuilt

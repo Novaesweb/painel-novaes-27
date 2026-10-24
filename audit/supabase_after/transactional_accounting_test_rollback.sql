@@ -1,0 +1,61 @@
+begin;
+do $audit$
+declare a uuid; b uuid; ua uuid; ub uuid; m uuid; event_id uuid; n bigint; outsider uuid:=gen_random_uuid();
+begin
+ select sm.store_id,sm.user_id into a,ua from public.store_members sm where sm.is_active and sm.role='owner' order by sm.store_id limit 1;
+ select sm.store_id,sm.user_id into b,ub from public.store_members sm where sm.is_active and sm.role='owner' and sm.store_id<>a order by sm.store_id limit 1;
+ select user_id into m from public.master_profiles where is_active and role='MASTER' limit 1;
+ if a is null or b is null or m is null then raise exception 'Identidades insuficientes para teste de isolamento'; end if;
+ perform set_config('request.jwt.claim.sub',ua::text,true);
+ execute 'set local role authenticated';
+ perform public.novaesweb_record_order_event(a,'__audit_rollback_only','created');
+ perform public.novaesweb_record_order_accepted(a,'__audit_rollback_only');
+ perform public.novaesweb_record_order_accepted(a,'__audit_rollback_only');
+ perform public.novaesweb_record_order_event(a,'__audit_rollback_only','cancelled');
+ perform public.novaesweb_record_order_event(a,'__audit_rollback_only','hidden');
+ select count(*) into n from public.store_order_usage_events where store_id=a and order_ref='__audit_rollback_only';
+ if n<>1 then raise exception 'Deduplicação inválida'; end if;
+ begin
+   perform public.novaesweb_record_order_event(a,'__audit_rollback_only','adjustment');
+   raise exception 'Ajuste por lojista indevidamente aceito';
+ exception when insufficient_privilege then null; end;
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',ub::text,true);
+ execute 'set local role authenticated';
+ perform public.novaesweb_record_order_accepted(b,'__audit_rollback_only');
+ select count(*) into n from public.store_order_usage_events where store_id=a;
+ if ua<>ub and n<>0 then raise exception 'RLS expôs loja A para proprietário B'; end if;
+ select count(*) into n from public.store_order_lifecycle_summary where store_id=a;
+ if ua<>ub and n<>0 then raise exception 'View expôs loja A para proprietário B'; end if;
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',ua::text,true);
+ execute 'set local role authenticated';
+ select count(*) into n from public.store_order_usage_events where store_id=b;
+ if ua<>ub and n<>0 then raise exception 'RLS expôs loja B para proprietário A'; end if;
+ select id into event_id from public.store_order_usage_events where store_id=a and order_ref='__audit_rollback_only';
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',outsider::text,true);
+ execute 'set local role authenticated';
+ select count(*) into n from public.store_order_usage_events;
+ if n<>0 then raise exception 'Identidade sem vínculo acessou eventos'; end if;
+ select count(*) into n from public.store_order_lifecycle_summary;
+ if n<>0 then raise exception 'Identidade sem vínculo acessou view'; end if;
+ begin
+   perform public.novaesweb_record_order_accepted(a,'__audit_unauthorized');
+   raise exception 'Gravação sem vínculo indevidamente aceita';
+ exception when insufficient_privilege then null; end;
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',m::text,true);
+ execute 'set local role authenticated';
+ select count(*) into n from public.store_order_usage_events;
+ if n<>2 then raise exception 'Master não leu as duas lojas'; end if;
+ perform public.novaesweb_master_void_order_usage(event_id,'Teste transacional de anulação - rollback obrigatório');
+ select accepted_count into n from public.store_order_lifecycle_summary where store_id=a;
+ if n<>0 then raise exception 'Anulação não foi refletida na view'; end if;
+ select registered_accepted_count into n from public.store_order_lifecycle_summary where store_id=a;
+ if n<>1 then raise exception 'Aceite original não foi preservado'; end if;
+ execute 'reset role';
+ if public.novaesweb_order_competence('2026-11-01T02:59:59Z')<>'2026-10-01'::date
+ or public.novaesweb_order_competence('2026-11-01T03:00:00Z')<>'2026-11-01'::date then raise exception 'Competência incorreta'; end if;
+end $audit$;
+rollback;

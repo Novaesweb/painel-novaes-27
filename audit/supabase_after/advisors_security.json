@@ -1,0 +1,341 @@
+{
+  "result": {
+    "lints": [
+      {
+        "name": "rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy",
+        "level": "INFO",
+        "facing": "EXTERNAL",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "count": 18,
+        "findings": [
+          {
+            "detail": "Table \\`delivery_private.whatsapp_outbox\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "whatsapp_outbox",
+              "type": "table",
+              "schema": "delivery_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`delivery_private.whatsapp_stores\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "whatsapp_stores",
+              "type": "table",
+              "schema": "delivery_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.campaigns\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "campaigns",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.contacts\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "contacts",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.events\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "events",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.inbound\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "inbound",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.jobs\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "jobs",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`marketing_private.settings\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "settings",
+              "type": "table",
+              "schema": "marketing_private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`private.website_lead_rate_limits\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "website_lead_rate_limits",
+              "type": "table",
+              "schema": "private"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_login_attempts\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_login_attempts",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_plan_catalog\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_plan_catalog",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_scheduled_site_actions\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_scheduled_site_actions",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_security_settings\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_security_settings",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_site_messages\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_site_messages",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.master_support_tickets\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "master_support_tickets",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.push_delivery_jobs\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "push_delivery_jobs",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.website_lead_sources\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "website_lead_sources",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Table \\`public.website_leads\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "website_leads",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          }
+        ]
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "title": "Public Can Execute SECURITY DEFINER Function",
+        "level": "WARN",
+        "facing": "EXTERNAL",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects `SECURITY DEFINER` functions that are callable without signing in. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if it is not meant to be public.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+        "count": 2,
+        "findings": [
+          {
+            "detail": "Function `public.delivery_public_availability(p_store_id uuid)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_public_availability`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_public_availability",
+              "schema": "public",
+              "language": "sql",
+              "arguments": "p_store_id uuid",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_quote_coupon(p_store_id uuid, p_code text, p_subtotal numeric)` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_quote_coupon`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_quote_coupon",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_code text, p_subtotal numeric",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          }
+        ]
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+        "level": "WARN",
+        "facing": "EXTERNAL",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects `SECURITY DEFINER` functions that are callable by signed-in users. Revoke `EXECUTE`, switch the function to `SECURITY INVOKER`, or move it out of your exposed API schema if signed-in users should not call it.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+        "count": 8,
+        "findings": [
+          {
+            "detail": "Function `public.delivery_add_existing_team_member(p_store_id uuid, p_email text, p_role text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_add_existing_team_member`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_add_existing_team_member",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_email text, p_role text",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_delete_order(p_store_id uuid, p_order_id uuid, p_password text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_delete_order`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_delete_order",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_order_id uuid, p_password text",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_list_store_team(p_store_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_list_store_team`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_list_store_team",
+              "schema": "public",
+              "language": "sql",
+              "arguments": "p_store_id uuid",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_public_availability(p_store_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_public_availability`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_public_availability",
+              "schema": "public",
+              "language": "sql",
+              "arguments": "p_store_id uuid",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_quote_coupon(p_store_id uuid, p_code text, p_subtotal numeric)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_quote_coupon`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_quote_coupon",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_code text, p_subtotal numeric",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.delivery_update_team_member(p_store_id uuid, p_user_id uuid, p_role text, p_active boolean)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/delivery_update_team_member`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "delivery_update_team_member",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_user_id uuid, p_role text, p_active boolean",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.novaesweb_master_void_order_usage(p_event_id uuid, p_reason text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/novaesweb_master_void_order_usage`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "novaesweb_master_void_order_usage",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_event_id uuid, p_reason text",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          },
+          {
+            "detail": "Function `public.novaesweb_record_order_event(p_store_id uuid, p_order_ref text, p_event_type public.order_lifecycle_event_type, p_status_from text, p_status_to text, p_reason_category public.order_cancellation_category, p_occurred_at timestamp with time zone)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/novaesweb_record_order_event`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+            "metadata": {
+              "name": "novaesweb_record_order_event",
+              "schema": "public",
+              "language": "plpgsql",
+              "arguments": "p_store_id uuid, p_order_ref text, p_event_type public.order_lifecycle_event_type, p_status_from text, p_status_to text, p_reason_category public.order_cancellation_category, p_occurred_at timestamp with time zone",
+              "security_definer": true
+            },
+            "observed_at": "2026-10-24T00:55:37.679Z"
+          }
+        ]
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "title": "Leaked Password Protection Disabled",
+        "level": "WARN",
+        "facing": "EXTERNAL",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Leaked password protection is currently disabled.",
+        "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+        "count": 1,
+        "findings": [
+          {
+            "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+            "metadata": {
+              "type": "auth",
+              "entity": "Auth"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

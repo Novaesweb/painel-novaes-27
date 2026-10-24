@@ -1,0 +1,53 @@
+{
+  "environment": "Fixture local, sem Supabase e sem login real",
+  "results": [
+    {
+      "viewport": {
+        "name": "tablet-portrait",
+        "width": 768,
+        "height": 1024
+      },
+      "passed": true,
+      "clipboardCharacters": 9415,
+      "editedClipboardComplete": true,
+      "identityIsolation": true,
+      "horizontalOverflow": false,
+      "touchTargetsAtLeast44px": true,
+      "manualSelectionComplete": true,
+      "consoleErrors": [],
+      "externalRequests": []
+    },
+    {
+      "viewport": {
+        "name": "tablet-landscape",
+        "width": 1024,
+        "height": 768
+      },
+      "passed": true,
+      "clipboardCharacters": 9415,
+      "editedClipboardComplete": true,
+      "identityIsolation": true,
+      "horizontalOverflow": false,
+      "touchTargetsAtLeast44px": true,
+      "manualSelectionComplete": true,
+      "consoleErrors": [],
+      "externalRequests": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "clipboardCharacters": 9415,
+      "editedClipboardComplete": true,
+      "identityIsolation": true,
+      "horizontalOverflow": false,
+      "touchTargetsAtLeast44px": true,
+      "manualSelectionComplete": true,
+      "consoleErrors": [],
+      "externalRequests": []
+    }
+  ]
+}

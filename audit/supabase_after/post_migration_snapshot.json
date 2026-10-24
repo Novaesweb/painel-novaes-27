@@ -1,0 +1,422 @@
+{
+  "counts": {
+    "items": 0,
+    "terms": 0,
+    "usage": 0,
+    "cycles": 0,
+    "requests": 2,
+    "contracts": 0,
+    "lifecycle": 0,
+    "assignments": 0,
+    "plan_changes": 0
+  },
+  "stores": [
+    {
+      "id": "e2ba2dff-0b92-497d-9b08-926c235c2934",
+      "name": "Burger House",
+      "nx_id": "NX-E2BA2DFF0B92497D9B08926C235C2934",
+      "status": "active",
+      "plan_code": "130",
+      "billing_active": true,
+      "plan_started_at": null
+    },
+    {
+      "id": "6fab38d7-aa0b-4b27-9c93-1beac81fec39",
+      "name": "Fogo na Brasa",
+      "nx_id": "NX-FOGONABRASA-01",
+      "status": "active",
+      "plan_code": "delivery",
+      "billing_active": true,
+      "plan_started_at": null
+    }
+  ],
+  "catalog": [
+    {
+      "id": "41977200-1348-476b-abd5-5f1509fc9661",
+      "code": "novaes-whatsapp-notify",
+      "name": "Novaes WhatsApp Notify",
+      "price": 25,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "235bb87a-caa9-43de-ac83-6506ea2757e7",
+      "code": "whatsapp-oficial-activation",
+      "name": "Ativação WhatsApp Oficial",
+      "price": 100,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "one_time",
+      "development_status": "planned"
+    },
+    {
+      "id": "067d55b8-1bab-4ff6-bbbb-7babb3b3eb37",
+      "code": "novaes-print-connect",
+      "name": "Novaes Print Connect",
+      "price": null,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "quote",
+      "development_status": "planned"
+    },
+    {
+      "id": "175fcbc8-6926-4314-98ac-212b50c6766a",
+      "code": "novaes-tv",
+      "name": "Novaes TV",
+      "price": 25,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "ba9d0bad-469f-48b1-b2d6-18631e439471",
+      "code": "custom-integrations",
+      "name": "Integrações Personalizadas",
+      "price": null,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "quote",
+      "development_status": "planned"
+    },
+    {
+      "id": "07f6f06a-35cf-4f2e-b677-ca20cc1eac68",
+      "code": "domain-setup",
+      "name": "Configuração de Domínio",
+      "price": 50,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "one_time",
+      "development_status": "planned"
+    },
+    {
+      "id": "1d101e77-beb0-458e-b030-a5b89e228603",
+      "code": "custom-training",
+      "name": "Treinamento Personalizado",
+      "price": 70,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "per_use",
+      "development_status": "planned"
+    },
+    {
+      "id": "d4285872-0315-438d-b3a4-26818806392e",
+      "code": "one_off-adjustment",
+      "name": "Ajuste Avulso",
+      "price": 15,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "per_use",
+      "development_status": "planned"
+    },
+    {
+      "id": "fd2f8cb0-486b-41ef-9bc5-ac5d70e5b308",
+      "code": "product-registration-pack-10",
+      "name": "Cadastro de Produtos — Pacote 10",
+      "price": 35,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "one_time",
+      "development_status": "planned"
+    },
+    {
+      "id": "2552b498-951d-4338-80ca-85bf85330b0a",
+      "code": "extraordinary-support",
+      "name": "Suporte Extraordinário",
+      "price": 50,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "per_use",
+      "development_status": "planned"
+    },
+    {
+      "id": "5e7ad64d-e8a5-4d0f-93fc-d11408268e24",
+      "code": "custom-development",
+      "name": "Desenvolvimento Sob Medida",
+      "price": null,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "quote",
+      "development_status": "planned"
+    },
+    {
+      "id": "5a62b249-d5df-484f-8247-e5203a66c1dd",
+      "code": "novaes-finance",
+      "name": "Novaes Finance",
+      "price": 30,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "ef482af9-37eb-40e7-89c5-e94de5c31d83",
+      "code": "novaes-equipe",
+      "name": "Novaes Equipe",
+      "price": 20,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "8b0c6c54-af9e-4ce0-9cbf-f7cc792e8f1a",
+      "code": "novaes-insights",
+      "name": "Novaes Insights",
+      "price": 20,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "aac60c30-53ec-44d5-a476-a14652ac5598",
+      "code": "novaes-marketing",
+      "name": "Novaes Marketing",
+      "price": 35,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "a1396840-06b3-40b8-ac89-f830d1ec7326",
+      "code": "novaes_fideliza",
+      "name": "Novaes Fideliza",
+      "price": 29,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "f94d9aea-8b8e-4fff-8d58-f4a6da6fd602",
+      "code": "novaes-gift",
+      "name": "Novaes Gift",
+      "price": 25,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "3177fe3d-693d-4aa8-a886-7372a6efc951",
+      "code": "novaes-promo",
+      "name": "Novaes Promo",
+      "price": 15,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "254b2974-4370-44ea-9c61-6f7c32684e5a",
+      "code": "novaes-mesa",
+      "name": "Novaes Mesa",
+      "price": 39,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "2e7ab8a0-82d5-4926-90d2-a02728e40ebc",
+      "code": "novaes-os",
+      "name": "Novaes OS",
+      "price": 39,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "7b933491-8b5b-4bd3-8cb3-bf68214246d0",
+      "code": "novaes-multiusuario",
+      "name": "Novaes Multiusuário",
+      "price": 15,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "49934df2-017f-49ee-8d86-699a0485e7ef",
+      "code": "novaes-multiunidade",
+      "name": "Novaes Multiunidade",
+      "price": 39,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "c4dfc30c-f879-42a4-a7e1-e65934e1f191",
+      "code": "novaes-backup-plus",
+      "name": "Novaes Backup Plus",
+      "price": null,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "quote",
+      "development_status": "planned"
+    },
+    {
+      "id": "2985f7c5-7c6a-4f3c-aaaf-61574a7d0f52",
+      "code": "novaes-import",
+      "name": "Novaes Import",
+      "price": 49,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "one_time",
+      "development_status": "planned"
+    },
+    {
+      "id": "b885fd03-d856-4f2f-87aa-5d2db957d438",
+      "code": "novaes-grupo",
+      "name": "Novaes Pedido em Grupo",
+      "price": 19,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "0210abca-2277-418a-aa64-f759a1d55e44",
+      "code": "novaes-360",
+      "name": "Novaes 360°",
+      "price": 29,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "2bb1cc31-7417-4087-9528-6ad81ef88ead",
+      "code": "novaes-commerce-insights",
+      "name": "Novaes Commerce Insights",
+      "price": 39,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "c5a6b428-6ebc-4420-a3d1-d9fcfcc208c4",
+      "code": "novaes-voz",
+      "name": "Novaes Voz do Cliente",
+      "price": 29,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "monthly",
+      "development_status": "planned"
+    },
+    {
+      "id": "ff732f33-f0e1-41df-bb2c-5204191a10cd",
+      "code": "banner-update",
+      "name": "Atualização de Banner",
+      "price": 25,
+      "is_active": true,
+      "setup_fee": 0,
+      "billing_type": "per_use",
+      "development_status": "planned"
+    }
+  ],
+  "migrations": [
+    {
+      "name": "master_order_accounting_verified_foundation",
+      "version": "20261024005241"
+    },
+    {
+      "name": "master_approved_addon_commercial_catalog",
+      "version": "20261024005301"
+    },
+    {
+      "name": "master_billing_integrity_verified",
+      "version": "20261024005305"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "master_billing_item_same_store",
+      "validated": false
+    },
+    {
+      "name": "master_billing_origin_required",
+      "validated": false
+    }
+  ],
+  "view_columns": [
+    "store_id",
+    "store_name",
+    "plan_code",
+    "competence",
+    "received_count",
+    "accepted_count",
+    "rejected_count",
+    "delivered_count",
+    "cancelled_count",
+    "hidden_count",
+    "last_event_at",
+    "registered_accepted_count",
+    "approved_correction_count"
+  ],
+  "commercial_audit": [
+    {
+      "code": "novaes_fideliza",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-gift",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-promo",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-mesa",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-tv",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-os",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-multiusuario",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-multiunidade",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-backup-plus",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-import",
+      "action": "approved_commercial_catalog_corrected"
+    },
+    {
+      "code": "novaes-grupo",
+      "action": "approved_catalog_item_registered_planned"
+    },
+    {
+      "code": "novaes-360",
+      "action": "approved_catalog_item_registered_planned"
+    },
+    {
+      "code": "novaes-commerce-insights",
+      "action": "approved_catalog_item_registered_planned"
+    },
+    {
+      "code": "novaes-voz",
+      "action": "approved_catalog_item_registered_planned"
+    }
+  ]
+}

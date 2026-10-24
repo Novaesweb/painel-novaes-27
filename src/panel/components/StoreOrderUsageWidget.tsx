@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import './StoreOrderUsageWidget.css'
+import { INSUFFICIENT_BILLING } from '../lib/orderAccounting'
 
 export interface StoreOrderUsageData {
   store_id: string
@@ -22,6 +23,8 @@ export interface StoreOrderUsageData {
   competence: string // ex: "2026-10"
   competence_label: string // ex: "Outubro de 2026"
   franchise_orders: number | null
+  billing_sufficient?: boolean
+  overage_tariff?: number | null
   accepted_count: number
   rejected_count?: number
   delivered_count?: number
@@ -46,14 +49,15 @@ export function StoreOrderUsageWidget({
   const accepted = data.accepted_count
   const pct =
     franchise && franchise > 0
-      ? Math.min(Math.round((accepted / franchise) * 100), 100)
+      ? Math.min(Math.floor((accepted / franchise) * 100), 100)
       : 0
   const realPct =
-    franchise && franchise > 0 ? Math.round((accepted / franchise) * 100) : 0
-  const remaining = franchise ? Math.max(0, franchise - accepted) : null
-  const overage = franchise && accepted > franchise ? accepted - franchise : 0
+    franchise && franchise > 0 ? Math.floor((accepted / franchise) * 100) : 0
+  const remaining = franchise !== null ? Math.max(0, franchise - accepted) : null
+  const overage = franchise !== null && accepted > franchise ? accepted - franchise : 0
 
-  const tariff = data.plan_code === 'NOVAES_PREMIUM' ? 0.15 : 0.2
+  const tariff = data.overage_tariff ?? 0
+  const sufficient = data.billing_sufficient === true && data.overage_tariff != null && franchise !== null
   const overageFee = overage * tariff
 
   const formatBRL = (val: number) =>
@@ -64,7 +68,7 @@ export function StoreOrderUsageWidget({
       {isSimulation && (
         <div className="usage-simulation-badge">
           <Sparkles size={13} />
-          <span>Visualização Simulada — Visão Exata do Lojista</span>
+          <span>Prévia do componente para o lojista — integração ainda deve ser validada</span>
         </div>
       )}
 
@@ -86,8 +90,8 @@ export function StoreOrderUsageWidget({
         </div>
 
         <div className="usage-header-status">
-          {franchise === null ? (
-            <span className="usage-status-pill neutral">Sem limite de delivery</span>
+          {!sufficient ? (
+            <span className="usage-status-pill neutral">{data.plan_code === 'NOVAES_START' ? 'Institucional, sem pedidos incluídos' : INSUFFICIENT_BILLING}</span>
           ) : overage > 0 ? (
             <span className="usage-status-pill overage">
               <AlertCircle size={14} /> Zero Bloqueio Ativo (+{overage})
@@ -109,7 +113,7 @@ export function StoreOrderUsageWidget({
       </div>
 
       {/* Métricas Principais da Franquia */}
-      {franchise !== null ? (
+      {sufficient && franchise !== null ? (
         <div className="usage-body-card">
           <div className="usage-progress-section">
             <div className="usage-progress-labels">
@@ -139,10 +143,10 @@ export function StoreOrderUsageWidget({
                 </span>
               ) : (
                 <span className="text-red">
-                  Franquia superada em <b>{overage}</b> pedidos aceitos.
+                  {overage > 0 ? <>Franquia superada em <b>{overage}</b> pedidos aceitos.</> : 'Franquia atingida. Não há excedentes nesta apuração.'}
                 </span>
               )}
-              <small>Pedidos cancelados antes do aceite ou rejeitados não consom sua franquia.</small>
+              <small>Pedidos cancelados antes do aceite ou rejeitados não consomem sua franquia.</small>
             </div>
           </div>
 
@@ -211,7 +215,7 @@ export function StoreOrderUsageWidget({
               <div className="banner-text-col">
                 <strong>Consumo dentro da franquia inclusa</strong>
                 <p>
-                  Seus pedidos estão sendo processados e aceitos com segurança pela infraestrutura NovaesWeb.
+                  Os aceites não anulados consultados estão dentro da franquia desta competência.
                 </p>
               </div>
             </div>
@@ -225,7 +229,7 @@ export function StoreOrderUsageWidget({
                 <strong>Recomendação de Economia: Plano Premium</strong>
                 <p>
                   Seu restaurante atingiu {accepted} pedidos aceitos. Fazer upgrade para o <b>Plano Premium</b> garante
-                  750 pedidos inclusos por mês e reduz a tarifa de excedente para R$ 0,15, economizando no custo operacional.
+                  750 pedidos inclusos por mês, com vigência no mês seguinte, e reduz a tarifa de excedente para R$ 0,15, economizando no custo operacional.
                 </p>
               </div>
               <button
@@ -281,7 +285,7 @@ export function StoreOrderUsageWidget({
       ) : (
         <div className="usage-empty-state">
           <ShoppingBag size={28} className="text-muted" />
-          <p>Este site não possui plano de delivery ativo com franquia de pedidos.</p>
+          <p>{data.plan_code === 'NOVAES_START' ? 'Este plano institucional não inclui sistema de pedidos.' : INSUFFICIENT_BILLING + '. Confira os eventos mínimos e as condições aprovadas desta competência.'}</p>
         </div>
       )}
 
@@ -291,7 +295,7 @@ export function StoreOrderUsageWidget({
           <HelpCircle size={13} />
           <span>
             <b>Sigilo Garantido:</b> A NovaesWeb apenas contabiliza a quantidade de pedidos aceitos para fins
-            de software. Não temos acesso a dados de clientes, valores de vendas ou itens do seu cardápio.
+            de software. Esta tela não consulta dados de consumidores, valores de vendas ou itens do cardápio.
           </span>
         </div>
 

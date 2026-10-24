@@ -19,6 +19,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import { validatePlanCommercial, planAssignmentIssue } from '../../../supabase/functions/_shared/planCommercialRules'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export type Plan = {
@@ -110,7 +111,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlanSpec> = {
     badge: 'Mais Popular',
     badgeColor: 'purple',
     description:
-      'Plano completo de delivery e catálogo digital para lanchonetes, restaurantes, pizzarias e comércios que querem vender sem taxas por pedido e com franquia transparente de pedidos aceitos.',
+      'Plano completo de delivery e catálogo digital para lanchonetes, restaurantes, pizzarias e comércios que querem vender com franquia mensal de 340 pedidos aceitos incluída e tarifa de R$ 0,20 apenas por aceite excedente, cobrada no mês seguinte.',
     price_cents: 19000,
     billing_period: 'monthly',
     duration_days: null,
@@ -547,6 +548,8 @@ export function PlanManagement({
         features,
       }
 
+      const issue = validatePlanCommercial(payloadPlan)
+      if (issue) throw new Error(issue)
       const { data, error: invokeError } = await supabase.functions.invoke('novaesweb-master-plans', {
         body: {
           action: 'save_plan',
@@ -574,6 +577,8 @@ export function PlanManagement({
     setMessage('')
     setError('')
     try {
+      const issue = planAssignmentIssue(sites.find((site) => site.id === storeId)?.plan_code, planCode)
+      if (issue) throw new Error(issue)
       await onAssign(storeId, planCode, expires)
       const targetStore = sites.find((s) => s.id === storeId)
       const targetPlan = unifiedPlans.find((p) => p.code === planCode)
@@ -614,6 +619,8 @@ export function PlanManagement({
         </div>
       </div>
 
+      <p role="status">Planos de referência ausentes no banco são exibidos apenas como referência local. Limites exclusivos do Premium precisam ser aplicados pelo backend de cada loja. Mudanças contratuais têm vigência no mês seguinte.</p>
+      {plans.filter((plan) => validatePlanCommercial(plan)).map((plan) => <p role="alert" key={plan.code}>Conferir cadastro persistido de {plan.name}: {validatePlanCommercial(plan)} Nenhum dado foi substituído automaticamente.</p>)}
       {/* SEÇÃO 1: CATÁLOGO COMERCIAL COMPLETO */}
       <section className="panel operational-panel plans-catalog-section">
         <div className="operational-toolbar">

@@ -1,0 +1,31 @@
+{
+  "object_presence": {
+    "terms": null,
+    "usage": null,
+    "lifecycle": null,
+    "superadmin": null
+  },
+  "requests_by_addon": [
+    {
+      "code": "novaes_fideliza",
+      "count": 1,
+      "status": "pending"
+    },
+    {
+      "code": "novaes-gift",
+      "count": 1,
+      "status": "awaiting_confirmation"
+    }
+  ],
+  "approved_master_count": 1,
+  "function_dependencies": [
+    {
+      "name": "delivery_private.review_order(uuid,uuid,text,jsonb)",
+      "definition": "CREATE OR REPLACE FUNCTION delivery_private.review_order(p_store_id uuid, p_order_id uuid, p_access_token text, p_review jsonb)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nbegin\n  if p_access_token is null or p_access_token !~ '^[0-9a-f]{64}$' then raise exception 'ORDER_NOT_FOUND' using errcode='42501'; end if;\n  if p_review is null or (p_review->>'foodRating')::integer not between 1 and 5 or (p_review->>'deliveryRating')::integer not between 1 and 5\n    or p_review->>'foodRating' is null or p_review->>'deliveryRating' is null or coalesce(length(p_review->>'comment'),0)>1000 then raise exception 'INVALID_REVIEW'; end if;\n  update public.delivery_orders set payload=jsonb_set(payload,'{review}',jsonb_build_object('foodRating',(p_review->>'foodRating')::integer,'deliveryRating',(p_review->>'deliveryRating')::integer,'comment',left(p_review->>'comment',1000),'createdAt',now()))\n    where store_id=p_store_id and id=p_order_id and status='entregue' and not(payload ? 'review') and access_hash=encode(sha256(convert_to(p_access_token,'UTF8')),'hex');\n  if not found then raise exception 'REVIEW_UNAVAILABLE' using errcode='42501'; end if;\nend;\n$function$\n"
+    },
+    {
+      "name": "marketing_private.request_consent(uuid,uuid,text)",
+      "definition": "CREATE OR REPLACE FUNCTION marketing_private.request_consent(s uuid, o uuid, t text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\ndeclare payload jsonb; p text; c marketing_private.contacts; cfg marketing_private.settings;\nbegin\n select * into cfg from marketing_private.settings where store_id=s and consent_enabled;\n if not found then raise exception 'CONSENT_NOT_CONFIGURED'; end if;\n if t !~ '^[a-f0-9]{64}$' then raise exception 'ORDER_ACCESS_DENIED'; end if;\n select d.payload into payload from public.delivery_orders d join public.managed_sites m on m.id=d.store_id\n where d.store_id=s and d.id=o and m.status='active' and d.access_hash=encode(sha256(convert_to(t,'UTF8')),'hex');\n if payload is null then raise exception 'ORDER_ACCESS_DENIED'; end if;\n p:=marketing_private.phone(payload->>'customerPhone');\n -- Serialize repeated requests and withdrawals for this contact.\n perform pg_advisory_xact_lock(hashtextextended(s::text||p,0));\n select * into c from marketing_private.contacts where store_id=s and phone=p for update;\n if c.state='opted_in' then return jsonb_build_object('state','opted_in'); end if;\n if c.state='pending' and c.requested_at>now()-interval '48 hours' then\n  return jsonb_build_object('state','pending','challenge',c.challenge,'phone',cfg.whatsapp_phone);\n end if;\n insert into marketing_private.contacts(store_id,phone,name,state) values(s,p,left(coalesce(payload->>'customerName','Cliente'),120),'pending')\n on conflict(store_id,phone) do update set state='pending',challenge=gen_random_uuid(),requested_at=now()\n returning * into c;\n insert into marketing_private.events(store_id,kind,entity,detail) values(s,'consent_requested',p,jsonb_build_object('policy',c.policy,'order_id',o));\n return jsonb_build_object('state','pending','challenge',c.challenge,'phone',cfg.whatsapp_phone);\nend $function$\n"
+    }
+  ]
+}

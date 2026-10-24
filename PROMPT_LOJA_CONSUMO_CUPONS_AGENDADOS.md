@@ -31,14 +31,15 @@
 No arquivo `.env` ou nas variáveis de ambiente da loja, certifique-se de configurar:
 
 ```env
-VITE_SUPABASE_URL=https://exemplo-novaesweb.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica
-VITE_STORE_ID=00000000-0000-0000-0000-000000000000 # UUID oficial da loja no Master
-VITE_STORE_NX_ID=NX-00123                            # Identificador oficial da loja
+VITE_SUPABASE_URL=https://mabkzkawziqlmgfikwmh.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica-fornecida-pelo-master
+VITE_NOVAESWEB_STORE_ID=00000000-0000-0000-0000-000000000000 # UUID oficial da loja no Master
+VITE_NOVAESWEB_NX_ID=NX-00123                            # Identificador oficial da loja
 ```
+> *(Nota de compatibilidade: Caso seu projeto use `VITE_STORE_ID` e `VITE_STORE_NX_ID`, o código aceitará ambos transparentemente).*
 
 ### 1.2 Registro Automático do Pedido Aceito (Deduplicação e Zero Bloqueio)
-Quando o lojista clicar em **Aceitar Pedido** no painel da loja, execute o registro do evento de contagem de franquia. Utilize a chamada RPC idempotente da NovaesWeb ou registre na tabela compartilhada:
+Quando o lojista clicar em **Aceitar Pedido** no painel da loja, execute o registro do evento de contagem de franquia. Utilize a chamada RPC idempotente da NovaesWeb:
 
 ```typescript
 // Exemplo de função utilitária na loja do cliente: lib/novaeswebUsage.ts
@@ -48,33 +49,30 @@ export async function reportOrderAcceptedToMaster(order: {
   id: string
   created_at?: string
 }) {
-  const storeId = import.meta.env.VITE_STORE_ID
-  const storeNxId = import.meta.env.VITE_STORE_NX_ID
+  const storeId = import.meta.env.VITE_NOVAESWEB_STORE_ID || import.meta.env.VITE_STORE_ID
+  const storeNxId = import.meta.env.VITE_NOVAESWEB_NX_ID || import.meta.env.VITE_STORE_NX_ID
 
   if (!storeId) {
-    console.warn('[NovaesWeb] VITE_STORE_ID não configurado. Pedido não reportado ao Master.')
+    console.warn('[NovaesWeb] VITE_NOVAESWEB_STORE_ID não configurado. Pedido não reportado ao Master.')
     return
   }
 
   try {
-    // 1. Tenta a RPC oficial de gravação segura
+    // 1. Invoca a RPC oficial novaesweb_record_order_event
     const { error: rpcError } = await supabase.rpc('novaesweb_record_order_event', {
       p_store_id: storeId,
-      p_order_id: String(order.id),
+      p_order_ref: String(order.id),
       p_event_type: 'accepted',
-      p_nx_id: storeNxId || null,
-      p_order_created_at: order.created_at || new Date().toISOString()
+      p_occurred_at: order.created_at || new Date().toISOString()
     })
 
     if (!rpcError) return
 
-    // 2. Fallback via inserção direta na tabela de eventos com deduplicação ON CONFLICT
-    await supabase.from('store_order_usage_events').insert({
-      store_id: storeId,
-      order_id: String(order.id),
-      event_type: 'accepted',
-      competence: new Date().toISOString().slice(0, 7), // ex: "2026-10"
-      order_created_at: order.created_at || new Date().toISOString()
+    // 2. Fallback de retrocompatibilidade com a RPC legado se a versão do banco for anterior
+    await supabase.rpc('novaesweb_record_order_accepted', {
+      p_store_id: storeId,
+      p_order_ref: String(order.id),
+      p_accepted_at: order.created_at || new Date().toISOString()
     })
   } catch (err) {
     // Falha silenciosa para NUNCA travar a operação de venda do lojista
@@ -123,7 +121,8 @@ export function StoreOrderUsageWidget() {
   useEffect(() => {
     async function loadUsage() {
       try {
-        const storeId = import.meta.env.VITE_STORE_ID
+        const storeId = import.meta.env.VITE_NOVAESWEB_STORE_ID || import.meta.env.VITE_STORE_ID
+        const storeNxId = import.meta.env.VITE_NOVAESWEB_NX_ID || import.meta.env.VITE_STORE_NX_ID
         const currentCompetence = new Date().toISOString().slice(0, 7) // "YYYY-MM"
         const monthNames = [
           'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -153,7 +152,7 @@ export function StoreOrderUsageWidget() {
 
         setData({
           store_name: storeInfo?.name || 'Meu Estabelecimento',
-          nx_id: storeInfo?.nx_id || import.meta.env.VITE_STORE_NX_ID || 'NX-LOJA',
+          nx_id: storeInfo?.nx_id || storeNxId || 'NX-LOJA',
           plan_name: isStart ? 'Novaes Start' : isPremium ? 'Novaes Premium' : 'Novaes Business',
           plan_code: planCode,
           competence_label: competenceLabel,
@@ -492,7 +491,7 @@ ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ DEFAULT NULL;
 
 ## 4. CHECKLIST DE TESTE E CONFIRMAÇÃO
 
-- [ ] Variáveis `VITE_STORE_ID` e `VITE_STORE_NX_ID` configuradas.
+- [ ] Variáveis `VITE_NOVAESWEB_STORE_ID` e `VITE_NOVAESWEB_NX_ID` configuradas no `.env`.
 - [ ] Ao aceitar um pedido no painel do lojista, o evento é gravado sem travar o painel.
 - [ ] Acessar **Configurações → Meu Plano → Consumo de Pedidos** e conferir se o widget exibe os números reais do mês.
 - [ ] No plano Premium: Criar um cupom de teste, aplicá-lo no checkout e conferir o desconto no subtotal.

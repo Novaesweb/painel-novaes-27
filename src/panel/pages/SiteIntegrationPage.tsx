@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers, Store, MousePointerClick } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle } from 'lucide-react'
 import { useSearchParams } from '../lib/router-compat'
 import { integrationPrompts } from '../lib/integrationPrompt'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
@@ -60,6 +60,105 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
         </div>
       </div>
 
+      {/* Guia Visual do Fluxo de Trabalho */}
+      <section className="panel site-workflow-banner" aria-label="Passo a passo oficial de integração">
+        <div className="workflow-banner-header">
+          <HelpCircle size={18} className="workflow-icon" />
+          <div>
+            <strong>Passo a Passo Oficial: Como criar ou conectar uma loja</strong>
+            <p>O fluxo de trabalho varia conforme o cenário da loja. Entenda a ordem correta:</p>
+          </div>
+        </div>
+
+        <div className="workflow-scenarios-grid">
+          {/* Cenário A: Nova Loja do Zero */}
+          <div className="workflow-scenario-card new-store">
+            <div className="scenario-badge">Cenário A · Loja Nova do Zero</div>
+            <h3>Criando um site para novo cliente</h3>
+            <div className="scenario-steps">
+              <div className="scenario-step-item">
+                <span className="step-num s1">1</span>
+                <div>
+                  <strong>Criar a Loja Primeiro</strong>
+                  <p>Acesse a aba <em>Criador de Sites</em>, preencha o formulário e envie o prompt à IA (Lovable) para gerar o site, cardápio e layout.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s2">2</span>
+                <div>
+                  <strong>Colocar o Supabase</strong>
+                  <p>Com o site criado e funcional, envie o <strong>Prompt 1</strong> no chat do site para plugar o banco, RLS e variáveis <code>.env</code>.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s3">3</span>
+                <div>
+                  <strong>Conectar ao Master</strong>
+                  <p>O site executa o auto-cadastro seguro, recebe o <code>NX-ID</code> oficial e faz check-in direto no Painel Master.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s4">4</span>
+                <div>
+                  <strong>Controles e Franquia</strong>
+                  <p>Envie os Prompts 2 a 6 para sincronizar bloqueio/manutenção, catálogo de adicionais e contagem de pedidos.</p>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="scenario-action-btn"
+              onClick={() => changeTab('generator')}
+            >
+              <Sparkles size={14} /> Ir para o Criador de Sites
+            </button>
+          </div>
+
+          {/* Cenário B: Loja Já Existente */}
+          <div className="workflow-scenario-card existing-store">
+            <div className="scenario-badge">Cenário B · Loja Já Existente</div>
+            <h3>Conectando loja pronta (ex: Burger Rose)</h3>
+            <div className="scenario-steps">
+              <div className="scenario-step-item">
+                <span className="step-num s-check">✓</span>
+                <div>
+                  <strong>Site Já Existe</strong>
+                  <p>Não precisa recriar a loja. O frontend, design, produtos e rotas originais são 100% preservados.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s1">1</span>
+                <div>
+                  <strong>Colocar o Supabase e Conectar</strong>
+                  <p>Envie direto o <strong>Prompt 1</strong> no chat da loja para plugar o Supabase central e obter o <code>NX-ID</code>.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s2">2</span>
+                <div>
+                  <strong>Conectar ao Painel Master</strong>
+                  <p>O check-in ativa a loja na Central Multi-Loja sem necessidade de aprovação manual.</p>
+                </div>
+              </div>
+              <div className="scenario-step-item">
+                <span className="step-num s3">3</span>
+                <div>
+                  <strong>Ativar Controles e Pedidos</strong>
+                  <p>Envie os Prompts 2 e 5 para vincular as regras de bloqueio e acompanhamento da franquia do plano.</p>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="scenario-action-btn"
+              onClick={() => changeTab('prompts')}
+            >
+              <Layers size={14} /> Ver Prompts de Conexão
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Seletor de Abas da Página */}
       <div className="integration-navigation-tabs">
         <button
@@ -94,12 +193,16 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
       {activeTab === 'prompts' && (
         <>
           <section className="panel site-integration-guide" aria-label="Ordem de envio dos prompts">
-            <h2>Qual prompt enviar primeiro?</h2>
-            <p>Para instruções de uma empresa específica, use a Central de Integração por Loja. Os seis documentos gerais foram preservados; confira a auditoria consolidada antes de executar orientações antigas e nunca reaplique migrations automaticamente.</p>
+            <h2>Ordem correta de envio dos Prompts de Conexão (1 a 6)</h2>
             <p>
-              Envie o <strong>1</strong> ao chat do site e espere concluir. Depois envie o <strong>2</strong> e,
-              quando estiver pronto, o <strong>3</strong>. O <strong>4</strong> é para implementação de adicionais
-              aprovados e o <strong>5</strong> conecta a contagem segura de pedidos à franquia do plano.
+              <strong>Atenção:</strong> O site da loja <strong>já deve estar criado</strong> antes de enviar o Prompt 1 (seja criado pelo gerador da aba ao lado ou já existente). O Prompt 1 conecta o Supabase a um projeto que já existe.
+            </p>
+            <p>
+              1. Envie o <strong>Prompt 1</strong> ao chat do site da loja e espere concluir o auto-cadastro e o check-in no Supabase.<br />
+              2. Depois envie o <strong>Prompt 2</strong> (Controles do Master) e, quando estiver pronto, o <strong>Prompt 3</strong> (Central de Adicionais).<br />
+              3. O <strong>Prompt 4</strong> é somente para quando você aprovar um adicional específico no Master.<br />
+              4. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia do plano (340 pedidos no Business ou 750 no Premium) com Zero Bloqueio.<br />
+              5. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos avançados.
             </p>
             <p>
               Você pode copiar todos os prompts sem selecionar uma loja. O chat confirma os dados oficiais na

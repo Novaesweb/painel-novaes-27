@@ -7,4 +7,34 @@
 .integration-nav-tab.active{background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(124,58,237,.25));border-color:#a855f7;color:#f3e8ff;box-shadow:0 0 16px rgba(168,85,247,.25)}
 .integration-nav-tab svg{color:#c084fc}
 
-@media(max-width:900px){.site-integration-prompts{grid-template-columns:1fr}}@media(max-width:760px){.site-integration-card,.site-integration-guide{padding:18px 15px}.site-integration-copy{font-size:12px}.site-integration-card-heading{gap:10px}.site-integration-card h2{font-size:14px}}
+/* Banner de Fluxo Oficial de Trabalho */
+.site-workflow-banner{padding:20px 22px;border:1px solid rgba(168,85,247,.25);background:linear-gradient(145deg,rgba(24,14,38,.75),rgba(12,8,22,.9));border-radius:12px}
+.workflow-banner-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+.workflow-icon{color:#c084fc;flex-shrink:0;margin-top:2px}
+.workflow-banner-header strong{display:block;font-size:14px;color:#f3e8ff;font-weight:700}
+.workflow-banner-header p{margin:4px 0 0;font-size:12px;color:#a1a1aa;line-height:1.5}
+.workflow-scenarios-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.workflow-scenario-card{background:rgba(18,11,28,.65);border:1px solid rgba(168,85,247,.22);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.workflow-scenario-card.new-store{border-color:rgba(168,85,247,.3)}
+.workflow-scenario-card.existing-store{border-color:rgba(56,189,248,.25)}
+.scenario-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:fit-content}
+.new-store .scenario-badge{background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.35)}
+.existing-store .scenario-badge{background:rgba(56,189,248,.15);color:#7dd3fc;border:1px solid rgba(56,189,248,.35)}
+.workflow-scenario-card h3{margin:0;font-size:13px;color:#f4f4f5;font-weight:700}
+.scenario-steps{display:flex;flex-direction:column;gap:10px;flex:1}
+.scenario-step-item{display:flex;align-items:flex-start;gap:10px}
+.step-num{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-num.s1{background:rgba(168,85,247,.25);color:#d8b4fe;border:1px solid rgba(168,85,247,.45)}
+.step-num.s2{background:rgba(59,130,246,.25);color:#93c5fd;border:1px solid rgba(59,130,246,.45)}
+.step-num.s3{background:rgba(16,185,129,.25);color:#6ee7b7;border:1px solid rgba(16,185,129,.45)}
+.step-num.s4{background:rgba(245,158,11,.25);color:#fcd34d;border:1px solid rgba(245,158,11,.45)}
+.step-num.s-check{background:rgba(16,185,129,.2);color:#34d399;border:1px solid rgba(16,185,129,.4)}
+.scenario-step-item strong{display:block;font-size:12px;color:#e4e4e7;line-height:1.4}
+.scenario-step-item p{margin:2px 0 0;font-size:11px;color:#a1a1aa;line-height:1.45}
+.scenario-step-item code{background:rgba(0,0,0,.35);padding:1px 4px;border-radius:4px;color:#d8b4fe;font-size:10px}
+.scenario-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#e9d5ff;cursor:pointer;transition:all .18s ease;margin-top:6px}
+.scenario-action-btn:hover{background:rgba(168,85,247,.3);color:#ffffff;border-color:rgba(168,85,247,.6)}
+.existing-store .scenario-action-btn{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3);color:#bae6fd}
+.existing-store .scenario-action-btn:hover{background:rgba(56,189,248,.25);color:#ffffff;border-color:rgba(56,189,248,.6)}
+
+@media(max-width:900px){.site-integration-prompts,.workflow-scenarios-grid{grid-template-columns:1fr}}@media(max-width:760px){.site-integration-card,.site-integration-guide,.site-workflow-banner{padding:18px 15px}.site-integration-copy{font-size:12px}.site-integration-card-heading{gap:10px}.site-integration-card h2{font-size:14px}}

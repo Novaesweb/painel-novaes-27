@@ -270,7 +270,7 @@ export function StoreMessengerSection({
             .replace(/{loja}/gi, s.name)
             .replace(/{plano}/gi, s.plan_code || 'Novaes Business')
 
-          await supabase.functions.invoke('novaesweb-master-sites', {
+          const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
             body: {
               action: 'send_message',
               store_id: s.id,
@@ -279,7 +279,9 @@ export function StoreMessengerSection({
               message_type: category,
             },
           })
-          successCount++
+          if (!error && !data?.error) {
+            successCount++
+          }
         }
 
         setSendSuccess(`Comunicado disparado com sucesso para ${successCount} lojas ativas!`)
@@ -308,7 +310,16 @@ export function StoreMessengerSection({
           },
         })
 
-        if (error) throw error
+        if (error) {
+          let detail = error.message
+          try {
+            const response = (error as Error & { context?: Response }).context
+            const payload = await response?.clone().json() as { error?: string } | undefined
+            if (payload?.error) detail = payload.error
+          } catch { /* keep message */ }
+          throw new Error(detail)
+        }
+        if (data?.error) throw new Error(String(data.error))
 
         setSendSuccess(
           data?.message || `Comunicado entregue com sucesso à caixa de entrada da loja ${currentStore.name}!`

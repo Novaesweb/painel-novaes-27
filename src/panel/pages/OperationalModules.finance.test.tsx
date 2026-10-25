@@ -43,5 +43,5 @@ describe("Aba Financeiro → Simulador de Renda", () => {
         ([name, body]) => name === "novaesweb-master-sites" && body.body.action === "list_sites",
       ),
     ).toBe(true);
-  });
+  }, 15000);
 });

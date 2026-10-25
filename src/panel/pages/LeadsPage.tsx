@@ -43,6 +43,7 @@ export function LeadsPage({ role }: { role: string }) {
       } catch { /* Preserve the function error. */ }
       throw new Error(detail)
     }
+    if (data?.error) throw new Error(String(data.error))
     return data as Record<string, any>
   }, [])
 

@@ -378,7 +378,15 @@ export function PlanManagement({
         },
       })
 
-      if (invokeError) throw new Error(invokeError.message)
+      if (invokeError) {
+        let detail = invokeError.message
+        try {
+          const response = (invokeError as Error & { context?: Response }).context
+          const payload = await response?.clone().json() as { error?: string } | undefined
+          if (payload?.error) detail = payload.error
+        } catch { /* keep original message */ }
+        throw new Error(detail)
+      }
       if ((data as { error?: string } | null)?.error) throw new Error((data as { error: string }).error)
 
       await onRefresh()
@@ -394,6 +402,14 @@ export function PlanManagement({
 
   async function assign(event: React.FormEvent) {
     event.preventDefault()
+    if (!storeId) {
+      setError('Selecione uma loja para vincular o plano.')
+      return
+    }
+    if (!planCode) {
+      setError('Selecione um plano válido para atribuir à loja.')
+      return
+    }
     setBusy(true)
     setMessage('')
     setError('')
@@ -403,7 +419,13 @@ export function PlanManagement({
       const targetPlan = unifiedPlans.find((p) => p.code === planCode)
       setMessage(`Plano "${targetPlan?.name || planCode}" vinculado à loja "${targetStore?.name || storeId}" com sucesso.`)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível vincular o plano.')
+      let detail = cause instanceof Error ? cause.message : 'Não foi possível vincular o plano.'
+      try {
+        const response = (cause as Error & { context?: Response }).context
+        const payload = await response?.clone().json() as { error?: string } | undefined
+        if (payload?.error) detail = payload.error
+      } catch { /* keep message */ }
+      setError(detail)
     } finally {
       setBusy(false)
     }

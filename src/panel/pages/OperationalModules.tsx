@@ -28,6 +28,15 @@ const statusNames: Record<string, string> = { active: 'Ativa', pending: 'Aguarda
 const paymentNames: Record<string, string> = { unknown: 'Sem informação', paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado', waived: 'Isento' }
 const ticketStatusLabels: Record<string, string> = { open: 'Aberto', in_progress: 'Em andamento', waiting: 'Aguardando', resolved: 'Resolvido', closed: 'Fechado' }
 
+function normalizeDomain(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `https://${trimmed}`
+  }
+  return trimmed
+}
+
 export function OperationalModulePage({ path, role, sessionUserId }: { path: string; role: string; sessionUserId: string }) {
   const [financeTab, setFinanceTab] = useState<'administration' | 'simulator'>('administration')
   const [sites, setSites] = useState<Site[]>([])
@@ -45,6 +54,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({ email: '', owner_name: '', code: '', name: '', description: '', price: '', period: 'monthly', days: '', plan: '', expires: '', payment_status: 'unknown', grace_days: '0', domain: '', backup_status: 'unknown', backup_date: '', ticket_status: 'in_progress', user_id: '', user_role: 'SUPORTE', user_active: true, display_name: '' })
+  const [ticketDraftStatuses, setTicketDraftStatuses] = useState<Record<string, string>>({})
   const [settingsText, setSettingsText] = useState('{}')
   const [ticketDraft, setTicketDraft] = useState({ subject: '', message: '', priority: 'normal' })
 
@@ -129,8 +139,16 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
 
   async function addDomain(event: React.FormEvent) {
     event.preventDefault()
-    if (!selected) return
-    await run(async () => { await invoke('novaesweb-admin', { action: 'add_site_domain', store_id: selected.id, site_domain: form.domain, is_primary: selected.domains.length === 0 }) }, 'Domínio vinculado ao cadastro oficial.')
+    if (!selected) {
+      setMessage('Selecione uma loja para vincular o domínio.')
+      return
+    }
+    const clean = normalizeDomain(form.domain)
+    if (!clean) {
+      setMessage('Informe um domínio válido para vincular.')
+      return
+    }
+    await run(async () => { await invoke('novaesweb-admin', { action: 'add_site_domain', store_id: selected.id, site_domain: clean, is_primary: selected.domains.length === 0 }) }, 'Domínio vinculado ao cadastro oficial.')
     setForm((value) => ({ ...value, domain: '' }))
   }
 
@@ -211,12 +229,23 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   }
 
   async function saveSettings() {
-    if (!selected) return
-    await run(async () => { const value = JSON.parse(settingsText); await invoke('novaesweb-master-operations', { action: 'save_store_settings', store_id: selected.id, settings: value }) }, 'Preferências salvas com validação no backend.')
+    if (!selected) {
+      setMessage('Selecione uma loja para salvar as preferências.')
+      return
+    }
+    let value: Record<string, unknown>
+    try {
+      value = JSON.parse(settingsText)
+    } catch {
+      setMessage('O texto informado não é um JSON válido. Verifique se as chaves e valores de texto usam aspas duplas.')
+      return
+    }
+    await run(async () => { await invoke('novaesweb-master-operations', { action: 'save_store_settings', store_id: selected.id, settings: value }) }, 'Preferências salvas com validação no backend.')
   }
 
   async function changeTicket(ticket: Ticket) {
-    await run(async () => { await invoke('novaesweb-master-operations', { action: 'set_support_ticket_status', ticket_id: ticket.id, status: form.ticket_status }) }, 'Status do chamado atualizado.')
+    const targetStatus = ticketDraftStatuses[ticket.id] ?? ticket.status
+    await run(async () => { await invoke('novaesweb-master-operations', { action: 'set_support_ticket_status', ticket_id: ticket.id, status: targetStatus }) }, 'Status do chamado atualizado.')
   }
 
   async function createTicket(event: React.FormEvent) {
@@ -229,7 +258,8 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   const head = <div className="page-heading"><div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>{path === '/financeiro' && financeTab === 'simulator' ? 'Simulador de Renda' : title[path] ?? 'Módulo'}</h1><p>{path === '/financeiro' && financeTab === 'simulator' ? 'Projeções locais para planejar a NovaesWeb, sem alterar contratos ou cobranças.' : 'Informações administrativas reais do Supabase NovaesWeb.'}</p></div><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Atualizar</button></div>
   const sitePicker = <label className="operational-picker">Loja<select value={selectedSite} onChange={(event) => setSelectedSite(event.target.value)}><option value="">Selecione uma loja</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.nx_id} · {site.name}</option>)}</select></label>
   if (loading && path !== '/financeiro') return <div className="operational-page">{head}<section className="panel operational-empty"><span className="loader" /><p>Carregando dados do Supabase…</p></section></div>
-  return <div className="operational-page">{head}{message && <div className={`operational-message${/salv|criad|vinculad|atualizad|registrad/i.test(message) ? ' success' : ''}`} role="status">{message}</div>}
+  const isSuccessMessage = /salv|criad|vinculad|atualizad|registrad|restaurad/i.test(message)
+  return <div className="operational-page">{head}{message && <div className={`operational-message ${isSuccessMessage ? 'success' : 'error'}`} role={isSuccessMessage ? 'status' : 'alert'}>{message}</div>}
     {!supabase && <div className="operational-message">O Supabase não está configurado neste ambiente.</div>}
     {path === '/clientes' && <>
       <div className="operational-note"><Building2 size={17} /><span>Este módulo mostra lojas e seus proprietários. Por segurança, o Painel Master não consulta clientes finais, pedidos, catálogo nem caixa.</span></div>
@@ -306,7 +336,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     {path === '/financeiro' && <nav className="income-finance-tabs" aria-label="Áreas do Financeiro"><button type="button" aria-pressed={financeTab === 'administration'} onClick={() => setFinanceTab('administration')}>Financeiro administrativo</button><button type="button" aria-pressed={financeTab === 'simulator'} onClick={() => setFinanceTab('simulator')}>Simulador de Renda</button></nav>}
     {path === '/financeiro' && <div hidden={financeTab !== 'simulator'}><IncomeSimulator key={sessionUserId} catalog={plans} storageScope={sessionUserId} /></div>}
     {path === '/financeiro' && <div hidden={financeTab !== 'administration'}><div className="operational-note"><Activity size={17} /><span>A tela administra status contratual, vencimento e tolerância. Não gera faturas nem confirma recebimento bancário. Parcelas, adicionais e excedentes exigem conciliação e histórico próprios; infraestrutura de faturamento ainda depende de homologação. Ela não exibe transações, faturamento, lucro ou caixa das lojas.</span></div><section className="panel operational-panel"><div className="operational-toolbar"><div><strong>Resumo contratual</strong><span>Metadados administrativos do cadastro oficial</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar loja" /></div><div className="operational-table-wrap"><table className="operational-table"><thead><tr><th>LOJA</th><th>PLANO</th><th>SITUAÇÃO</th><th>PAGAMENTO INFORMADO</th><th>VENCIMENTO</th><th>TOLERÂNCIA</th></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedSite(site.id)}><td><b>{site.name}</b><small>{site.nx_id}</small></td><td>{site.plan_code || 'Sem plano'}</td><td>{site.billing_active ? 'Contrato ativo' : 'Contrato inativo'}</td><td>{paymentNames[site.payment_status] ?? site.payment_status}</td><td>{date(site.plan_expires_at)}</td><td>{site.grace_days} dias</td></tr>)}</tbody></table></div></section><section className="panel operational-panel"><h2>Atualizar dados administrativos</h2>{sitePicker}{selected && <p className="operational-subtitle">Selecionada: {selected.name} · {selected.nx_id}</p>}<form className="operational-form" onSubmit={(event) => void saveBilling(event)}><label>Status de pagamento informado<select value={form.payment_status} onChange={(e) => setForm({ ...form, payment_status: e.target.value })}><option value="unknown">Sem informação</option><option value="paid">Pago</option><option value="pending">Pendente</option><option value="overdue">Atrasado</option><option value="waived">Isento</option></select></label><label>Vencimento<input type="date" value={form.expires} onChange={(e) => setForm({ ...form, expires: e.target.value })} /></label><label>Dias de tolerância<input type="number" min="0" max="90" value={form.grace_days} onChange={(e) => setForm({ ...form, grace_days: e.target.value })} /></label><button className="primary-button" disabled={busy || !selected}>Salvar dados</button></form></section></div>}
-    {path === '/dominios' && <><section className="panel operational-panel"><div className="operational-toolbar"><div><strong>Domínios cadastrados</strong><span>{sites.length} lojas reais consultadas</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar domínio ou loja" /></div><div className="operational-table-wrap"><table className="operational-table"><thead><tr><th>LOJA</th><th>ID NX</th><th>DOMÍNIOS</th><th>INTEGRAÇÃO</th></tr></thead><tbody>{filtered.map((site) => <tr key={site.id}><td>{site.name}</td><td>{site.nx_id}</td><td>{site.domains?.length ? site.domains.map((domain) => <span className="domain-chip" key={domain.domain}>{domain.domain}{domain.is_primary ? ' · principal' : ''} · {domain.verification_status}</span>) : 'Nenhum domínio cadastrado'}</td><td>{site.status}</td></tr>)}</tbody></table></div></section><section className="panel operational-panel"><h2><Globe2 size={17} /> Adicionar domínio</h2>{sitePicker}<form className="operational-form" onSubmit={(event) => void addDomain(event)}><label>URL pública (HTTP ou HTTPS)<input type="url" required value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} placeholder="https://minhaloja.com" /></label><button className="primary-button" disabled={busy || !selected}>Vincular domínio</button></form><p className="operational-subtitle">O cadastro é vinculado à loja no Supabase. A validação de DNS/publicação continua dependendo da configuração do provedor do domínio.</p></section></>}
+    {path === '/dominios' && <><section className="panel operational-panel"><div className="operational-toolbar"><div><strong>Domínios cadastrados</strong><span>{sites.length} lojas reais consultadas</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar domínio ou loja" /></div><div className="operational-table-wrap"><table className="operational-table"><thead><tr><th>LOJA</th><th>ID NX</th><th>DOMÍNIOS</th><th>INTEGRAÇÃO</th></tr></thead><tbody>{filtered.map((site) => <tr key={site.id}><td>{site.name}</td><td>{site.nx_id}</td><td>{site.domains?.length ? site.domains.map((domain) => <span className="domain-chip" key={domain.domain}>{domain.domain}{domain.is_primary ? ' · principal' : ''} · ${domain.verification_status}</span>) : 'Nenhum domínio cadastrado'}</td><td>{site.status}</td></tr>)}</tbody></table></div></section><section className="panel operational-panel"><h2><Globe2 size={17} /> Adicionar domínio</h2>{sitePicker}<form className="operational-form" onSubmit={(event) => void addDomain(event)}><label>Domínio ou URL pública<input type="text" required value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} placeholder="Ex.: minhaloja.com ou https://minhaloja.com" /></label><button className="primary-button" disabled={busy || !selected}>Vincular domínio</button></form><p className="operational-subtitle">O cadastro é vinculado à loja no Supabase. A validação de DNS/publicação continua dependendo da configuração do provedor do domínio.</p></section></>}
     {path === '/backups' && <>
       <div className="operational-note warning"><CircleAlert size={17} /><span>O projeto ainda não tem um serviço que execute cópias de segurança. Este módulo acompanha e registra o status informado; não inicia nem verifica backups automaticamente.</span></div>
       <section className="panel operational-panel">
@@ -428,8 +458,8 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                     <td onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <select
-                          value={form.ticket_status}
-                          onChange={(e) => setForm({ ...form, ticket_status: e.target.value })}
+                          value={ticketDraftStatuses[ticket.id] ?? ticket.status}
+                          onChange={(e) => setTicketDraftStatuses((prev) => ({ ...prev, [ticket.id]: e.target.value }))}
                           style={{ background: 'var(--card, #100a16)', border: '1px solid var(--line, #333)', color: '#f8f5fb', borderRadius: '6px', padding: '4px 6px', fontSize: '12px' }}
                         >
                           <option value="open">Aberto</option>

@@ -42,6 +42,13 @@ export function StoresPage({ role }: { role: string }) {
   const [refreshing, setRefreshing] = useState(false)
   const [query, setQuery] = useState('')
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>('info')
+
+  const setFeedback = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setMessage(msg)
+    setMessageType(type)
+  }, [])
+
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showRegistration, setShowRegistration] = useState(false)
   const [registering, setRegistering] = useState(false)
@@ -56,23 +63,23 @@ export function StoresPage({ role }: { role: string }) {
 
   const loadSites = useCallback(async (quiet = false) => {
     if (!supabase || !isSupabaseConfigured) {
-      setMessage('Configure o Supabase para carregar o cadastro oficial de lojas.')
+      setFeedback('Configure o Supabase para carregar o cadastro oficial de lojas.', 'info')
       setSites([])
       setLoading(false)
       return
     }
     if (quiet) setRefreshing(true)
     else setLoading(true)
-    setMessage('')
+    setFeedback('', 'info')
     const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
       body: { action: 'list_sites' },
     })
     if (error || data?.error) {
       const detail = data?.error || error?.message || 'erro desconhecido'
-      setMessage(`Não foi possível carregar as lojas pelo backend MASTER: ${detail}`)
+      setFeedback(`Não foi possível carregar as lojas pelo backend MASTER: ${detail}`, 'error')
       setSites([])
     } else if (!Array.isArray(data?.sites)) {
-      setMessage('O backend MASTER respondeu sem a lista oficial de lojas.')
+      setFeedback('O backend MASTER respondeu sem a lista oficial de lojas.', 'error')
       setSites([])
     } else {
       const normalizedSites: Site[] = data.sites.map((site: {
@@ -102,7 +109,7 @@ export function StoresPage({ role }: { role: string }) {
     }
     setLoading(false)
     setRefreshing(false)
-  }, [])
+  }, [setFeedback])
 
   useEffect(() => { void loadSites() }, [loadSites])
   useEffect(() => {
@@ -141,24 +148,33 @@ export function StoresPage({ role }: { role: string }) {
   const pendingCount = sites.filter((site) => site.status === 'pending').length
   const restrictedCount = sites.filter((site) => site.status === 'suspended' || site.status === 'maintenance').length
 
+  function normalizeDomain(value: string) {
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return `https://${trimmed}`
+    }
+    return trimmed
+  }
+
   async function searchOfficial(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage('')
+    setFeedback('', 'info')
     const value = query.trim()
-    if (!value) { setMessage('Digite um ID NX, nome ou domínio para pesquisar.'); return }
+    if (!value) { setFeedback('Digite um ID NX, nome ou domínio para pesquisar.', 'info'); return }
     const found = sites.find((site) => site.nx_id.toLocaleLowerCase() === value.toLocaleLowerCase())
       ?? sites.find((site) => site.name.toLocaleLowerCase() === value.toLocaleLowerCase())
       ?? sites.find((site) => site.store_domains.some((domain) => domain.domain.toLocaleLowerCase() === value.toLocaleLowerCase()))
-    if (!found) { setSelectedId(null); setMessage('Loja não encontrada. A busca não criou nem alterou registros.'); return }
+    if (!found) { setSelectedId(null); setFeedback('Loja não encontrada. A busca não criou nem alterou registros.', 'info'); return }
     setSelectedId(found.id)
-    setMessage('Registro oficial encontrado no Supabase.')
+    setFeedback('Registro oficial encontrado no Supabase.', 'success')
   }
 
   async function registerOfficialSite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage('')
-    if (role !== 'MASTER') { setMessage('O registro oficial é restrito ao perfil MASTER.'); return }
-    if (!supabase) { setMessage('O Supabase não está configurado.'); return }
+    setFeedback('', 'info')
+    if (role !== 'MASTER') { setFeedback('O registro oficial é restrito ao perfil MASTER.', 'error'); return }
+    if (!supabase) { setFeedback('O Supabase não está configurado.', 'error'); return }
     setRegistering(true)
     const { data, error } = await supabase.functions.invoke('novaesweb-admin', {
       body: {
@@ -166,7 +182,7 @@ export function StoresPage({ role }: { role: string }) {
         nx_id: registration.nx_id.trim(),
         name: registration.name.trim(),
         owner_id: registration.owner_id.trim(),
-        site_domain: registration.site_domain.trim(),
+        site_domain: normalizeDomain(registration.site_domain),
         owner_name: registration.owner_name.trim() || null,
         plan_code: registration.plan_code.trim() || null,
       },
@@ -178,12 +194,12 @@ export function StoresPage({ role }: { role: string }) {
         const payload = await response?.clone().json() as { error?: string } | undefined
         if (payload?.error) detail = payload.error
       } catch { /* keep the Supabase error message */ }
-      setMessage(`Não foi possível registrar: ${detail}`)
+      setFeedback(`Não foi possível registrar: ${detail}`, 'error')
       setRegistering(false)
       return
     }
     if (!data?.site?.id) {
-      setMessage('A função não confirmou o registro. Confira a auditoria antes de tentar novamente.')
+      setFeedback('A função não confirmou o registro. Confira a auditoria antes de tentar novamente.', 'error')
       setRegistering(false)
       return
     }
@@ -191,20 +207,25 @@ export function StoresPage({ role }: { role: string }) {
     setShowRegistration(false)
     setSelectedId(data.site.id as string)
     await loadSites(true)
-    setMessage(`Cadastro manual ${data.site.nx_id} importado e vinculado ao proprietário.`)
+    setFeedback(`Cadastro manual ${data.site.nx_id} importado e vinculado ao proprietário.`, 'success')
     setRegistering(false)
   }
 
   async function addSiteDomain(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage('')
+    setFeedback('', 'info')
     if (role !== 'MASTER' || !selected || !supabase) {
-      setMessage('Somente um MASTER pode adicionar o domínio da loja.')
+      setFeedback('Somente um MASTER pode adicionar o domínio da loja.', 'error')
+      return
+    }
+    const cleanDomain = normalizeDomain(newDomain)
+    if (!cleanDomain) {
+      setFeedback('Informe um domínio válido para vincular à loja.', 'error')
       return
     }
     setAddingDomain(true)
     const { data, error } = await supabase.functions.invoke('novaesweb-admin', {
-      body: { action: 'add_site_domain', store_id: selected.id, site_domain: newDomain.trim(), is_primary: selected.store_domains.length === 0 || makePrimary },
+      body: { action: 'add_site_domain', store_id: selected.id, site_domain: cleanDomain, is_primary: selected.store_domains.length === 0 || makePrimary },
     })
     if (error) {
       let detail = error.message
@@ -213,24 +234,24 @@ export function StoresPage({ role }: { role: string }) {
         const payload = await response?.clone().json() as { error?: string } | undefined
         if (payload?.error) detail = payload.error
       } catch { /* keep the Supabase error message */ }
-      setMessage(`Não foi possível adicionar o domínio: ${detail}`)
+      setFeedback(`Não foi possível adicionar o domínio: ${detail}`, 'error')
       setAddingDomain(false)
       return
     }
     setNewDomain('')
     setMakePrimary(false)
     await loadSites(true)
-    setMessage(`Domínio ${data?.domain || 'adicionado'} vinculado à loja.`)
+    setFeedback(`Domínio ${data?.domain || cleanDomain} vinculado à loja.`, 'success')
     setAddingDomain(false)
   }
 
   async function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage('')
+    setFeedback('', 'info')
     if (role !== 'MASTER' || !selected || !supabase) return
     const nextStatus = managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)
     if (nextStatus !== 'active' && (!managementForm.reason.trim() || !managementForm.message.trim())) {
-      setMessage('Informe o motivo administrativo e a mensagem que será comunicada ao proprietário.')
+      setFeedback('Informe o motivo administrativo e a mensagem que será comunicada ao proprietário.', 'error')
       return
     }
     setSavingManagement(true)
@@ -247,32 +268,44 @@ export function StoresPage({ role }: { role: string }) {
         },
     })
     if (error) {
-      setMessage(`Não foi possível alterar o status: ${error.message}`)
+      let detail = error.message
+      try {
+        const response = (error as Error & { context?: Response }).context
+        const payload = await response?.clone().json() as { error?: string } | undefined
+        if (payload?.error) detail = payload.error
+      } catch { /* keep error */ }
+      setFeedback(`Não foi possível alterar o status: ${detail}`, 'error')
       setSavingManagement(false)
       return
     }
     await loadSites(true)
     setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
-    setMessage('Status atualizado. A ação ficou registrada na auditoria e o proprietário foi notificado quando aplicável.')
+    setFeedback('Status atualizado. A ação ficou registrada na auditoria e o proprietário foi notificado quando aplicável.', 'success')
     setSavingManagement(false)
   }
 
   async function sendStoreMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage('')
+    setFeedback('', 'info')
     if (role !== 'MASTER' || !selected || !supabase) return
     setSendingMessage(true)
     const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
       body: { action: 'send_message', store_id: selected.id, title: messageForm.title.trim(), message: messageForm.body.trim(), message_type: messageForm.category || 'general' },
     })
     if (error) {
-      setMessage(`Não foi possível enviar a mensagem: ${error.message}`)
+      let detail = error.message
+      try {
+        const response = (error as Error & { context?: Response }).context
+        const payload = await response?.clone().json() as { error?: string } | undefined
+        if (payload?.error) detail = payload.error
+      } catch { /* keep error */ }
+      setFeedback(`Não foi possível enviar a mensagem: ${detail}`, 'error')
       setSendingMessage(false)
       return
     }
     setMessageForm({ title: '', body: '', category: 'general' })
     await loadSites(true)
-    setMessage(data?.message || 'Comunicado registrado pelo backend MASTER.')
+    setFeedback(data?.message || 'Comunicado registrado pelo backend MASTER.', 'success')
     setSendingMessage(false)
   }
 
@@ -291,14 +324,14 @@ export function StoresPage({ role }: { role: string }) {
         <label>ID NX oficial<input required maxLength={64} value={registration.nx_id} onChange={(event) => setRegistration({ ...registration, nx_id: event.target.value })} placeholder="ID permanente já emitido" /></label>
         <label>Nome da loja<input required maxLength={160} value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} placeholder="Nome registrado" /></label>
         <label>UUID do proprietário<input required value={registration.owner_id} onChange={(event) => setRegistration({ ...registration, owner_id: event.target.value })} placeholder="UUID de usuário no Supabase Auth" /></label>
-        <label>URL principal (opcional)<input type="url" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="Pode adicionar depois no Master" /></label>
+        <label>URL principal ou domínio (opcional)<input type="text" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="Ex.: minhaloja.com.br ou https://minhaloja.com.br" /></label>
         <label>Nome do proprietário<input maxLength={160} value={registration.owner_name} onChange={(event) => setRegistration({ ...registration, owner_name: event.target.value })} placeholder="Opcional" /></label>
         <label>Plano<input maxLength={80} value={registration.plan_code} onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })} placeholder="Opcional" /></label>
         <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Importando…' : 'Importar ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
       </form>
     </section>}
 
-    {message && <div className={`stores-message ${message.startsWith('Cadastro manual') ? 'success' : ''}`} role="status">{message}</div>}
+    {message && <div className={`stores-message ${messageType}`} role="status">{message}</div>}
     <div className="store-metrics">
       <Metric icon={<Store size={17} />} label="Lojas reais" value={sites.length} tone="violet" />
       <Metric icon={<ShieldCheck size={17} />} label="Ativas" value={activeCount} tone="green" />
@@ -406,7 +439,7 @@ export function StoresPage({ role }: { role: string }) {
       </div>}
       {role === 'MASTER' && <form className="domain-add-form" onSubmit={(event) => void addSiteDomain(event)}>
         <div><strong>Adicionar domínio</strong><p>Você pode cadastrar ou atualizar o domínio desta loja por aqui, agora ou depois.</p></div>
-        <label><span>URL pública (HTTP ou HTTPS)</span><input required type="url" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="http://minhaloja.example.com" /></label>
+        <label><span>Domínio ou URL pública</span><input required type="text" value={newDomain} onChange={(event) => setNewDomain(event.target.value)} placeholder="Ex.: minhaloja.com.br ou https://minhaloja.com.br" /></label>
         {selected.store_domains.length > 0 && <label className="domain-primary-choice"><input type="checkbox" checked={makePrimary} onChange={(event) => setMakePrimary(event.target.checked)} /> Tornar domínio principal</label>}
         <button className="secondary-button" disabled={addingDomain}>{addingDomain ? <span className="loader" /> : <Plus size={14} />}{addingDomain ? 'Salvando…' : 'Adicionar domínio'}</button>
       </form>}

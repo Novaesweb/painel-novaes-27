@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, Store } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, Store, Send, Sparkles } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
 import './StoreAdministration.css'
@@ -51,7 +51,7 @@ export function StoresPage({ role }: { role: string }) {
   const [savingManagement, setSavingManagement] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const [managementForm, setManagementForm] = useState({ status: '', reason: '', message: '', until: '' })
-  const [messageForm, setMessageForm] = useState({ title: '', body: '' })
+  const [messageForm, setMessageForm] = useState({ title: '', body: '', category: 'general' })
   const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
 
   const loadSites = useCallback(async (quiet = false) => {
@@ -263,14 +263,14 @@ export function StoresPage({ role }: { role: string }) {
     if (role !== 'MASTER' || !selected || !supabase) return
     setSendingMessage(true)
     const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
-      body: { action: 'send_message', store_id: selected.id, title: messageForm.title.trim(), message: messageForm.body.trim(), message_type: 'general' },
+      body: { action: 'send_message', store_id: selected.id, title: messageForm.title.trim(), message: messageForm.body.trim(), message_type: messageForm.category || 'general' },
     })
     if (error) {
       setMessage(`Não foi possível enviar a mensagem: ${error.message}`)
       setSendingMessage(false)
       return
     }
-    setMessageForm({ title: '', body: '' })
+    setMessageForm({ title: '', body: '', category: 'general' })
     await loadSites(true)
     setMessage(data?.message || 'Comunicado registrado pelo backend MASTER.')
     setSendingMessage(false)
@@ -330,7 +330,75 @@ export function StoresPage({ role }: { role: string }) {
           <button className="primary-button" disabled={savingManagement}>{savingManagement ? 'Salvando…' : 'Aplicar status'}</button>
         </form>
         <form className="store-management-form" onSubmit={(event) => void sendStoreMessage(event)}>
-          <div><strong>Enviar mensagem administrativa</strong><p>O proprietário recebe a mensagem em suas notificações autenticadas.</p></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
+            <div>
+              <strong>Enviar comunicado ao lojista</strong>
+              <p>Entregue diretamente na caixa de notificações autenticadas da loja.</p>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px', borderColor: 'rgba(168, 85, 247, 0.4)', color: '#c4b5fd' }}
+              onClick={() => navigate(`/notificacoes?tab=messenger&store_id=${encodeURIComponent(selected.id)}`)}
+              title="Abrir Central de Mensageria Completa com mais templates e automações"
+            >
+              <Send size={11} />
+              <span>Central de Mensageria</span>
+            </button>
+          </div>
+
+          {/* Modelos Rápidos com 1 Clique */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0' }}>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setMessageForm({
+                category: 'plan',
+                title: 'Alerta de Franquia: 80% Atingida · Sucesso em Vendas',
+                body: `Parabéns pelas vendas, ${selected.name}! Sua loja já utilizou 80% da franquia de pedidos inclusa no plano. Fique tranquilo: o recebimento de novos pedidos nunca é bloqueado (Garantia de Zero Bloqueio NovaesWeb).`
+              })}
+            >
+              🏆 Franquia 80%
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setMessageForm({
+                category: 'plan',
+                title: 'Franquia Mensal Atingida (100%) · Zero Bloqueio Ativo',
+                body: `Parabéns pelo excelente desempenho, ${selected.name}! Sua franquia mensal foi 100% preenchida. O sistema NovaesWeb opera com ZERO BLOQUEIO: novos pedidos continuam normais com a tarifa contratual no fechamento.`
+              })}
+            >
+              🚀 Franquia 100%
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setMessageForm({
+                category: 'maintenance',
+                title: 'Manutenção Preventiva de Melhorias no Sistema',
+                body: `Prezado lojista da ${selected.name}, realizaremos uma breve manutenção preventiva para aprimorar a estabilidade do seu cardápio online. Todos os seus dados e pedidos permanecem 100% seguros.`
+              })}
+            >
+              🛠️ Manutenção
+            </button>
+          </div>
+
+          <label>
+            Categoria
+            <select
+              value={messageForm.category}
+              onChange={(event) => setMessageForm({ ...messageForm, category: event.target.value })}
+            >
+              <option value="general">Geral</option>
+              <option value="plan">Plano e Franquia</option>
+              <option value="billing">Cobrança e Fatura</option>
+              <option value="maintenance">Manutenção</option>
+            </select>
+          </label>
           <label>Título<input required maxLength={160} value={messageForm.title} onChange={(event) => setMessageForm({ ...messageForm, title: event.target.value })} /></label>
           <label>Mensagem<textarea required maxLength={2000} value={messageForm.body} onChange={(event) => setMessageForm({ ...messageForm, body: event.target.value })} /></label>
           <button className="secondary-button" disabled={sendingMessage}>{sendingMessage ? 'Enviando…' : 'Enviar mensagem'}</button>

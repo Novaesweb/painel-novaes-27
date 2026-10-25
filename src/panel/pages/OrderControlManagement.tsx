@@ -22,7 +22,9 @@ import {
   X,
   Clock,
   Sparkles,
+  Send,
 } from 'lucide-react'
+import { useNavigate } from '../lib/router-compat'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { StoreOrderUsageWidget, StoreOrderUsageData } from '../components/StoreOrderUsageWidget'
 
@@ -92,11 +94,21 @@ export function OrderControlManagement({
   sites: StoreSite[]
   plans: PlanItem[]
 }) {
+  const navigate = useNavigate()
   const competences = useMemo(() => getAvailableCompetences(), [])
   const [selectedCompetence, setSelectedCompetence] = useState(competences[0]?.value || '2026-10')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'normal' | 'warning' | 'limit' | 'overage'>('all')
   const [selectedStoreDetail, setSelectedStoreDetail] = useState<OrderStoreRow | null>(null)
+
+  function notifyStore(row: OrderStoreRow) {
+    const franchise = row.franchise_orders ?? 340
+    const accepted = row.accepted_count
+    const isOver = franchise && accepted >= franchise
+    const isWarn = franchise && accepted >= franchise * 0.8
+    const tpl = isOver ? 'franchise_100' : isWarn ? 'franchise_80' : 'general'
+    navigate(`/notificacoes?tab=messenger&store_id=${encodeURIComponent(row.store_id)}&template=${tpl}`)
+  }
   const [detailTab, setDetailTab] = useState<'consumption' | 'daily' | 'cancellations' | 'audit'>('consumption')
   const [clientSimulationStore, setClientSimulationStore] = useState<OrderStoreRow | null>(null)
   const [loading, setLoading] = useState(false)
@@ -647,6 +659,17 @@ export function OrderControlManagement({
                           <Eye size={12} />
                           <span>Lojista</span>
                         </button>
+
+                        <button
+                          type="button"
+                          className="secondary-button action-btn-sm btn-notify-store"
+                          onClick={() => notifyStore(row)}
+                          title="Enviar comunicado ou alerta de franquia para o lojista"
+                          style={{ color: '#c4b5fd', borderColor: 'rgba(168, 85, 247, 0.4)' }}
+                        >
+                          <Send size={12} />
+                          <span>Notificar</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -691,6 +714,17 @@ export function OrderControlManagement({
                 >
                   <Eye size={13} />
                   <span>Ver Visão do Lojista</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => notifyStore(selectedStoreDetail)}
+                  title="Enviar comunicado oficial para este estabelecimento"
+                  style={{ color: '#c4b5fd', borderColor: 'rgba(168, 85, 247, 0.4)' }}
+                >
+                  <Send size={13} />
+                  <span>Notificar Lojista</span>
                 </button>
 
                 <button

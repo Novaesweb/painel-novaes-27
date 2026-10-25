@@ -4,7 +4,8 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './AdminHistoryPages.css'
 import { PushSettings } from '../../components/PushSettings'
 import { notificationPath } from '../../components/NotificationLive'
-import { useNavigate } from '../lib/router-compat'
+import { useNavigate, useSearchParams } from '../lib/router-compat'
+import { StoreMessengerSection } from '../components/StoreMessengerSection'
 
 type Notification = {
   id: string
@@ -51,7 +52,14 @@ function dateLabel(value: string) {
 
 export function NotificationsPage({ role }: { role: string }) {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'feed' | 'regua' | 'franchise'>('feed')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') as 'feed' | 'regua' | 'franchise' | 'messenger' | null
+  const initialStoreId = searchParams.get('store_id')
+  const initialTemplate = searchParams.get('template')
+
+  const [activeTab, setActiveTab] = useState<'feed' | 'regua' | 'franchise' | 'messenger'>(
+    initialTab && ['feed', 'regua', 'franchise', 'messenger'].includes(initialTab) ? initialTab : 'feed'
+  )
   const [items, setItems] = useState<Notification[]>([])
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -207,7 +215,22 @@ export function NotificationsPage({ role }: { role: string }) {
         style={{ background: activeTab === 'franchise' ? 'rgba(168, 85, 247, 0.25)' : undefined, borderColor: activeTab === 'franchise' ? '#a855f7' : undefined }}
       >
         <Sparkles size={14} />
-        Alertas de Franquia de Pedidos (80% / 100%)
+        Alertas de Franquia (80% / 100%)
+      </button>
+
+      <button
+        type="button"
+        className={`secondary-button ${activeTab === 'messenger' ? 'active' : ''}`}
+        onClick={() => setActiveTab('messenger')}
+        style={{
+          background: activeTab === 'messenger' ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(217, 70, 239, 0.25))' : undefined,
+          borderColor: activeTab === 'messenger' ? '#d946ef' : undefined,
+          color: activeTab === 'messenger' ? '#fff' : undefined,
+          fontWeight: activeTab === 'messenger' ? 600 : undefined,
+        }}
+      >
+        <Send size={14} />
+        Mensageria & Automações com Lojistas
       </button>
     </div>
 
@@ -374,6 +397,15 @@ export function NotificationsPage({ role }: { role: string }) {
           ))}
         </div>
       </div>
+    )}
+
+    {/* ABA 4: MENSAGERIA E AUTOMAÇÕES COM LOJISTAS (PILAR C) */}
+    {activeTab === 'messenger' && (
+      <StoreMessengerSection
+        role={role}
+        initialStoreId={initialStoreId}
+        initialTemplateId={initialTemplate}
+      />
     )}
   </div>
 }

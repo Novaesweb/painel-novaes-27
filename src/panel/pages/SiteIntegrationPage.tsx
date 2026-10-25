@@ -1,16 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers, Store } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store, MousePointerClick } from 'lucide-react'
+import { useSearchParams } from '../lib/router-compat'
 import { integrationPrompts } from '../lib/integrationPrompt'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
 import './SiteIntegrationPage.css'
 import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
 
 export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; sessionUserId?: string } = {}) {
-  const [activeTab, setActiveTab] = useState<'prompts' | 'generator' | 'stores'>('prompts')
+  const [activeTab, setActiveTab] = useState<'prompts' | 'generator' | 'stores'>(() => {
+    try {
+      const p = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+      const tab = p.get('tab')
+      if (tab === 'generator' || tab === 'stores' || tab === 'prompts') return tab
+    } catch {}
+    return 'prompts'
+  })
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<{ id: string; message: string } | null>(null)
   const resetTimer = useRef<number | undefined>(undefined)
+
   useEffect(() => () => window.clearTimeout(resetTimer.current), [])
+
+  const changeTab = (tab: 'prompts' | 'generator' | 'stores') => {
+    setActiveTab(tab)
+    try {
+      if (typeof window !== 'undefined' && window.history) {
+        const url = new URL(window.location.href)
+        url.searchParams.set('tab', tab)
+        window.history.replaceState(null, '', url.pathname + url.search)
+      }
+    } catch {}
+  }
 
   async function copyPrompt(id: string, text: string) {
     try {
@@ -42,22 +62,30 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
 
       {/* Seletor de Abas da Página */}
       <div className="integration-navigation-tabs">
-        <button type="button" className={`integration-nav-tab ${activeTab === 'stores' ? 'active' : ''}`} onClick={() => setActiveTab('stores')}><Store size={16} /><span>Central de Integração por Loja</span></button>
+        <button
+          type="button"
+          className={`integration-nav-tab ${activeTab === 'stores' ? 'active' : ''}`}
+          onClick={() => changeTab('stores')}
+        >
+          <Store size={15} />
+          <span>Central de Integração por Loja</span>
+        </button>
+
         <button
           type="button"
           className={`integration-nav-tab ${activeTab === 'prompts' ? 'active' : ''}`}
-          onClick={() => setActiveTab('prompts')}
+          onClick={() => changeTab('prompts')}
         >
-          <Layers size={14} />
+          <Layers size={15} />
           <span>Prompts de Conexão e Controle (1 a 6)</span>
         </button>
 
         <button
           type="button"
           className={`integration-nav-tab ${activeTab === 'generator' ? 'active' : ''}`}
-          onClick={() => setActiveTab('generator')}
+          onClick={() => changeTab('generator')}
         >
-          <Sparkles size={14} />
+          <Sparkles size={15} />
           <span>Criador de Sites — Gerador de Prompts</span>
         </button>
       </div>

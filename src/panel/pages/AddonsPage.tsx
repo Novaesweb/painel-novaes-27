@@ -41,6 +41,7 @@ export function AddonsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [editing, setEditing] = useState<Draft | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
 
   // Estado da Proposta de Adicionais
   const [proposalStoreId, setProposalStoreId] = useState<string>('')
@@ -99,26 +100,144 @@ export function AddonsPage() {
     finally { setSaving(false) }
   }
 
-  function beginEdit(addon?: CatalogAddon) { setEditing(addon ? { ...addon, compatible_site_types: [...addon.compatible_site_types] } : { ...emptyDraft }) }
-  function changeDraft<K extends keyof Draft>(key: K, value: Draft[K]) { setEditing((current) => current ? { ...current, [key]: value } : current) }
+  function beginEdit(addon?: CatalogAddon) {
+    setModalError(null)
+    if (addon) {
+      setEditing({ ...addon, compatible_site_types: [...addon.compatible_site_types] })
+    } else {
+      setEditing({ ...emptyDraft, compatible_site_types: ['*'] })
+    }
+  }
+
+  function changeDraft<K extends keyof Draft>(key: K, value: Draft[K]) {
+    setEditing((current) => current ? { ...current, [key]: value } : current)
+  }
+
   async function saveDraft(event: React.FormEvent) {
-    event.preventDefault(); if (!editing) return
+    event.preventDefault()
+    if (!editing) return
+    setModalError(null)
+
+    // 1. Sanitizar e validar código estável
+    const code = editing.code.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '')
+    if (!code) {
+      setModalError('Informe o identificador estável do adicional.')
+      return
+    }
+    if (!/^[a-z0-9]+([_-][a-z0-9]+)*$/.test(code)) {
+      setModalError('O identificador deve conter apenas letras minúsculas, números e hífens ou underlines internos (ex: meu-modulo-novo).')
+      return
+    }
+
+    // 2. Validar nome
+    const name = editing.name.trim()
+    if (name.length < 2 || name.length > 120) {
+      setModalError('O nome comercial deve ter entre 2 e 120 caracteres.')
+      return
+    }
+
+    // 3. Identificar oficial e verificar duplicidades
     const approved = officialAddon(editing)
-    const duplicate = data.addons.find((addon) => addon.id !== editing.id && (addon.code === editing.code || (approved && officialAddon(addon)?.code === approved.code)))
-    if (duplicate) { setError('Já existe um adicional correspondente. Edite o registro existente para preservar ID e código.'); return }
-    if (approved?.code === 'ADD-18' && (editing.price !== null || editing.billing_type !== 'quote')) { setError('Backup Plus: preço e escopo pendentes. Use Sob orçamento, sem preço.'); return }
+    const duplicate = data.addons.find(
+      (addon) =>
+        addon.id !== editing.id &&
+        (addon.code.toLowerCase() === code || (approved && officialAddon(addon)?.code === approved.code))
+    )
+    if (duplicate) {
+      setModalError('Já existe um adicional correspondente cadastrado com este identificador. Edite o registro existente.')
+      return
+    }
+
+    // 4. Termos comerciais oficiais vs customizados
+    let finalBillingType = editing.billing_type
+    let finalPrice = editing.price
+    let finalSetupFee = Number.isFinite(editing.setup_fee) && editing.setup_fee >= 0 ? editing.setup_fee : 0
+
+    if (approved) {
+      if (approved.code === 'ADD-18') {
+        finalBillingType = 'quote'
+        finalPrice = null
+        finalSetupFee = 0
+      } else {
+        finalBillingType = approved.billing
+        finalPrice = approved.price
+        finalSetupFee = 0
+      }
+    } else {
+      if (['quote', 'free'].includes(finalBillingType)) {
+        finalPrice = null
+      } else if (['monthly', 'one_time', 'per_use'].includes(finalBillingType)) {
+        if (finalPrice === null || !Number.isFinite(finalPrice) || finalPrice < 0) {
+          setModalError('Para cobrança mensal, pagamento único ou por utilização, informe um preço numérico válido (ex: 29,90).')
+          return
+        }
+      }
+    }
+
+    // 5. Garantir tipos de site compatíveis
+    const types = editing.compatible_site_types?.length ? [...new Set(editing.compatible_site_types)] : ['*']
+
+    // 6. Montar payload blindado
+    const summary = editing.summary?.trim() || name
+    const description = editing.description?.trim() || summary
     const published = editing.is_visible && editing.is_active && editing.development_status !== 'unavailable'
+
     const addonPayload = {
       ...editing,
-      description: editing.description?.trim() || editing.summary?.trim() || editing.name?.trim(),
-      summary: editing.summary?.trim() || editing.name?.trim(),
-      setup_fee: Number.isFinite(editing.setup_fee) ? editing.setup_fee : 0,
-      compatible_site_types: editing.compatible_site_types?.length ? editing.compatible_site_types : ['*'],
-      price: ['quote', 'free'].includes(editing.billing_type) ? null : editing.price
+      code,
+      name,
+      summary,
+      description,
+      icon: editing.icon?.trim() || 'PackagePlus',
+      billing_type: finalBillingType,
+      price: finalPrice,
+      setup_fee: finalSetupFee,
+      compatible_site_types: types,
+      suggested_route: editing.suggested_route?.trim() ? (editing.suggested_route.startsWith('/') ? editing.suggested_route.trim() : `/${editing.suggested_route.trim()}`) : null,
+      integration_requirements: editing.integration_requirements?.trim() || '',
+      activation_rules: editing.activation_rules?.trim() || '',
+      disable_rules: editing.disable_rules?.trim() || '',
+      sort_order: Number.isInteger(editing.sort_order) ? Number(editing.sort_order) : 0,
     }
-    await mutate('save_catalog', { addon: addonPayload }, published
-      ? 'Salvo no catálogo central. Lojas compatíveis poderão encontrá-lo em Adicionais.'
-      : 'Adicional salvo. Ele ficará fora do catálogo das lojas enquanto estiver oculto, inativo ou indisponível.')
+
+    setSaving(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const response = await call('save_catalog', { addon: addonPayload })
+      const savedId = (response as { id?: string })?.id || editing.id || crypto.randomUUID()
+
+      // Atualização imediata no estado local da lista
+      const savedRecord: CatalogAddon = {
+        ...addonPayload,
+        id: savedId,
+      } as CatalogAddon
+
+      setData((prev) => {
+        const exists = prev.addons.some((a) => a.id === savedId || a.code === code)
+        const updatedAddons = exists
+          ? prev.addons.map((a) => (a.id === savedId || a.code === code ? savedRecord : a))
+          : [...prev.addons, savedRecord]
+        return { ...prev, addons: updatedAddons }
+      })
+
+      setMessage(
+        published
+          ? 'Salvo no catálogo central com sucesso! Lojas compatíveis já podem visualizá-lo em Adicionais.'
+          : 'Adicional salvo com sucesso! Ele permanecerá restrito enquanto estiver oculto ou indisponível.'
+      )
+      setEditing(null)
+      setModalError(null)
+
+      // Sincroniza em background
+      void refresh()
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : 'Não foi possível salvar o adicional no banco de dados.'
+      setModalError(detail)
+    } finally {
+      setSaving(false)
+    }
   }
   async function review(item: Request, status: string) {
     if (status === 'approved' && addonCommercialPending(item.addon)) { setError('Preço e escopo pendentes de aprovação.'); return }
@@ -364,27 +483,194 @@ export function AddonsPage() {
 
     {tab === 'history' && <section className="panel addons-panel"><div className="addons-list-heading"><div><h2>Histórico de alterações</h2><p>Auditoria das ações do catálogo e das ativações por empresa.</p></div></div>{loading ? <Loading /> : data.history.length === 0 ? <Empty text="Ainda não há alterações registradas." /> : <div className="addons-history-list">{data.history.map((item) => <div key={item.id}><span className="addons-history-dot" /><span><strong>{item.action.replaceAll('_', ' ')}</strong><small>{item.store?.name ? `${item.store.name} · ` : ''}{item.addon?.name ?? 'Catálogo'} · {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.created_at))}</small></span><BadgeCheck size={15} /></div>)}</div>}</section>}
 
-    {editing && <div className="addon-modal-scrim" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setEditing(null) }}><form className="addon-editor" onSubmit={(event) => void saveDraft(event)}><header><div><span className="eyebrow small-eyebrow">CATÁLOGO NOVAESWEB</span><h2>{editing.id ? 'Editar adicional' : 'Novo adicional'}</h2></div><button type="button" className="icon-action" aria-label="Fechar" onClick={() => setEditing(null)}><X size={18} /></button></header><div className="addon-editor-grid">
-      <Field label="Nome comercial"><input required maxLength={120} value={editing.name} onChange={(event) => changeDraft('name', event.target.value)} /></Field>
-      <Field label="Identificador estável"><input required pattern="[a-z0-9]+([_-][a-z0-9]+)*" value={editing.code} disabled={Boolean(editing.id)} onChange={(event) => changeDraft('code', event.target.value.toLowerCase().replace(/\s+/g, '-'))} placeholder="exemplo-modulo" />{editing.id && <small>O código é permanente para manter a compatibilidade dos sites conectados.</small>}</Field>
-      <Field label="Descrição curta"><input maxLength={240} value={editing.summary} onChange={(event) => changeDraft('summary', event.target.value)} /></Field>
-      <Field label="Ícone Lucide"><input maxLength={60} value={editing.icon} onChange={(event) => changeDraft('icon', event.target.value)} /></Field>
-      <Field label="Categoria"><select value={editing.category} onChange={(event) => changeDraft('category', event.target.value)}>{Object.entries(categories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
-      <Field label="Tipo de cobrança"><select value={editing.billing_type} onChange={(event) => { const value = event.target.value; changeDraft('billing_type', value); changeDraft('price', ['quote', 'free'].includes(value) ? null : editing.price ?? 0) }}>{Object.entries(billing).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
-      <Field label="Preço (R$)"><input type="number" min="0" step="0.01" disabled={['quote', 'free'].includes(editing.billing_type)} value={editing.price ?? ''} onChange={(event) => changeDraft('price', event.target.value === '' ? null : Number(event.target.value))} placeholder={editing.billing_type === 'quote' ? 'Sob orçamento' : '0,00'} /></Field>
-      <Field label="Taxa de implantação (R$)"><input type="number" min="0" step="0.01" value={editing.setup_fee} onChange={(event) => changeDraft('setup_fee', Number(event.target.value))} /></Field>
-      <Field label="Status de desenvolvimento"><select value={editing.development_status} onChange={(event) => changeDraft('development_status', event.target.value)}>{Object.entries(development).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
-      <Field label="Local de ativação"><select value={editing.activation_location} onChange={(event) => changeDraft('activation_location', event.target.value)}>{Object.entries(locations).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
-      <Field label="Compatibilidade com tipos de site"><select multiple value={editing.compatible_site_types} onChange={(event) => changeDraft('compatible_site_types', Array.from(event.target.selectedOptions, (option) => option.value))}><option value="*">Todos os tipos</option>{Object.entries(siteTypes).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select><small>Use Ctrl para selecionar mais de um tipo.</small></Field>
-      <Field label="Ordem no catálogo"><input type="number" step="1" value={editing.sort_order} onChange={(event) => changeDraft('sort_order', Number(event.target.value))} /></Field>
-      <Field label="Rota sugerida"><input maxLength={200} value={editing.suggested_route ?? ''} onChange={(event) => changeDraft('suggested_route', event.target.value || null)} placeholder="/fidelidade" /></Field>
-      <Field label="Requisitos de integração" wide><textarea rows={3} maxLength={5000} value={editing.integration_requirements} onChange={(event) => changeDraft('integration_requirements', event.target.value)} /></Field>
-      <Field label="Regras de ativação" wide><textarea rows={3} maxLength={2000} value={editing.activation_rules} onChange={(event) => changeDraft('activation_rules', event.target.value)} /></Field>
-      <Field label="Regras de bloqueio e desativação" wide><textarea rows={3} maxLength={2000} value={editing.disable_rules} onChange={(event) => changeDraft('disable_rules', event.target.value)} /></Field>
-      <Field label="Descrição completa" wide><textarea rows={4} maxLength={5000} value={editing.description} onChange={(event) => changeDraft('description', event.target.value)} /></Field>
-      <label className="addon-toggle"><input type="checkbox" checked={editing.is_visible} onChange={(event) => changeDraft('is_visible', event.target.checked)} />Visível no catálogo do cliente</label>
-      <label className="addon-toggle"><input type="checkbox" checked={editing.is_active} onChange={(event) => { if (!event.target.checked && editing.is_active && !window.confirm('Desativar este adicional no catálogo? Novas solicitações serão bloqueadas.')) return; changeDraft('is_active', event.target.checked) }} />Disponível para solicitação</label>
-    </div><footer><button type="button" className="secondary-button" onClick={() => setEditing(null)} disabled={saving}>Cancelar</button><button type="submit" className="primary-compact" disabled={saving}>{saving ? 'Salvando…' : 'Salvar adicional'}</button></footer></form></div>}
+    {editing && (() => {
+      const isOfficial = Boolean(officialAddon(editing))
+      const officialInfo = officialAddon(editing)
+      return (
+        <div className="addon-modal-scrim" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setEditing(null) }}>
+          <form className="addon-editor" onSubmit={(event) => void saveDraft(event)}>
+            <header>
+              <div>
+                <span className="eyebrow small-eyebrow">CATÁLOGO NOVAESWEB</span>
+                <h2>{editing.id ? 'Editar adicional' : 'Novo adicional'}</h2>
+              </div>
+              <button type="button" className="icon-action" aria-label="Fechar" onClick={() => setEditing(null)} disabled={saving}>
+                <X size={18} />
+              </button>
+            </header>
+
+            {modalError && (
+              <div className="addons-alert addons-alert-error addon-modal-alert">
+                <ShieldAlert size={16} />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {isOfficial && officialInfo && (
+              <div className="addon-official-notice">
+                <BadgeCheck size={18} />
+                <div>
+                  <strong>Termo Comercial Homologado — {officialInfo.name} ({officialInfo.code})</strong>
+                  <p>
+                    O modelo de cobrança ({billing[officialInfo.billing] || officialInfo.billing}) e o preço ({officialInfo.price === null ? 'Sob orçamento' : money(officialInfo.price)}) são padronizados pelas diretrizes comerciais e protegidos no banco de dados. Você pode personalizar livremente a descrição, ícone, rotas, regras operacionais e status de ativação.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="addon-editor-grid">
+              <Field label="Nome comercial">
+                <input required maxLength={120} value={editing.name} onChange={(event) => changeDraft('name', event.target.value)} />
+              </Field>
+
+              <Field label="Identificador estável">
+                <input
+                  required
+                  pattern="[a-z0-9]+([_-][a-z0-9]+)*"
+                  value={editing.code}
+                  disabled={Boolean(editing.id)}
+                  onChange={(event) => changeDraft('code', event.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  placeholder="exemplo-modulo"
+                />
+                {editing.id ? (
+                  <small>O código é permanente para manter a compatibilidade dos sites conectados.</small>
+                ) : (
+                  <small>Use apenas letras minúsculas, números e hífens (ex: meu-novo-modulo).</small>
+                )}
+              </Field>
+
+              <Field label="Descrição curta">
+                <input maxLength={240} value={editing.summary} onChange={(event) => changeDraft('summary', event.target.value)} />
+              </Field>
+
+              <Field label="Ícone Lucide">
+                <input maxLength={60} value={editing.icon} onChange={(event) => changeDraft('icon', event.target.value)} />
+              </Field>
+
+              <Field label="Categoria">
+                <select value={editing.category} onChange={(event) => changeDraft('category', event.target.value)}>
+                  {Object.entries(categories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Tipo de cobrança">
+                <select
+                  disabled={isOfficial}
+                  value={isOfficial && officialInfo ? officialInfo.billing : editing.billing_type}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    changeDraft('billing_type', value)
+                    changeDraft('price', ['quote', 'free'].includes(value) ? null : editing.price ?? 0)
+                  }}
+                >
+                  {Object.entries(billing).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                </select>
+                {isOfficial && <small>Periodicidade fixada no Caderno Oficial.</small>}
+              </Field>
+
+              <Field label="Preço (R$)">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={isOfficial || ['quote', 'free'].includes(editing.billing_type)}
+                  value={isOfficial && officialInfo ? (officialInfo.price ?? '') : (editing.price ?? '')}
+                  onChange={(event) => changeDraft('price', event.target.value === '' ? null : Number(event.target.value))}
+                  placeholder={editing.billing_type === 'quote' ? 'Sob orçamento' : '0,00'}
+                />
+                {isOfficial && <small>Preço oficial homologado.</small>}
+              </Field>
+
+              <Field label="Taxa de implantação (R$)">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={isOfficial}
+                  value={isOfficial ? 0 : editing.setup_fee}
+                  onChange={(event) => changeDraft('setup_fee', Number(event.target.value))}
+                />
+                {isOfficial && <small>Taxa extra não aprovada (R$ 0,00).</small>}
+              </Field>
+
+              <Field label="Status de desenvolvimento">
+                <select value={editing.development_status} onChange={(event) => changeDraft('development_status', event.target.value)}>
+                  {Object.entries(development).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Local de ativação">
+                <select value={editing.activation_location} onChange={(event) => changeDraft('activation_location', event.target.value)}>
+                  {Object.entries(locations).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Compatibilidade com tipos de site">
+                <select
+                  multiple
+                  value={editing.compatible_site_types}
+                  onChange={(event) => changeDraft('compatible_site_types', Array.from(event.target.selectedOptions, (option) => option.value))}
+                >
+                  <option value="*">Todos os tipos</option>
+                  {Object.entries(siteTypes).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
+                </select>
+                <small>Use Ctrl para selecionar mais de um tipo.</small>
+              </Field>
+
+              <Field label="Ordem no catálogo">
+                <input type="number" step="1" value={editing.sort_order} onChange={(event) => changeDraft('sort_order', Number(event.target.value))} />
+              </Field>
+
+              <Field label="Rota sugerida">
+                <input maxLength={200} value={editing.suggested_route ?? ''} onChange={(event) => changeDraft('suggested_route', event.target.value || null)} placeholder="/fidelidade" />
+              </Field>
+
+              <Field label="Requisitos de integração" wide>
+                <textarea rows={3} maxLength={5000} value={editing.integration_requirements} onChange={(event) => changeDraft('integration_requirements', event.target.value)} />
+              </Field>
+
+              <Field label="Regras de ativação" wide>
+                <textarea rows={3} maxLength={2000} value={editing.activation_rules} onChange={(event) => changeDraft('activation_rules', event.target.value)} />
+              </Field>
+
+              <Field label="Regras de bloqueio e desativação" wide>
+                <textarea rows={3} maxLength={2000} value={editing.disable_rules} onChange={(event) => changeDraft('disable_rules', event.target.value)} />
+              </Field>
+
+              <Field label="Descrição completa" wide>
+                <textarea rows={4} maxLength={5000} value={editing.description} onChange={(event) => changeDraft('description', event.target.value)} />
+              </Field>
+
+              <label className="addon-toggle">
+                <input type="checkbox" checked={editing.is_visible} onChange={(event) => changeDraft('is_visible', event.target.checked)} />
+                Visível no catálogo do cliente
+              </label>
+
+              <label className="addon-toggle">
+                <input
+                  type="checkbox"
+                  checked={editing.is_active}
+                  onChange={(event) => {
+                    if (!event.target.checked && editing.is_active && !window.confirm('Desativar este adicional no catálogo? Novas solicitações serão bloqueadas.')) return
+                    changeDraft('is_active', event.target.checked)
+                  }}
+                />
+                Disponível para solicitação
+              </label>
+            </div>
+
+            <footer>
+              <button type="button" className="secondary-button" onClick={() => setEditing(null)} disabled={saving}>
+                Cancelar
+              </button>
+              <button type="submit" className="primary-compact" disabled={saving}>
+                {saving ? 'Salvando no banco…' : 'Salvar adicional'}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )
+    })()}
   </section>
 }
 

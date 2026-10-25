@@ -34,3 +34,35 @@
 .price-tag small{font-size:10px;color:#94a3b8}
 .setup-tag{font-size:10px;color:#fca5a5;background:rgba(239,68,68,.1);padding:2px 6px;border-radius:4px}
 @media(max-width:768px){.addons-proposal-summary-grid{grid-template-columns:1fr}}
+
+.addon-modal-alert {
+  margin-bottom: 14px;
+}
+.addon-official-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 9px;
+  background: rgba(168, 85, 247, 0.08);
+  color: #d8b4fe;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.addon-official-notice svg {
+  flex-shrink: 0;
+  color: #c084fc;
+  margin-top: 2px;
+}
+.addon-official-notice strong {
+  display: block;
+  color: #f3e8ff;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.addon-official-notice p {
+  margin: 0;
+  color: #c4b5fd;
+}

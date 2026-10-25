@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Sparkles,
   Copy,
   Check,
-  RefreshCw,
   RotateCcw,
   Sliders,
   Settings,
@@ -13,11 +12,12 @@ import {
   FileText,
   ShieldCheck,
   AlertCircle,
-  HelpCircle,
   ArrowRight,
   Edit3,
   Save,
+  MousePointerClick,
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import {
   PromptTemplateModel,
   ClientSitePromptInput,
@@ -32,9 +32,22 @@ import {
 } from '../lib/promptGeneratorTemplates'
 import './PromptGeneratorSection.css'
 
+type AvailableStore = {
+  id: string
+  name: string
+  nx_id: string
+  plan_code: string | null
+  site_type?: string | null
+}
+
 export function PromptGeneratorSection() {
   const [templates, setTemplates] = useState<PromptTemplateModel[]>(() => loadPromptTemplates())
   const [selectedModelId, setSelectedModelId] = useState<'start' | 'business' | 'premium'>('business')
+
+  // Lojas cadastradas no Supabase para preenchimento rápido
+  const [availableStores, setAvailableStores] = useState<AvailableStore[]>([])
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('')
+  const [loadingStores, setLoadingStores] = useState<boolean>(false)
 
   // Estado do Formulário
   const [form, setForm] = useState<ClientSitePromptInput>({
@@ -70,10 +83,10 @@ export function PromptGeneratorSection() {
 
   // Resultado do Prompt
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('')
-  const [isEditingResult, setIsEditingResult] = useState<boolean>(false)
   const [copied, setCopied] = useState<boolean>(false)
   const [formError, setFormError] = useState<string | null>(null)
   const copyTimer = useRef<number | undefined>(undefined)
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Área de Gerenciamento de Modelos
   const [showTemplateManager, setShowTemplateManager] = useState<boolean>(false)
@@ -84,22 +97,103 @@ export function PromptGeneratorSection() {
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), [])
 
+  // Carrega lojas cadastradas para permitir seleção rápida pelo usuário
+  useEffect(() => {
+    let active = true
+    async function loadStores() {
+      if (!supabase) return
+      setLoadingStores(true)
+      try {
+        const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
+          body: { action: 'list_sites' },
+        })
+        if (!error && Array.isArray(data?.sites)) {
+          if (active) {
+            setAvailableStores(
+              data.sites.map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                nx_id: s.nx_id,
+                plan_code: s.plan_code ?? null,
+                site_type: s.site_type ?? null,
+              }))
+            )
+          }
+        } else {
+          // Fallback consulta direta a managed_sites
+          const { data: dbSites } = await supabase
+            .from('managed_sites')
+            .select('id, name, nx_id, plan_code, site_type')
+            .order('name')
+          if (active && Array.isArray(dbSites)) {
+            setAvailableStores(dbSites)
+          }
+        }
+      } catch {
+        // Fallback resiliente
+      } finally {
+        if (active) setLoadingStores(false)
+      }
+    }
+    void loadStores()
+    return () => {
+      active = false
+    }
+  }, [])
+
   // Sincroniza modelId no formulário
   const handleModelChange = (id: 'start' | 'business' | 'premium') => {
     setSelectedModelId(id)
     setForm((prev) => ({ ...prev, modelId: id }))
   }
 
+  // Preenchimento ao selecionar uma loja existente
+  const handleStoreSelect = (storeId: string) => {
+    setSelectedStoreId(storeId)
+    if (!storeId) return
+
+    const store = availableStores.find((s) => s.id === storeId)
+    if (!store) return
+
+    // Mapeia plan_code da loja para o modelo correspondente (start, business, premium)
+    const normalizedPlan = (store.plan_code || '').toLowerCase()
+    let mappedModel: 'start' | 'business' | 'premium' = 'business'
+    if (normalizedPlan.includes('start') || normalizedPlan.includes('iniciante') || normalizedPlan.includes('basico')) {
+      mappedModel = 'start'
+    } else if (normalizedPlan.includes('premium') || normalizedPlan.includes('pro') || normalizedPlan.includes('avancado')) {
+      mappedModel = 'premium'
+    } else {
+      mappedModel = 'business'
+    }
+
+    setSelectedModelId(mappedModel)
+
+    setForm((prev) => ({
+      ...prev,
+      modelId: mappedModel,
+      storeName: store.name,
+      brandName: store.name,
+    }))
+    setFormError(null)
+  }
+
   // Geração do Prompt
-  const handleGeneratePrompt = () => {
+  const handleGeneratePrompt = useCallback(() => {
     if (!form.storeName.trim()) {
-      setFormError('Por favor, informe ao menos o Nome do Estabelecimento para gerar o prompt.')
+      setFormError('Por favor, informe ou selecione o Nome do Estabelecimento para gerar o prompt.')
       return
     }
     setFormError(null)
     const result = compileClientSitePrompt(form, templates)
     setGeneratedPrompt(result)
-    setIsEditingResult(false)
+  }, [form, templates])
+
+  // Selecionar todo o texto do prompt para facilitar cópia/edição
+  const handleSelectAllText = () => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.focus()
+      promptTextareaRef.current.select()
+    }
   }
 
   // Cópia para o Clipboard
@@ -111,13 +205,15 @@ export function PromptGeneratorSection() {
       window.clearTimeout(copyTimer.current)
       copyTimer.current = window.setTimeout(() => setCopied(false), 2500)
     } catch {
-      alert('Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.')
+      handleSelectAllText()
+      alert('Texto selecionado! Pressione Ctrl+C (ou toque em Copiar) para copiar para sua área de transferência.')
     }
   }
 
   // Limpar Formulário
   const handleResetForm = () => {
     if (window.confirm('Deseja realmente limpar todos os campos do formulário?')) {
+      setSelectedStoreId('')
       setForm({
         modelId: selectedModelId,
         storeName: '',
@@ -149,7 +245,6 @@ export function PromptGeneratorSection() {
         contractedAddons: '',
       })
       setGeneratedPrompt('')
-      setIsEditingResult(false)
       setFormError(null)
     }
   }
@@ -442,6 +537,28 @@ export function PromptGeneratorSection() {
             </div>
           )}
 
+          {/* Seletor Rápido de Loja Cadastrada */}
+          <div className="store-selector-box">
+            <div className="store-selector-label">
+              <Store size={15} className="text-brand-purple" />
+              <span><b>Escolher Loja Cadastrada</b> (preenchimento automático):</span>
+            </div>
+            <select
+              value={selectedStoreId}
+              onChange={(e) => handleStoreSelect(e.target.value)}
+              className="form-select store-select-highlight"
+              aria-label="Escolher Loja Cadastrada"
+            >
+              <option value="">➕ Novo Estabelecimento (Digitar dados manualmente)</option>
+              {availableStores.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name} ({st.nx_id}) — Plano: {st.plan_code || 'Não definido'}
+                </option>
+              ))}
+            </select>
+            {loadingStores && <small className="text-muted">Carregando estabelecimentos cadastrados…</small>}
+          </div>
+
           {/* Grupo 1: Identificação */}
           <div className="form-group-section">
             <div className="group-title">
@@ -454,9 +571,9 @@ export function PromptGeneratorSection() {
                 <span className="required">Nome do Estabelecimento *</span>
                 <input
                   type="text"
-                  placeholder="Ex: Pizzaria Bella Napoli"
+                  placeholder="Ex: Pizzaria Bella Napoli ou Burger House"
                   value={form.storeName}
-                  onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, storeName: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -465,7 +582,7 @@ export function PromptGeneratorSection() {
                 <span>Segmento de Atuação *</span>
                 <select
                   value={form.segment}
-                  onChange={(e) => setForm({ ...form, segment: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, segment: e.target.value }))}
                   className="form-select"
                 >
                   <option value="Pizzaria">Pizzaria</option>
@@ -485,7 +602,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: Pet Shop, Loja de Autopeças, Doceria Artesanal…"
                   value={form.customSegment}
-                  onChange={(e) => setForm({ ...form, customSegment: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, customSegment: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -497,7 +614,7 @@ export function PromptGeneratorSection() {
                 rows={2}
                 placeholder="Ex: Pizzaria tradicional fundada em 2012 com forno a lenha, massas de longa fermentação e atendimento delivery no centro e bairros vizinhos."
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 className="form-textarea"
               />
             </label>
@@ -509,7 +626,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: São Paulo"
                   value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -521,7 +638,7 @@ export function PromptGeneratorSection() {
                   placeholder="Ex: SP"
                   maxLength={2}
                   value={form.state}
-                  onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, state: e.target.value.toUpperCase() }))}
                   className="form-input"
                 />
               </label>
@@ -532,7 +649,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: (11) 98765-4321"
                   value={form.whatsapp}
-                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, whatsapp: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -545,7 +662,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: Rua das Flores, 120 - Centro"
                   value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -556,7 +673,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: Terça a Domingo das 18h às 23h30"
                   value={form.openingHours}
-                  onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, openingHours: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -577,13 +694,13 @@ export function PromptGeneratorSection() {
                   <input
                     type="color"
                     value={form.primaryColor}
-                    onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: e.target.value }))}
                     className="color-swatch-input"
                   />
                   <input
                     type="text"
                     value={form.primaryColor}
-                    onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: e.target.value }))}
                     className="form-input color-text-input"
                   />
                 </div>
@@ -595,13 +712,13 @@ export function PromptGeneratorSection() {
                   <input
                     type="color"
                     value={form.secondaryColor}
-                    onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
+                    onChange={(e) => setForm((prev) => ({ ...prev, secondaryColor: e.target.value }))}
                     className="color-swatch-input"
                   />
                   <input
                     type="text"
                     value={form.secondaryColor}
-                    onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
+                    onChange={(e) => setForm((prev) => ({ ...prev, secondaryColor: e.target.value }))}
                     className="form-input color-text-input"
                   />
                 </div>
@@ -611,7 +728,7 @@ export function PromptGeneratorSection() {
                 <span>Estilo Visual:</span>
                 <select
                   value={form.visualStyle}
-                  onChange={(e: any) => setForm({ ...form, visualStyle: e.target.value })}
+                  onChange={(e: any) => setForm((prev) => ({ ...prev, visualStyle: e.target.value }))}
                   className="form-select"
                 >
                   <option value="moderno">Moderno & Dinâmico</option>
@@ -628,7 +745,7 @@ export function PromptGeneratorSection() {
                 <span>Tema de Fundo:</span>
                 <select
                   value={form.colorTheme}
-                  onChange={(e: any) => setForm({ ...form, colorTheme: e.target.value })}
+                  onChange={(e: any) => setForm((prev) => ({ ...prev, colorTheme: e.target.value }))}
                   className="form-select"
                 >
                   <option value="dark">Tema Escuro (Dark Mode Premium)</option>
@@ -642,7 +759,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Ex: A verdadeira pizza napolitana no coração da cidade"
                   value={form.slogan}
-                  onChange={(e) => setForm({ ...form, slogan: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, slogan: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -662,7 +779,7 @@ export function PromptGeneratorSection() {
                 rows={2}
                 placeholder="Ex: Pizzas Tradicionais (Calabresa, Mussarela, Marguerita), Pizzas Especiais (Parma, 4 Queijos), Refrigerantes e Cervejas."
                 value={form.mainProductsServices}
-                onChange={(e) => setForm({ ...form, mainProductsServices: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, mainProductsServices: e.target.value }))}
                 className="form-textarea"
               />
             </label>
@@ -673,7 +790,7 @@ export function PromptGeneratorSection() {
                 type="text"
                 placeholder="Ex: Massa de fermentação lenta 48h, ingredientes importados, entrega em até 40 min"
                 value={form.businessDifferentials}
-                onChange={(e) => setForm({ ...form, businessDifferentials: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, businessDifferentials: e.target.value }))}
                 className="form-input"
               />
             </label>
@@ -685,7 +802,7 @@ export function PromptGeneratorSection() {
                   type="text"
                   placeholder="Deixe em branco se for apenas os recursos nativos do plano"
                   value={form.contractedAddons}
-                  onChange={(e) => setForm({ ...form, contractedAddons: e.target.value })}
+                  onChange={(e) => setForm((prev) => ({ ...prev, contractedAddons: e.target.value }))}
                   className="form-input"
                 />
               </label>
@@ -727,11 +844,12 @@ export function PromptGeneratorSection() {
               <div className="preview-header-actions">
                 <button
                   type="button"
-                  className="secondary-button btn-edit-toggle"
-                  onClick={() => setIsEditingResult(!isEditingResult)}
+                  className="secondary-button btn-select-all"
+                  onClick={handleSelectAllText}
+                  title="Selecionar todo o texto do prompt para copiar facilmente"
                 >
-                  <Edit3 size={13} />
-                  <span>{isEditingResult ? 'Ver Prévia' : 'Editar Texto'}</span>
+                  <MousePointerClick size={14} />
+                  <span>Selecionar Tudo</span>
                 </button>
 
                 <button
@@ -752,20 +870,31 @@ export function PromptGeneratorSection() {
                 <span>Plano: <b>{activeTemplate.displayName}</b></span>
                 <span>Segmento: <b>{form.customSegment || form.segment}</b></span>
                 <span>Tamanho: <b>{generatedPrompt.length} caracteres</b></span>
+                <span className="text-emerald">✓ Totalmente editável e selecionável</span>
               </div>
 
-              {isEditingResult ? (
+              <div className="prompt-textarea-wrapper">
                 <textarea
-                  rows={25}
+                  ref={promptTextareaRef}
+                  rows={26}
                   value={generatedPrompt}
                   onChange={(e) => setGeneratedPrompt(e.target.value)}
                   className="prompt-editor-textarea"
+                  placeholder="Seu prompt gerado aparecerá aqui. Você pode escrever, editar ou selecionar qualquer trecho diretamente..."
+                  spellCheck={false}
                 />
-              ) : (
-                <pre className="prompt-code-preview">{generatedPrompt}</pre>
-              )}
+              </div>
 
-              <div className="prompt-copy-footer">
+              <div className="prompt-actions-toolbar">
+                <button
+                  type="button"
+                  className="secondary-button btn-select-all-bottom"
+                  onClick={handleSelectAllText}
+                >
+                  <MousePointerClick size={15} />
+                  <span>Selecionar Todo o Texto</span>
+                </button>
+
                 <button
                   type="button"
                   className="primary-button btn-copy-footer"
@@ -783,13 +912,30 @@ export function PromptGeneratorSection() {
               </div>
               <h5>Nenhum prompt gerado ainda</h5>
               <p>
-                Selecione o plano desejado acima, preencha o nome do estabelecimento e o segmento no formulário e
-                clique em <b>"Gerar Prompt"</b>.
+                Escolha uma loja cadastrada acima (ou digite o nome de uma nova) e clique em <b>"Gerar Prompt"</b>. O prompt completo será gerado com liberdade total para você <b>escrever, editar e selecionar</b> qualquer parte do texto.
               </p>
+
+              <button
+                type="button"
+                className="primary-button btn-quick-generate"
+                onClick={() => {
+                  if (!form.storeName.trim()) {
+                    setForm((prev) => ({
+                      ...prev,
+                      storeName: availableStores[0]?.name || 'Pizzaria Bella Napoli',
+                    }))
+                  }
+                  setTimeout(() => handleGeneratePrompt(), 50)
+                }}
+              >
+                <Sparkles size={15} />
+                <span>Gerar Prompt Agora ({activeTemplate.displayName})</span>
+              </button>
+
               <div className="empty-hints-list">
                 <div className="hint-item">
                   <ArrowRight size={13} />
-                  <span>Modelo 100% determinístico com 18 seções estruturadas.</span>
+                  <span>Prompt 100% editável e livre para selecionar.</span>
                 </div>
                 <div className="hint-item">
                   <ArrowRight size={13} />

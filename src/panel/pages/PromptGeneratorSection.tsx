@@ -30,6 +30,7 @@ import {
   PROMPT_HISTORY_KEY,
   compileClientSitePrompt,
 } from '../lib/promptGeneratorTemplates'
+import { ConfirmModal } from '../components/ConfirmModal'
 import './PromptGeneratorSection.css'
 
 export const EMPRESARIAL_AVAILABLE_MODULES = [
@@ -122,6 +123,19 @@ export function PromptGeneratorSection() {
   const [templateEditDraft, setTemplateEditDraft] = useState<string>('')
   const [templateNameDraft, setTemplateNameDraft] = useState<string>('')
   const [templateSaveSuccess, setTemplateSaveSuccess] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    description: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  })
 
   useEffect(() => () => window.clearTimeout(copyTimer.current), [])
 
@@ -263,41 +277,49 @@ export function PromptGeneratorSection() {
 
   // Limpar Formulário
   const handleResetForm = () => {
-    if (window.confirm('Deseja realmente limpar todos os campos do formulário?')) {
-      setSelectedStoreId('')
-      setForm({
-        modelId: selectedModelId,
-        storeName: '',
-        segment: 'Pizzaria',
-        customSegment: '',
-        description: '',
-        city: '',
-        state: '',
-        address: '',
-        phone: '',
-        whatsapp: '',
-        email: '',
-        socialLinks: '',
-        brandName: '',
-        logoReference: '',
-        primaryColor: '#8b2cff',
-        secondaryColor: '#ec4899',
-        visualStyle: 'moderno',
-        customVisualStyle: '',
-        colorTheme: 'dark',
-        designReferences: '',
-        mainProductsServices: '',
-        targetAudience: '',
-        businessDifferentials: '',
-        openingHours: '',
-        slogan: '',
-        desiredSections: '',
-        additionalNotes: '',
-        contractedAddons: '',
-      })
-      setGeneratedPrompt('')
-      setFormError(null)
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Limpar Formulário?',
+      description: 'Deseja realmente limpar todos os campos preenchidos do formulário? Os dados informados serão descartados.',
+      confirmText: 'Sim, limpar formulário',
+      variant: 'warning',
+      onConfirm: () => {
+        setSelectedStoreId('')
+        setForm({
+          modelId: selectedModelId,
+          storeName: '',
+          segment: 'Pizzaria',
+          customSegment: '',
+          description: '',
+          city: '',
+          state: '',
+          address: '',
+          phone: '',
+          whatsapp: '',
+          email: '',
+          socialLinks: '',
+          brandName: '',
+          logoReference: '',
+          primaryColor: '#8b2cff',
+          secondaryColor: '#ec4899',
+          visualStyle: 'moderno',
+          customVisualStyle: '',
+          colorTheme: 'dark',
+          designReferences: '',
+          mainProductsServices: '',
+          targetAudience: '',
+          businessDifferentials: '',
+          openingHours: '',
+          slogan: '',
+          desiredSections: '',
+          additionalNotes: '',
+          contractedAddons: '',
+        })
+        setGeneratedPrompt('')
+        setFormError(null)
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+      },
+    })
   }
 
   // Iniciar edição de um modelo base
@@ -337,19 +359,29 @@ export function PromptGeneratorSection() {
 
   // Restaurar modelos padrão originais
   const handleResetAllTemplates = () => {
-    if (window.confirm('Tem certeza de que deseja restaurar os 3 modelos de prompts para o padrão original de fábrica?')) {
-      try {
-        const def = resetPromptTemplates()
-        setTemplates(def)
-        const current = def.find((t) => t.id === editingTemplateId)
-        if (current) {
-          setTemplateEditDraft(current.templateText)
-          setTemplateNameDraft(current.displayName)
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Restaurar Modelos de Fábrica?',
+      description: 'Tem certeza de que deseja restaurar os 4 modelos de prompts para o padrão original de fábrica? Uma cópia será preservada no histórico.',
+      confirmText: 'Sim, restaurar padrões',
+      variant: 'danger',
+      onConfirm: () => {
+        try {
+          const def = resetPromptTemplates()
+          setTemplates(def)
+          const current = def.find((t) => t.id === editingTemplateId)
+          if (current) {
+            setTemplateEditDraft(current.templateText)
+            setTemplateNameDraft(current.displayName)
+          }
+          setTemplateSaveSuccess('Padrões restaurados neste navegador; versão anterior preservada no histórico local.')
+          setTimeout(() => setTemplateSaveSuccess(null), 3000)
+        } catch {
+          setTemplateSaveSuccess('Falha ao restaurar. As personalizações não foram substituídas na tela.')
         }
-        setTemplateSaveSuccess('Padrões restaurados neste navegador; versão anterior preservada no histórico local.')
-        setTimeout(() => setTemplateSaveSuccess(null), 3000)
-      } catch { setTemplateSaveSuccess('Falha ao restaurar. As personalizações não foram substituídas na tela.') }
-    }
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+      },
+    })
   }
 
   const activeTemplate = templates.find((t) => t.id === selectedModelId) || INITIAL_PROMPT_TEMPLATES[0]!
@@ -1135,6 +1167,16 @@ export function PromptGeneratorSection() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

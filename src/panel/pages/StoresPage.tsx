@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { ConfirmModal } from '../components/ConfirmModal'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -69,6 +70,20 @@ export function StoresPage({ role }: { role: string }) {
     plan_code: 'NOVAES_BUSINESS',
     custom_plan_code: '',
     status: 'active',
+  })
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    description: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'info'
+    onConfirm: () => Promise<void> | void
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
   })
 
   const loadSites = useCallback(async (quiet = false) => {
@@ -255,15 +270,8 @@ export function StoresPage({ role }: { role: string }) {
     setAddingDomain(false)
   }
 
-  async function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setFeedback('', 'info')
+  async function executeSiteStatusChange(nextStatus: string) {
     if (role !== 'MASTER' || !selected || !supabase) return
-    const nextStatus = managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)
-    if (nextStatus !== 'active' && (!managementForm.reason.trim() || !managementForm.message.trim())) {
-      setFeedback('Informe o motivo administrativo e a mensagem que será comunicada ao proprietário.', 'error')
-      return
-    }
     setSavingManagement(true)
     const { error } = await supabase.functions.invoke('novaesweb-master-sites', {
       body: nextStatus === 'active'
@@ -292,6 +300,36 @@ export function StoresPage({ role }: { role: string }) {
     setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
     setFeedback('Status atualizado. A ação ficou registrada na auditoria e o proprietário foi notificado quando aplicável.', 'success')
     setSavingManagement(false)
+  }
+
+  function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setFeedback('', 'info')
+    if (role !== 'MASTER' || !selected || !supabase) return
+    const nextStatus = managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)
+    if (nextStatus !== 'active' && (!managementForm.reason.trim() || !managementForm.message.trim())) {
+      setFeedback('Informe o motivo administrativo e a mensagem que será comunicada ao proprietário.', 'error')
+      return
+    }
+
+    const isCritical = nextStatus === 'suspended' || nextStatus === 'maintenance'
+    setConfirmDialog({
+      isOpen: true,
+      title: isCritical
+        ? `Confirmar ${nextStatus === 'maintenance' ? 'Manutenção' : 'Suspensão'} da Loja`
+        : 'Confirmar Reativação da Loja',
+      description: isCritical
+        ? `Tem certeza de que deseja colocar "${selected.name}" em ${nextStatus === 'maintenance' ? 'manutenção' : 'suspensão'}? Os clientes finais não conseguirão fazer pedidos no site da loja.`
+        : `Deseja restabelecer o funcionamento normal e pedidos da loja "${selected.name}"?`,
+      confirmText: isCritical
+        ? `Sim, aplicar ${nextStatus === 'maintenance' ? 'manutenção' : 'bloqueio'}`
+        : 'Sim, reativar loja',
+      variant: isCritical ? 'danger' : 'info',
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        await executeSiteStatusChange(nextStatus)
+      },
+    })
   }
 
   async function sendStoreMessage(event: React.FormEvent<HTMLFormElement>) {
@@ -713,6 +751,15 @@ export function StoresPage({ role }: { role: string }) {
         <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td><td><ChevronRight size={15} className="store-row-chevron" /></td>
       </tr>)}</tbody></table></div>}
     </section>}
+    <ConfirmModal
+      isOpen={confirmDialog.isOpen}
+      title={confirmDialog.title}
+      description={confirmDialog.description}
+      confirmText={confirmDialog.confirmText}
+      variant={confirmDialog.variant}
+      onConfirm={confirmDialog.onConfirm}
+      onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+    />
     <div className="stores-footnote"><ShieldCheck size={14} /> A autorização é aplicada pelo Supabase Auth e RLS; o ID NX apenas identifica a loja.</div>
   </div>
 }

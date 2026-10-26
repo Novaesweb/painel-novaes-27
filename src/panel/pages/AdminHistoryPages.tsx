@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bell, MessageSquare, RefreshCw, Send, ShieldCheck, Clock, Sparkles, Check, Copy } from 'lucide-react'
+import { Bell, MessageSquare, RefreshCw, Send, ShieldCheck, Clock, Sparkles, Check, Copy, Volume2, VolumeX, Play } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './AdminHistoryPages.css'
 import { PushSettings } from '../../components/PushSettings'
 import { notificationPath } from '../../components/NotificationLive'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
 import { StoreMessengerSection } from '../components/StoreMessengerSection'
+import { isSoundEnabled, setSoundEnabled, playNotificationSound, getMasterPhone, setMasterPhone } from '../lib/soundEffects'
 
 type Notification = {
   id: string
@@ -70,6 +71,53 @@ export function NotificationsPage({ role }: { role: string }) {
   const [simDueDate, setSimDueDate] = useState('10/11/2026')
   const [simPixKey, setSimPixKey] = useState('financeiro@novaesweb.com.br')
   const [copiedStage, setCopiedStage] = useState<string | null>(null)
+
+  const [soundActive, setSoundActive] = useState(isSoundEnabled())
+  const [masterPhone, setLocalMasterPhone] = useState(getMasterPhone())
+
+  const handleToggleSound = () => {
+    const next = !soundActive
+    setSoundActive(next)
+    setSoundEnabled(next)
+    if (next) {
+      playNotificationSound('test')
+    }
+  }
+
+  const simulateToast = (type: 'site' | 'lead' | 'order' | 'support') => {
+    let title = 'Novo Site Conectado ao Supabase!'
+    let body = 'A loja Burger House completou a etapa 1 de integração com sucesso.'
+    let cat = 'site'
+    let url = '/lojas'
+
+    if (type === 'lead') {
+      title = 'Nova Lead Comercial Recebida!'
+      body = 'Pizzaria Bella Italia solicitou proposta para o plano Novaes Premium.'
+      cat = 'lead'
+      url = '/leads'
+    } else if (type === 'order') {
+      title = 'Alerta de Franquia: 80% Atingido!'
+      body = 'A loja Fogo na Brasa atingiu 80% da franquia mensal de pedidos aceitos.'
+      cat = 'order'
+      url = '/controle-pedidos'
+    } else if (type === 'support') {
+      title = 'Novo Chamado de Suporte Aberto!'
+      body = 'Chamado de alta prioridade recebido: Dúvida sobre impressão de pedidos.'
+      cat = 'support'
+      url = '/suporte'
+    }
+
+    const customEvent = new CustomEvent('novaesweb-local-notification', {
+      detail: {
+        id: 'test-' + Date.now(),
+        title,
+        body,
+        category: cat,
+        action_url: url
+      }
+    })
+    window.dispatchEvent(customEvent)
+  }
 
   const copyReguaMessage = (stageId: string, text: string) => {
     void navigator.clipboard.writeText(text)
@@ -238,7 +286,84 @@ export function NotificationsPage({ role }: { role: string }) {
 
     {/* ABA 1: FEED DE NOTIFICAÇÕES */}
     {activeTab === 'feed' && (
-      <section className="panel admin-history-list" aria-live="polite">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Painel de Controle de Sons e Alertas Master */}
+        <div className="sound-control-panel">
+          <div className="sound-control-header">
+            <div className="sound-status-box">
+              <span className="sound-icon-badge">
+                {soundActive ? <Volume2 size={20} /> : <VolumeX size={20} />}
+              </span>
+              <div>
+                <strong>Alertas Sonoros em Tempo Real (Web Audio API)</strong>
+                <p>Notificações com barulho automático para novos sites, leads, pedidos e chamados.</p>
+              </div>
+            </div>
+            <div className="sound-toggle-actions">
+              <button
+                type="button"
+                className={`secondary-button ${soundActive ? 'active' : ''}`}
+                onClick={handleToggleSound}
+                style={{
+                  background: soundActive ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.15)',
+                  borderColor: soundActive ? '#10b981' : '#ef4444',
+                  color: soundActive ? '#34d399' : '#f87171',
+                  fontWeight: 600
+                }}
+              >
+                {soundActive ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                {soundActive ? 'Som Ativado' : 'Som Silenciado (Mudo)'}
+              </button>
+            </div>
+          </div>
+
+          <div className="sound-tester-row">
+            <span className="sound-tester-label">Testar barulhos:</span>
+            <button
+              type="button"
+              className="btn-sound-chip"
+              onClick={() => playNotificationSound('site')}
+              title="Acorde harmônico ascendente"
+            >
+              <Play size={10} /> Site Novo
+            </button>
+            <button
+              type="button"
+              className="btn-sound-chip"
+              onClick={() => playNotificationSound('lead')}
+              title="Som cintilante de oportunidade"
+            >
+              <Play size={10} /> Nova Lead
+            </button>
+            <button
+              type="button"
+              className="btn-sound-chip"
+              onClick={() => playNotificationSound('order')}
+              title="Ping duplo de confirmação"
+            >
+              <Play size={10} /> Novo Pedido
+            </button>
+            <button
+              type="button"
+              className="btn-sound-chip"
+              onClick={() => playNotificationSound('support')}
+              title="Alerta de suporte prioritário"
+            >
+              <Play size={10} /> Chamado Suporte
+            </button>
+
+            <button
+              type="button"
+              className="btn-simulate-toast"
+              onClick={() => simulateToast('lead')}
+              title="Dispara som + Toast flutuante com a notificação"
+            >
+              Simular Notificação Viva 🔔
+            </button>
+          </div>
+        </div>
+
+        <section className="panel admin-history-list" aria-live="polite">
         {loading ? <div className="admin-history-empty"><span className="loader" /><p>Carregando notificações…</p></div>
           : items.length === 0 ? <div className="admin-history-empty"><Bell size={22} /><strong>Nenhuma notificação</strong><p>Novas mensagens aparecerão aqui quando forem enviadas ao seu usuário.</p></div>
             : items.map((item) => <article className={`admin-notification${item.read_at ? ' is-read' : ''}`} key={item.id}>
@@ -247,7 +372,8 @@ export function NotificationsPage({ role }: { role: string }) {
               <div className="admin-notification-content"><div><strong>{item.title}</strong><time>{dateLabel(item.created_at)}</time></div><p>{item.body}</p><small>{item.category}</small></div>
               {!item.read_at && <button className="secondary-button" onClick={() => void markRead(item)} disabled={busyId === item.id}>{busyId === item.id ? 'Salvando…' : 'Marcar como lida'}</button>}
             </article>)}
-      </section>
+        </section>
+      </div>
     )}
 
     {/* ABA 2: RÉGUA DE COBRANÇA E TOLERÂNCIA (D-3, D-0, D+3, D+5) */}

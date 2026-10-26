@@ -1,1 +1,134 @@
-.notification-live{position:fixed;z-index:80;right:22px;bottom:22px;display:flex;align-items:center;gap:12px;width:min(390px,calc(100vw - 32px));padding:16px;border:1px solid #a855f766;border-radius:13px;background:#100d20;box-shadow:0 12px 45px #0008;color:#d8b4fe}.notification-live button{border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;min-width:0}.notification-live button:first-of-type{flex:1}.notification-live strong,.notification-live span{display:block;overflow-wrap:anywhere}.notification-live strong{font-size:13px;color:#f4ebff}.notification-live span{font-size:11px;margin-top:5px;color:#b7a6d0}.notification-live-close{padding:7px}
+/* Toast de Notificação Viva com Som — NovaesWeb Master */
+
+.notification-live {
+  position: fixed;
+  z-index: 9990;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px 18px 20px;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(22, 13, 36, 0.98), rgba(14, 8, 24, 0.98));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8),
+              0 0 30px rgba(139, 44, 255, 0.25);
+  backdrop-filter: blur(16px);
+  color: #f4ebff;
+  animation: toastSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.notification-live-icon-wrap {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toast-icon {
+  display: block;
+}
+
+.toast-icon.lead {
+  color: #34d399;
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.5));
+}
+
+.toast-icon.store {
+  color: #60a5fa;
+  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.5));
+}
+
+.toast-icon.general {
+  color: #c084fc;
+  filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.5));
+}
+
+.notification-live-content-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notification-live-content-btn strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.notification-live-content-btn span {
+  font-size: 12px;
+  color: #d4d4d8;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.notification-live-body {
+  color: #a1a1aa !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-live-close {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -2px;
+  margin-right: -4px;
+  transition: all 0.15s ease;
+}
+
+.notification-live-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Barra de contagem regressiva animada */
+.notification-live-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  animation: toastProgress 8s linear forwards;
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

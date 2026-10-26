@@ -10,12 +10,13 @@ import { ContractsAndProposalsPage } from './ContractsAndProposalsPage'
 import { IncomeSimulator } from '../components/IncomeSimulator'
 import { calculateNextMonthDueDate, formatDateBR } from '../lib/dateUtils'
 import { sendEvolutionWhatsAppMessage, getEvolutionConfig } from '../lib/evolutionApi'
+import { WhatsAppBillingModal, getStoreStoredPhone, saveStoreStoredPhone } from '../components/WhatsAppBillingModal'
 import './OperationalModules.css'
 
 type Domain = { domain: string; is_primary: boolean; verification_status: string }
 type Plan = { code: string; name: string; description: string | null; price_cents: number; billing_period: string; duration_days: number | null; is_active: boolean; limits?: Record<string, string | number | boolean | null> | null; features?: unknown }
 type Site = {
-  id: string; nx_id: string; name: string; owner_id: string | null; owner_name: string | null; status: string
+  id: string; nx_id: string; name: string; owner_id: string | null; owner_name: string | null; owner_phone?: string | null; status: string
   plan_code: string | null; billing_active: boolean; created_at: string; updated_at?: string | null; plan_started_at: string | null
   plan_expires_at: string | null; grace_days: number; payment_status: string; payment_status_updated_at: string | null
   integrations?: Array<{ provider: string; status: string; last_seen_at: string | null }>
@@ -61,10 +62,11 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   const [ticketStoreFilter, setTicketStoreFilter] = useState('all')
   const [ticketStatusFilter, setTicketStatusFilter] = useState('all')
   const [viewingClientSite, setViewingClientSite] = useState<Site | null>(null)
+  const [billingTargetSite, setBillingTargetSite] = useState<Site | null>(null)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({ email: '', owner_name: '', code: '', name: '', description: '', price: '', period: 'monthly', days: '', plan: '', expires: '', payment_status: 'unknown', grace_days: '0', domain: '', backup_status: 'unknown', backup_date: '', ticket_status: 'in_progress', user_id: '', user_role: 'SUPORTE', user_active: true, display_name: '' })
+  const [form, setForm] = useState({ email: '', owner_name: '', owner_phone: '', code: '', name: '', description: '', price: '', period: 'monthly', days: '', plan: '', expires: '', payment_status: 'unknown', grace_days: '0', domain: '', backup_status: 'unknown', backup_date: '', ticket_status: 'in_progress', user_id: '', user_role: 'SUPORTE', user_active: true, display_name: '' })
   const [ticketDraftStatuses, setTicketDraftStatuses] = useState<Record<string, string>>({})
   const [settingsText, setSettingsText] = useState('{}')
   const [ticketDraft, setTicketDraft] = useState({ subject: '', message: '', priority: 'normal' })
@@ -83,7 +85,12 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
 
   const loadSites = useCallback(async () => {
     const data = await invoke('novaesweb-master-sites', { action: 'list_sites' })
-    setSites((data['sites'] ?? []) as Site[])
+    const rawSites = (data['sites'] ?? []) as Site[]
+    const enriched = rawSites.map((s) => ({
+      ...s,
+      owner_phone: (s as unknown as { owner_phone?: string }).owner_phone || getStoreStoredPhone(s.id) || null,
+    }))
+    setSites(enriched)
     setPlans((data['plans'] ?? []) as Plan[])
   }, [invoke])
 
@@ -124,12 +131,15 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     }
     if (selected && path === '/financeiro') {
       const expDate = selected.plan_expires_at ? selected.plan_expires_at.slice(0, 10) : ''
+      const storePhone = selected.owner_phone || getStoreStoredPhone(selected.id) || ''
       setForm((f) => ({
         ...f,
         plan: selected.plan_code || 'NOVAES_BUSINESS',
         payment_status: selected.payment_status || 'pending',
         expires: expDate,
         grace_days: String(selected.grace_days ?? 0),
+        owner_name: selected.owner_name || '',
+        owner_phone: storePhone,
       }))
     }
   }, [selectedSite, selected, path])
@@ -302,6 +312,9 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     event.preventDefault()
     if (!selected) return
     await run(async () => {
+      if (form.owner_phone) {
+        saveStoreStoredPhone(selected.id, form.owner_phone)
+      }
       if (form.plan && form.plan !== selected.plan_code) {
         await assignPlanToStore(selected.id, form.plan, form.expires)
       }
@@ -319,14 +332,27 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
             .update({
               payment_status: form.payment_status,
               plan_expires_at: form.expires ? new Date(form.expires).toISOString() : null,
+              owner_name: form.owner_name || null,
+              owner_phone: form.owner_phone || null,
             })
             .eq('id', selected.id)
         } catch {
-          /* ignore */
+          try {
+            await supabase
+              .from('managed_sites')
+              .update({
+                payment_status: form.payment_status,
+                plan_expires_at: form.expires ? new Date(form.expires).toISOString() : null,
+                owner_name: form.owner_name || null,
+              })
+              .eq('id', selected.id)
+          } catch {
+            /* ignore */
+          }
         }
       }
       await loadSites()
-    }, 'Dados administrativos de cobrança e plano atualizados e sincronizados com a loja.')
+    }, 'Dados administrativos de cobrança, WhatsApp e plano atualizados e sincronizados com a loja.')
   }
 
   async function saveBackup(event: React.FormEvent) {
@@ -536,6 +562,15 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                     <td>
                       <b>{site.name}</b>
                       <small>{site.nx_id}</small>
+                      {site.owner_phone ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#34d399', marginTop: 3 }}>
+                          📱 {site.owner_phone}
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#94a3b8', fontStyle: 'italic', marginTop: 3 }}>
+                          Sem WhatsApp
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span className="text-xs text-muted">
@@ -603,9 +638,9 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                             }}
                             onClick={(e) => {
                               e.stopPropagation()
-                              void openWhatsAppBillingReminder(site)
+                              setBillingTargetSite(site)
                             }}
-                            title="Enviar lembrete amigável de cobrança no WhatsApp"
+                            title="Editar WhatsApp e enviar lembrete de cobrança"
                           >
                             <MessageCircle size={12} />
                             Cobrar WhatsApp
@@ -695,9 +730,46 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
               onChange={(e) => setForm({ ...form, grace_days: e.target.value })}
             />
           </label>
+          <label>
+            WhatsApp do Lojista (Cobrança)
+            <input
+              type="text"
+              value={form.owner_phone}
+              onChange={(e) => setForm({ ...form, owner_phone: e.target.value })}
+              placeholder="Ex: 51 98196-4238"
+            />
+          </label>
+          <label>
+            Nome do Responsável / Lojista
+            <input
+              type="text"
+              value={form.owner_name}
+              onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+              placeholder="Ex: Carlos Oliveira"
+            />
+          </label>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
             <button className="primary-button" disabled={busy || !selected}>
               {busy ? 'Salvando…' : 'Salvar dados financeiros'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{
+                background: 'rgba(37, 211, 102, 0.15)',
+                borderColor: 'rgba(37, 211, 102, 0.4)',
+                color: '#4ade80',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              disabled={busy || !selected}
+              onClick={() => selected && setBillingTargetSite(selected)}
+              title="Abrir painel para editar WhatsApp e disparar cobrança"
+            >
+              <MessageCircle size={14} />
+              Enviar Cobrança WhatsApp
             </button>
             <button
               type="button"
@@ -885,5 +957,24 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     </>}
     {sites.length === 0 && !['/usuarios','/suporte'].includes(path) && <section className="panel operational-empty"><Store size={21} /><strong>Nenhuma loja no Supabase</strong><p>Quando um registro oficial existir, você poderá gerenciá-lo por aqui.</p></section>}
     {role !== 'MASTER' && <div className="operational-subtitle">Seu perfil pode consultar este módulo; ações administrativas privilegiadas exigem MASTER ativo.</div>}
+
+    <WhatsAppBillingModal
+      isOpen={!!billingTargetSite}
+      onClose={() => setBillingTargetSite(null)}
+      site={billingTargetSite}
+      onSavedPhone={(storeId, newPhone, newOwner) => {
+        setSites((prev) =>
+          prev.map((s) =>
+            s.id === storeId
+              ? {
+                  ...s,
+                  owner_phone: newPhone,
+                  ...(newOwner ? { owner_name: newOwner } : {}),
+                }
+              : s
+          )
+        )
+      }}
+    />
   </div>
 }

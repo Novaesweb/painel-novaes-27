@@ -184,7 +184,7 @@ describe("Evidência e preservação", () => {
     );
     expect(INTEGRATION_PROGRESS).toHaveLength(8);
   });
-  it("sete prompts originais e três modelos continuam disponíveis e inalterados pela geração", () => {
+  it("sete prompts originais e quatro modelos continuam disponíveis e inalterados pela geração", () => {
     const before = integrationPrompts.map((prompt) => prompt.text);
     generateStoreIntegrationPrompt(integrationFixture(), BURGER_ID, "orders");
     expect(integrationPrompts).toHaveLength(7);
@@ -193,6 +193,7 @@ describe("Evidência e preservação", () => {
       "start",
       "business",
       "premium",
+      "empresarial",
     ]);
   });
 });

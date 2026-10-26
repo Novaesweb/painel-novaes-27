@@ -32,6 +32,21 @@ import {
 } from '../lib/promptGeneratorTemplates'
 import './PromptGeneratorSection.css'
 
+export const EMPRESARIAL_AVAILABLE_MODULES = [
+  { id: 'delivery', name: 'Cardápio Digital e Delivery com Carrinho Completo', desc: 'Catálogo de pratos, complementos, taxa de frete e finalização' },
+  { id: 'cupons', name: 'Sistema de Cupons de Desconto Simples (LOJA-08)', desc: 'Descontos em valor fixo (R$) ou porcentagem (%) no checkout' },
+  { id: 'agendamento', name: 'Pedidos Agendados com Faixa de Horário (LOJA-10)', desc: 'Cliente agenda data/hora de entrega e fila no painel' },
+  { id: 'rastreamento', name: 'Acompanhamento do Pedido em Tempo Real pelo Cliente (LOJA-09)', desc: 'Linha do tempo ao vivo do status do preparo' },
+  { id: 'graficos', name: 'Gráficos e Métricas Visuais de Desempenho (LOJA-11)', desc: 'Volume diário, itens mais vendidos e picos de pedidos' },
+  { id: 'multiunidades', name: 'Módulo Multiunidades / Redes e Filiais (LOJA-04)', desc: 'Roteamento de pedidos para a filial mais próxima' },
+  { id: 'impressao', name: 'Impressão Automática de Comandas de Cozinha (LOJA-01)', desc: 'Impressão direta de pedidos ao aceitar no painel' },
+  { id: 'equipe', name: 'Controle de Acessos por Função / Garçom / Cozinha (LOJA-05)', desc: 'Níveis de permissão segmentados na equipe' },
+  { id: 'estoque', name: 'Controle de Estoque de Insumos com Baixa Automática', desc: 'Controle de insumos e alerta de esgotado no cardápio' },
+  { id: 'carrinho_zap', name: 'Recuperação de Carrinho Abandonado via WhatsApp', desc: 'Disparo de mensagem para clientes que não concluíram o pedido' },
+  { id: 'taxa_bairro', name: 'Taxa de Entrega Dinâmica por Bairro e Distância KM', desc: 'Cálculo automatizado do valor da entrega' },
+  { id: 'fidelidade', name: 'Programa de Fidelidade por Pontos ou Selos', desc: 'Pontuação por compra para resgate de brindes' },
+] as const
+
 type AvailableStore = {
   id: string
   name: string
@@ -42,7 +57,7 @@ type AvailableStore = {
 
 export function PromptGeneratorSection() {
   const [templates, setTemplates] = useState<PromptTemplateModel[]>(() => loadPromptTemplates())
-  const [selectedModelId, setSelectedModelId] = useState<'start' | 'business' | 'premium'>('business')
+  const [selectedModelId, setSelectedModelId] = useState<'start' | 'business' | 'premium' | 'empresarial'>('business')
 
   // Lojas cadastradas no Supabase para preenchimento rápido
   const [availableStores, setAvailableStores] = useState<AvailableStore[]>([])
@@ -79,6 +94,19 @@ export function PromptGeneratorSection() {
     desiredSections: '',
     additionalNotes: '',
     contractedAddons: '',
+    customCreationPrice: '',
+    customMonthlyPrice: '',
+    customMonthlyOrders: '3.000 pedidos aceitos/mês',
+    customOverageFee: 'R$ 0,10 por pedido excedente',
+    customMaxProducts: 'Até 1.000 produtos',
+    customMaxAdmins: 'Até 10 administradores',
+    selectedModules: [
+      'Cardápio Digital e Delivery com Carrinho Completo',
+      'Sistema de Cupons de Desconto Simples (LOJA-08)',
+      'Pedidos Agendados com Faixa de Horário (LOJA-10)',
+      'Acompanhamento do Pedido em Tempo Real pelo Cliente (LOJA-09)',
+      'Gráficos e Métricas Visuais de Desempenho (LOJA-11)',
+    ],
   })
 
   // Resultado do Prompt
@@ -90,7 +118,7 @@ export function PromptGeneratorSection() {
 
   // Área de Gerenciamento de Modelos
   const [showTemplateManager, setShowTemplateManager] = useState<boolean>(false)
-  const [editingTemplateId, setEditingTemplateId] = useState<'start' | 'business' | 'premium'>('premium')
+  const [editingTemplateId, setEditingTemplateId] = useState<'start' | 'business' | 'premium' | 'empresarial'>('premium')
   const [templateEditDraft, setTemplateEditDraft] = useState<string>('')
   const [templateNameDraft, setTemplateNameDraft] = useState<string>('')
   const [templateSaveSuccess, setTemplateSaveSuccess] = useState<string | null>(null)
@@ -142,7 +170,7 @@ export function PromptGeneratorSection() {
   }, [])
 
   // Sincroniza modelId no formulário
-  const handleModelChange = (id: 'start' | 'business' | 'premium') => {
+  const handleModelChange = (id: 'start' | 'business' | 'premium' | 'empresarial') => {
     setSelectedModelId(id)
     setForm((prev) => ({ ...prev, modelId: id }))
   }
@@ -155,13 +183,15 @@ export function PromptGeneratorSection() {
     const store = availableStores.find((s) => s.id === storeId)
     if (!store) return
 
-    // Mapeia plan_code da loja para o modelo correspondente (start, business, premium)
+    // Mapeia plan_code da loja para o modelo correspondente (start, business, premium, empresarial)
     const normalizedPlan = (store.plan_code || '').toLowerCase()
-    let mappedModel: 'start' | 'business' | 'premium' = 'business'
+    let mappedModel: 'start' | 'business' | 'premium' | 'empresarial' = 'business'
     if (normalizedPlan.includes('start') || normalizedPlan.includes('iniciante') || normalizedPlan.includes('basico')) {
       mappedModel = 'start'
     } else if (normalizedPlan.includes('premium') || normalizedPlan.includes('pro') || normalizedPlan.includes('avancado')) {
       mappedModel = 'premium'
+    } else if (normalizedPlan.includes('empresarial') || normalizedPlan.includes('custom') || normalizedPlan.includes('rede')) {
+      mappedModel = 'empresarial'
     } else {
       mappedModel = 'business'
     }
@@ -175,6 +205,27 @@ export function PromptGeneratorSection() {
       brandName: store.name,
     }))
     setFormError(null)
+  }
+
+  // Helpers para seleção manual de módulos no Plano Empresarial
+  const toggleModule = (moduleName: string) => {
+    setForm((prev) => {
+      const current = prev.selectedModules || []
+      const exists = current.includes(moduleName)
+      const updated = exists ? current.filter((m) => m !== moduleName) : [...current, moduleName]
+      return { ...prev, selectedModules: updated }
+    })
+  }
+
+  const selectAllModules = () => {
+    setForm((prev) => ({
+      ...prev,
+      selectedModules: EMPRESARIAL_AVAILABLE_MODULES.map((m) => m.name),
+    }))
+  }
+
+  const clearAllModules = () => {
+    setForm((prev) => ({ ...prev, selectedModules: [] }))
   }
 
   // Geração do Prompt
@@ -250,7 +301,7 @@ export function PromptGeneratorSection() {
   }
 
   // Iniciar edição de um modelo base
-  const handleStartEditingTemplate = (tId: 'start' | 'business' | 'premium') => {
+  const handleStartEditingTemplate = (tId: 'start' | 'business' | 'premium' | 'empresarial') => {
     setEditingTemplateId(tId)
     const t = templates.find((item) => item.id === tId)
     if (t) {
@@ -808,6 +859,140 @@ export function PromptGeneratorSection() {
               </label>
             )}
           </div>
+
+          {/* Grupo 4: Escopo Sob Medida do Plano Empresarial (Seleção Manual) */}
+          {selectedModelId === 'empresarial' && (
+            <div className="form-group-section empresarial-config-panel">
+              <div className="group-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sliders size={16} style={{ color: '#f59e0b' }} />
+                  <span style={{ color: '#fde68a' }}>4. Escopo Sob Medida do Plano Empresarial</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    style={{ fontSize: 10, padding: '2px 8px' }}
+                    onClick={selectAllModules}
+                  >
+                    Marcar Todos
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    style={{ fontSize: 10, padding: '2px 8px' }}
+                    onClick={clearAllModules}
+                  >
+                    Desmarcar
+                  </button>
+                </div>
+              </div>
+
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#94a3b8' }}>
+                Selecione manualmente os módulos inclusos e preencha as condições comerciais negociadas para esta proposta:
+              </p>
+
+              {/* Grid de Checkboxes de Módulos */}
+              <div className="empresarial-modules-grid">
+                {EMPRESARIAL_AVAILABLE_MODULES.map((mod) => {
+                  const isChecked = (form.selectedModules || []).includes(mod.name)
+                  return (
+                    <label
+                      key={mod.id}
+                      className={`module-checkbox-card ${isChecked ? 'is-checked' : ''}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        toggleModule(mod.name)
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        style={{ accentColor: '#f59e0b' }}
+                      />
+                      <div className="module-info">
+                        <strong>{mod.name}</strong>
+                        <small>{mod.desc}</small>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {/* Limites e Condições Comerciais Sob Medida */}
+              <div style={{ marginTop: 16, borderTop: '1px solid rgba(245, 158, 11, 0.2)', paddingTop: 14 }}>
+                <div className="form-row-2">
+                  <label className="form-field">
+                    <span>Franquia Mensal de Pedidos Acordada:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: 3.000 pedidos/mês inclusos"
+                      value={form.customMonthlyOrders}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customMonthlyOrders: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Tarifa por Pedido Excedente:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: R$ 0,10 por pedido aceito"
+                      value={form.customOverageFee}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customOverageFee: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                </div>
+
+                <div className="form-row-2">
+                  <label className="form-field">
+                    <span>Valor de Criação / Implantação Acordado:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: R$ 1.800,00 ou Sob Proposta"
+                      value={form.customCreationPrice}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customCreationPrice: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Mensalidade Acordada:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: R$ 490,00/mês"
+                      value={form.customMonthlyPrice}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customMonthlyPrice: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                </div>
+
+                <div className="form-row-2">
+                  <label className="form-field">
+                    <span>Limite de Produtos no Catálogo:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: Ilimitado ou Até 1.500 produtos"
+                      value={form.customMaxProducts}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customMaxProducts: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Limite de Administradores / Equipe:</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: Até 10 administradores"
+                      value={form.customMaxAdmins}
+                      onChange={(e) => setForm((prev) => ({ ...prev, customMaxAdmins: e.target.value }))}
+                      className="form-input"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Ações do Formulário */}
           <div className="form-actions-bar">

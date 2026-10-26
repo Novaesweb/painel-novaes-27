@@ -2,7 +2,7 @@
 // Conforme especificações dos Cadernos 01 a 09
 
 export interface PromptTemplateModel {
-  id: 'start' | 'business' | 'premium'
+  id: 'start' | 'business' | 'premium' | 'empresarial'
   planCode: string
   defaultName: string
   displayName: string // Editável (ex: permitir "Novaes Express" mantendo regras Premium)
@@ -24,7 +24,7 @@ export interface PromptTemplateModel {
 }
 
 export interface ClientSitePromptInput {
-  modelId: 'start' | 'business' | 'premium'
+  modelId: 'start' | 'business' | 'premium' | 'empresarial'
   // Identificação
   storeName: string
   segment: string
@@ -56,6 +56,14 @@ export interface ClientSitePromptInput {
   additionalNotes?: string
   // Configurações Comerciais
   contractedAddons?: string
+  // Configurações do Plano Empresarial Sob Medida
+  customCreationPrice?: string
+  customMonthlyPrice?: string
+  customMonthlyOrders?: string
+  customOverageFee?: string
+  customMaxProducts?: string
+  customMaxAdmins?: string
+  selectedModules?: string[]
 }
 
 const DEFAULT_START_TEMPLATE = `NOVAESWEB — PROJETO DE SITE PARA NOVO CLIENTE
@@ -369,6 +377,85 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 18. RESTRIÇÕES DE PUBLICAÇÃO
 Não publicar sem aprovação explícita do lojista e da NovaesWeb.`
 
+const DEFAULT_EMPRESARIAL_TEMPLATE = `NOVAESWEB — PROJETO DE SITE PARA NOVO CLIENTE
+MODELO OFICIAL: {{NOME_MODELO}} (PROJETO EMPRESARIAL SOB MEDIDA / REDE)
+
+1. NOME DO ESTABELECIMENTO
+{{NOME_ESTABELECIMENTO}} (Marca: {{NOME_MARCA}})
+
+2. SEGMENTO E ATIVIDADE
+Segmento: {{SEGMENTO}}
+Descrição: {{DESCRICAO_NEGOCIO}}
+Público-alvo: {{PUBLICO_ALVO}}
+
+3. PLANO CONTRATADO E CONDIÇÕES COMERCIAIS SOB MEDIDA
+- Plano: Novaes Empresarial (Projeto Sob Medida)
+- Taxa de Implantação / Criação: {{TAXA_CRIACAO_PERSONALIZADA}}
+- Mensalidade Acordada: {{MENSALIDADE_PERSONALIZADA}}
+- Franquia mensal inclusa: {{FRANQUIA_PERSONALIZADA}}
+- Tarifa de excedente por pedido: {{TARIFA_EXCEDENTE_PERSONALIZADA}}
+- Zero Bloqueio: Operação ininterrupta garantida. A franquia nunca trava o atendimento ou os pedidos da rede.
+
+4. LIMITES E CAPACIDADE OPERACIONAL
+- Limite de Produtos no Catálogo: {{LIMITE_PRODUTOS_PERSONALIZADO}}
+- Limite de Administradores / Atendentes: {{LIMITE_ADMINS_PERSONALIZADO}}
+
+5. RECURSOS E MÓDULOS CONTRATADOS (SELEÇÃO MANUAL SOB MEDIDA)
+{{MODULOS_SELECIONADOS}}
+
+6. LOCALIZAÇÃO E CONTATOS
+- Cidade/UF: {{CIDADE_ESTADO}}
+- Endereço comercial: {{ENDERECO_COMERCIAL}}
+- Telefone: {{TELEFONE_COMERCIAL}}
+- WhatsApp comercial: {{WHATSAPP_COMERCIAL}}
+- E-mail: {{EMAIL_COMERCIAL}}
+- Redes Sociais: {{REDES_SOCIAIS}}
+- Horários de Funcionamento: {{HORARIOS_FUNCIONAMENTO}}
+
+7. IDENTIDADE VISUAL E PALETA
+- Paleta Primária: {{COR_PRINCIPAL}}
+- Paleta Secundária: {{COR_SECUNDARIA}}
+- Estilo Visual: {{ESTILO_VISUAL}}
+- Tema: {{TEMA_COR}}
+- Logotipo / Referência: {{LOGOTIPO_REF}}
+- Observações de Design: {{NOTAS_DESIGN}}
+
+8. OBJETIVO DO SITE
+Desenvolver uma solução sob medida de alto desempenho para marcas e redes consolidadas, com arquitetura modular, estabilidade operacional e foco em alta conversão e eficiência.
+
+9. ESTILO E EXPERIÊNCIA DO USUÁRIO (ADAPTADA AO SEGMENTO)
+{{DIRETRIZES_SEGMENTO}}
+
+10. FORMAS DE PAGAMENTO ACEITAS (SEM GATEWAY ONLINE AUTOMÁTICO)
+- Pix Manual (com chave Pix do estabelecimento e instrução de comprovante)
+- Dinheiro (com campo de troco)
+- Cartão de Crédito / Débito na entrega ou no balcão (maquininha)
+
+11. PAINEL DO LOJISTA E GESTÃO CORPORATIVA
+- Painel administrativo corporativo integrado
+- Gestão de pedidos ao vivo com som e fila organizada
+- Gestão dos módulos contratados selecionados no escopo sob medida
+- Acessos protegidos e segmentados por função
+
+12. DADOS DEMONSTRATIVOS PERMITIDOS
+{{DADOS_DEMONSTRATIVOS}}
+
+13. TECNOLOGIA E INTEGRAÇÕES CENTRAIS
+- Identificação oficial no Painel Master: Configurar VITE_NOVAESWEB_STORE_ID e VITE_NOVAESWEB_NX_ID no .env da loja com os IDs oficiais fornecidos pelo Master ou obtidos via auto-cadastro na Edge Function novaesweb-site-register informando plan_code: 'NOVAES_EMPRESARIAL'.
+- Conexão oficial ao Supabase central NovaesWeb: https://mabkzkawziqlmgfikwmh.supabase.co utilizando a chave pública anon com RLS de segurança estrita.
+- Ao aceitar cada pedido, invocar a função RPC segura novaesweb_record_order_event (p_store_id, p_order_ref, p_event_type: 'accepted', p_occurred_at) para que o Painel Master identifique e contabilize o estabelecimento em tempo real sem expor dados financeiros.
+- Central de Suporte e Chamados: Incluir tela de atendimento conectada à tabela master_support_tickets do Supabase central para suporte direto com a equipe NovaesWeb.
+- Privacidade total de dados de faturamento e consumidores finais (nunca trafegar valores de carrinho ou dados pessoais de clientes para o Master).
+- Embutir obrigatoriamente o componente StoreOrderUsageWidget em Configurações → Meu Plano → Consumo de Pedidos.
+
+14. TESTES NECESSÁRIOS
+- Teste de fluxo completo do pedido (carrinho → checkout → recebimento → aceite).
+- Teste dos módulos específicos selecionados no escopo sob medida.
+- Teste de responsividade em mobile e desktop.
+
+15. RESTRIÇÕES DE PUBLICAÇÃO
+Não publicar sem aprovação explícita do cliente e da NovaesWeb.`
+
 export const INITIAL_PROMPT_TEMPLATES: PromptTemplateModel[] = [
   {
     id: 'start',
@@ -467,13 +554,42 @@ export const INITIAL_PROMPT_TEMPLATES: PromptTemplateModel[] = [
     updatedAt: new Date().toISOString(),
     updatedBy: 'NovaesWeb Master',
   },
+  {
+    id: 'empresarial',
+    planCode: 'NOVAES_EMPRESARIAL',
+    defaultName: 'Novaes Empresarial',
+    displayName: 'Novaes Empresarial',
+    description: 'Modelo sob medida para redes, franquias ou grandes operações. Você seleciona manualmente todos os recursos e limites.',
+    creationPrice: 'Sob Proposta',
+    monthlyPrice: 'Personalizada',
+    supportPrice: 'Incluso com canal prioritário',
+    limits: {
+      products: 'Sob Medida / Ilimitado',
+      admins: 'Sob Medida / Equipe ampliada',
+      monthlyOrders: 'Sob Demanda (3.000+ pedidos)',
+      overageFee: 'Negociada em contrato',
+    },
+    includedFeatures: [
+      'Módulos e recursos selecionados sob medida',
+      'Volume de pedidos dimensionado para a operação',
+      'Arquitetura modular de alto desempenho',
+      'Suporte a multiunidades, redes e filiais',
+      'Zero Bloqueio operacional garantido',
+    ],
+    excludedFeatures: [
+      'Recursos não selecionados na proposta comercial',
+    ],
+    templateText: DEFAULT_EMPRESARIAL_TEMPLATE,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'NovaesWeb Master',
+  },
 ]
 
 export const PROMPT_STORAGE_KEY = 'novaesweb_prompt_templates_v1'
 export const PROMPT_HISTORY_KEY = 'novaesweb_prompt_templates_history_v1'
 
 export function validPromptTemplates(value: unknown): value is PromptTemplateModel[] {
-  if (!Array.isArray(value) || value.length !== 3) return false
+  if (!Array.isArray(value) || value.length !== 4) return false
   return INITIAL_PROMPT_TEMPLATES.every((base) => value.filter((item) => item?.id === base.id).length === 1) &&
     value.every((item) => item && typeof item === 'object' &&
       ['id', 'planCode', 'defaultName', 'displayName', 'description', 'creationPrice', 'monthlyPrice', 'supportPrice', 'templateText', 'updatedAt', 'updatedBy'].every((key) => typeof item[key] === 'string') &&
@@ -495,7 +611,7 @@ export function loadPromptTemplates(): PromptTemplateModel[] {
 
 // Salvar só informa sucesso depois da gravação. Preserva até 20 versões locais anteriores.
 export function savePromptTemplates(templates: PromptTemplateModel[]): void {
-  if (!validPromptTemplates(templates)) throw new Error('Os três modelos precisam ser válidos e ter IDs distintos.')
+  if (!validPromptTemplates(templates)) throw new Error('Os quatro modelos precisam ser válidos e ter IDs distintos.')
   const previous = localStorage.getItem(PROMPT_STORAGE_KEY)
   if (previous) {
     const parsed: unknown = JSON.parse(previous)
@@ -651,6 +767,25 @@ export function compileClientSitePrompt(
   text = text.replace(/\{\{DIRETRIZES_SEGMENTO\}\}/g, guidelines)
   text = text.replace(/\{\{ADICIONAIS_CONTRATADOS\}\}/g, contractedAddons)
   text = text.replace(/\{\{DADOS_DEMONSTRATIVOS\}\}/g, demoDataNotes)
+
+  // Variáveis do Modelo Empresarial Sob Medida
+  const customCreation = input.customCreationPrice?.trim() || 'Definida em proposta comercial personalizada'
+  const customMonthly = input.customMonthlyPrice?.trim() || 'Definida em contrato sob demanda'
+  const customOrders = input.customMonthlyOrders?.trim() || '3.000 pedidos aceitos/mês inclusos (ou sob demanda)'
+  const customOverage = input.customOverageFee?.trim() || 'Tarifa marginal diferenciada acordada em proposta'
+  const customProducts = input.customMaxProducts?.trim() || 'Até 1.000 produtos cadastrados (ou ilimitado)'
+  const customAdmins = input.customMaxAdmins?.trim() || 'Até 10 administradores/atendentes'
+  const selectedModulesText = (input.selectedModules && input.selectedModules.length > 0)
+    ? input.selectedModules.map((m) => `- ${m}`).join('\n')
+    : '- Cardápio Digital Responsivo com Carrinho e Pedidos\n- Demais recursos sob medida definidos em escopo técnico.'
+
+  text = text.replace(/\{\{TAXA_CRIACAO_PERSONALIZADA\}\}/g, customCreation)
+  text = text.replace(/\{\{MENSALIDADE_PERSONALIZADA\}\}/g, customMonthly)
+  text = text.replace(/\{\{FRANQUIA_PERSONALIZADA\}\}/g, customOrders)
+  text = text.replace(/\{\{TARIFA_EXCEDENTE_PERSONALIZADA\}\}/g, customOverage)
+  text = text.replace(/\{\{LIMITE_PRODUTOS_PERSONALIZADO\}\}/g, customProducts)
+  text = text.replace(/\{\{LIMITE_ADMINS_PERSONALIZADO\}\}/g, customAdmins)
+  text = text.replace(/\{\{MODULOS_SELECIONADOS\}\}/g, selectedModulesText)
 
   return text
 }

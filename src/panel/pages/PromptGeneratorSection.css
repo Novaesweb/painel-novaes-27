@@ -82,10 +82,10 @@
   color: #ffffff;
 }
 
-/* Grid de Seleção dos 3 Modelos */
+/* Grid de Seleção dos 4 Modelos */
 .models-selection-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
@@ -752,19 +752,154 @@
   font-size: 12px;
 }
 
-/* Responsividade Mobile */
-@media (max-width: 1024px) {
+/* Painel de Escopo Sob Medida — Plano Empresarial */
+.empresarial-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(18, 11, 28, 0.45);
+  border: 1px dashed rgba(168, 85, 247, 0.35);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.empresarial-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.15);
+  padding-bottom: 12px;
+}
+
+.empresarial-panel-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e4e4e7;
+  letter-spacing: -0.2px;
+}
+
+.btn-link-action {
+  background: transparent;
+  border: none;
+  color: #c084fc;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-link-action:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: #f3e8ff;
+}
+
+.empresarial-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.module-checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(22, 13, 34, 0.6);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.module-checkbox-card:hover {
+  background: rgba(26, 15, 42, 0.85);
+  border-color: rgba(168, 85, 247, 0.4);
+  transform: translateY(-1px);
+}
+
+.module-checkbox-card.is-checked {
+  background: radial-gradient(circle at top left, rgba(168, 85, 247, 0.18), transparent 70%),
+              rgba(30, 16, 48, 0.9);
+  border-color: #a855f7;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.module-checkbox-card input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: #a855f7;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.module-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.module-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.module-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.module-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.18);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.module-desc {
+  margin: 0;
+  font-size: 11px;
+  color: #a1a1aa;
+  line-height: 1.4;
+}
+
+/* Responsividade Mobile e Telas Médias */
+@media (max-width: 1200px) {
   .models-selection-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
+}
+
+@media (max-width: 1024px) {
   .generator-main-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
+  .models-selection-grid {
+    grid-template-columns: 1fr;
+  }
   .form-row-2,
   .form-row-3 {
     grid-template-columns: 1fr;
   }
+  .empresarial-modules-grid {
+    grid-template-columns: 1fr;
+  }
 }
+

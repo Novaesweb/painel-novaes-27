@@ -16,13 +16,16 @@ describe("Preservação dos modelos locais", () => {
   it("mantém os sete prompts oficiais de integração", () => {
     expect(integrationPrompts).toHaveLength(7);
   });
-  it("salva três modelos e restaura personalização anterior após reset", () => {
+  it("salva quatro modelos e restaura personalização anterior após reset", () => {
     const custom = structuredClone(INITIAL_PROMPT_TEMPLATES);
     custom[0]!.templateText = "Meu texto";
     savePromptTemplates(custom);
+    expect(loadPromptTemplates()).toHaveLength(4);
     expect(loadPromptTemplates()[0]?.templateText).toBe("Meu texto");
     resetPromptTemplates();
-    expect(restorePreviousPromptTemplates()[0]?.templateText).toBe("Meu texto");
+    const restored = restorePreviousPromptTemplates();
+    expect(restored).toHaveLength(4);
+    expect(restored[0]?.templateText).toBe("Meu texto");
   });
   it("não sobrescreve conteúdo legado corrompido", () => {
     localStorage.setItem(PROMPT_STORAGE_KEY, "{conteudo invalido");

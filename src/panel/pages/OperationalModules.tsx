@@ -8,6 +8,7 @@ import { PlanManagement } from './PlanManagement'
 import { OrderControlManagement } from './OrderControlManagement'
 import { ContractsAndProposalsPage } from './ContractsAndProposalsPage'
 import { IncomeSimulator } from '../components/IncomeSimulator'
+import { calculateNextMonthDueDate, formatDateBR } from '../lib/dateUtils'
 import './OperationalModules.css'
 
 type Domain = { domain: string; is_primary: boolean; verification_status: string }
@@ -220,6 +221,52 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     await loadSites()
   }
 
+  async function quickPayAndAdvanceMonth(targetSite: Site) {
+    const nextExpires = calculateNextMonthDueDate(targetSite.plan_expires_at)
+    await run(async () => {
+      await invoke('novaesweb-master-sites', {
+        action: 'set_billing_details',
+        store_id: targetSite.id,
+        payment_status: 'paid',
+        plan_expires_at: nextExpires,
+        grace_days: targetSite.grace_days ?? 0,
+      })
+      if (supabase) {
+        try {
+          await supabase
+            .from('managed_sites')
+            .update({
+              payment_status: 'paid',
+              plan_expires_at: new Date(nextExpires).toISOString(),
+            })
+            .eq('id', targetSite.id)
+        } catch {
+          /* ignore direct db update error */
+        }
+      }
+      if (selectedSite === targetSite.id) {
+        setForm((prev) => ({
+          ...prev,
+          payment_status: 'paid',
+          expires: nextExpires,
+        }))
+      }
+      await loadSites()
+    }, `Pagamento registrado com sucesso para ${targetSite.name}! Vencimento avançado para ${formatDateBR(nextExpires)} e sincronizado com a loja.`)
+  }
+
+  const handlePaymentStatusChange = (newStatus: string) => {
+    let nextExpires = form.expires
+    if (newStatus === 'paid') {
+      nextExpires = calculateNextMonthDueDate(form.expires || selected?.plan_expires_at)
+    }
+    setForm((prev) => ({
+      ...prev,
+      payment_status: newStatus,
+      expires: nextExpires,
+    }))
+  }
+
   async function saveBilling(event: React.FormEvent) {
     event.preventDefault()
     if (!selected) return
@@ -234,8 +281,21 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
         plan_expires_at: form.expires || null,
         grace_days: Number(form.grace_days),
       })
+      if (supabase) {
+        try {
+          await supabase
+            .from('managed_sites')
+            .update({
+              payment_status: form.payment_status,
+              plan_expires_at: form.expires ? new Date(form.expires).toISOString() : null,
+            })
+            .eq('id', selected.id)
+        } catch {
+          /* ignore */
+        }
+      }
       await loadSites()
-    }, 'Dados administrativos de cobrança e plano atualizados com sucesso.')
+    }, 'Dados administrativos de cobrança e plano atualizados e sincronizados com a loja.')
   }
 
   async function saveBackup(event: React.FormEvent) {
@@ -473,17 +533,41 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                       </span>
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ fontSize: 11, padding: '3px 8px' }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedSite(site.id)
-                        }}
-                      >
-                        Editar dados
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          style={{
+                            fontSize: 11,
+                            padding: '4px 9px',
+                            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25))',
+                            borderColor: '#10b981',
+                            color: '#34d399',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void quickPayAndAdvanceMonth(site)
+                          }}
+                          title="Quitar mensalidade e avançar vencimento automaticamente para o próximo mês (+1 Mês)"
+                        >
+                          <CheckCircle2 size={12} />
+                          Quitar (+1 Mês)
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ fontSize: 11, padding: '4px 9px' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedSite(site.id)
+                          }}
+                        >
+                          Editar dados
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -514,13 +598,13 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
             </select>
           </label>
           <label>
-            Status de pagamento informado
+            Status de pagamento informado (ao selecionar "Pago", a data avança +1 mês automaticamente)
             <select
               value={form.payment_status}
-              onChange={(e) => setForm({ ...form, payment_status: e.target.value })}
+              onChange={(e) => handlePaymentStatusChange(e.target.value)}
             >
               <option value="unknown">Sem informação</option>
-              <option value="paid">Pago</option>
+              <option value="paid">Pago (Avança vencimento +1 mês)</option>
               <option value="pending">Pendente</option>
               <option value="overdue">Atrasado</option>
               <option value="waived">Isento</option>
@@ -528,11 +612,23 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
           </label>
           <label>
             Vencimento da mensalidade
-            <input
-              type="date"
-              value={form.expires}
-              onChange={(e) => setForm({ ...form, expires: e.target.value })}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="date"
+                value={form.expires}
+                onChange={(e) => setForm({ ...form, expires: e.target.value })}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="secondary-button"
+                style={{ padding: '8px 12px', fontSize: 11, whiteSpace: 'nowrap' }}
+                onClick={() => setForm((prev) => ({ ...prev, expires: calculateNextMonthDueDate(prev.expires || selected?.plan_expires_at) }))}
+                title="Pula o vencimento para o mesmo dia do próximo mês (+1 Mês)"
+              >
+                +1 Mês
+              </button>
+            </div>
           </label>
           <label>
             Dias de tolerância
@@ -544,9 +640,29 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
               onChange={(e) => setForm({ ...form, grace_days: e.target.value })}
             />
           </label>
-          <button className="primary-button" disabled={busy || !selected}>
-            {busy ? 'Salvando…' : 'Salvar dados financeiros'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+            <button className="primary-button" disabled={busy || !selected}>
+              {busy ? 'Salvando…' : 'Salvar dados financeiros'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{
+                background: 'rgba(16, 185, 129, 0.18)',
+                borderColor: '#10b981',
+                color: '#34d399',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+              disabled={busy || !selected}
+              onClick={() => selected && void quickPayAndAdvanceMonth(selected)}
+            >
+              <CheckCircle2 size={15} />
+              Quitar como Pago & Avançar (+1 Mês Automático)
+            </button>
+          </div>
         </form>
       </section>
     </div>}

@@ -139,10 +139,10 @@ export function StoreOrderUsageWidget() {
           .eq('competence', currentCompetence)
           .eq('event_type', 'accepted')
 
-        // Consulta dados do plano da loja
+        // Consulta dados do plano da loja, vencimento oficial e status de pagamento
         const { data: storeInfo } = await supabase
           .from('managed_sites')
-          .select('name, nx_id, plan_code')
+          .select('name, nx_id, plan_code, plan_expires_at, payment_status')
           .eq('id', storeId)
           .maybeSingle()
 
@@ -159,6 +159,8 @@ export function StoreOrderUsageWidget() {
           franchise_orders: isStart ? null : isPremium ? 750 : 340,
           accepted_count: count ?? 0,
           overage_tariff: isPremium ? 0.15 : 0.20,
+          plan_expires_at: storeInfo?.plan_expires_at || null,
+          payment_status: storeInfo?.payment_status || 'unknown',
         })
       } catch (err) {
         console.error('Erro ao carregar consumo de pedidos:', err)
@@ -167,7 +169,27 @@ export function StoreOrderUsageWidget() {
       }
     }
 
-    loadUsage()
+    void loadUsage()
+
+    // Sincronização em tempo real: quando o Master alterar vencimento ou pagamento, atualiza na hora!
+    const storeId = import.meta.env.VITE_NOVAESWEB_STORE_ID || import.meta.env.VITE_STORE_ID
+    let channel: any = null
+    if (storeId) {
+      channel = supabase.channel(`store-realtime-billing-${storeId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'managed_sites',
+          filter: `id=eq.${storeId}`
+        }, () => {
+          void loadUsage()
+        })
+        .subscribe()
+    }
+
+    return () => {
+      if (channel) void supabase.removeChannel(channel)
+    }
   }, [])
 
   if (loading) {

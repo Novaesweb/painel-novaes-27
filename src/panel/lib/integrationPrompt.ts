@@ -6,6 +6,7 @@ import addonsPrompt from '../../../PROMPT_INTEGRACAO_ADICIONAIS_LOJA.md?raw'
 import implementationPrompt from '../../../PROMPT_IMPLEMENTAR_ADICIONAL_APROVADO.md?raw'
 import orderUsagePrompt from '../../../PROMPT_CONTAGEM_PEDIDOS_LOJA.md?raw'
 import widgetAndPremiumPrompt from '../../../PROMPT_LOJA_CONSUMO_CUPONS_AGENDADOS.md?raw'
+import supportPrompt from '../../../PROMPT_SUPORTE_LOJA.md?raw'
 
 export const siteIntegrationPrompt = sitePrompt.trim()
 export const integrationPrompts = [
@@ -15,4 +16,5 @@ export const integrationPrompts = [
   { id: 'implementation', order: 4, title: 'Implementar um adicional aceito', when: 'Somente quando você aceitar uma solicitação e ela estiver Em preparo.', description: 'Você escolhe o adicional solicitado. O chat implementa, verifica e envia o check-in; você faz a aprovação final no Master.', button: 'Copiar Prompt de Implementação', text: implementationPrompt.trim() },
   { id: 'orders', order: 5, title: 'Conectar Contagem de Pedidos e Franquias', when: 'Depois de estruturar a loja, para reportar pedidos aceitos à franquia do plano.', description: 'Contagem idempotente e auditável de pedidos aceitos. Não expõe valores em R$, faturamento, itens do carrinho nem dados confidenciais de clientes.', button: 'Copiar Prompt de Contagem de Pedidos', text: orderUsagePrompt.trim() },
   { id: 'widget-premium', order: 6, title: 'Embutir Widget de Consumo e Recursos Premium', when: 'Para o chat IA embutir o StoreOrderUsageWidget em Meu Plano e ativar Cupons e Pedidos Agendados.', description: 'Instala o componente StoreOrderUsageWidget dentro de Configurações → Meu Plano → Consumo de Pedidos e ativa Cupons Simples (LOJA-08) e Pedidos Agendados (LOJA-10) nos sites Premium.', button: 'Copiar Prompt do Widget e Recursos Premium', text: widgetAndPremiumPrompt.trim() },
+  { id: 'support', order: 7, title: 'Conectar Central de Suporte e Chamados', when: 'Depois dos controles e contagem de pedidos, para ativar o canal direto de suporte.', description: 'Permite ao lojista abrir chamados com prioridade, acompanhar status em tempo real e receber respostas da equipe NovaesWeb.', button: 'Copiar Prompt de Suporte', text: supportPrompt.trim() },
 ] as const

@@ -39,6 +39,7 @@ const { data, error } = await supabase.functions.invoke('novaesweb-site-register
   body: {
     site_name: 'Nome Oficial da Loja', // Substitua pelo nome real deste estabelecimento
     owner_name: user.email?.split('@')[0] || 'Proprietário',
+    plan_code: 'NOVAES_BUSINESS', // 'NOVAES_START', 'NOVAES_BUSINESS' (340 pedidos) ou 'NOVAES_PREMIUM' (750 pedidos)
     idempotency_key: idempotencyKey,
   },
 })
@@ -58,9 +59,9 @@ if (data?.store_id && data?.nx_id) {
 ```
 
 4. **Resultado no Painel Master:**
-   - A loja é inserida automaticamente na tabela `managed_sites`.
+   - A loja é inserida automaticamente na tabela `managed_sites` com o plano contratado (`plan_code`) registrado.
    - O lojista é vinculado como `owner` ativo na tabela `store_members`.
-   - O check-in altera o status para `active`, e a loja **aparece instantaneamente na Central Multi-Loja do Painel Master** com todos os indicadores liberados!
+   - O check-in altera o status para `active`, e a loja **aparece instantaneamente na Central Multi-Loja do Painel Master**, já ingressando no **Financeiro Administrativo** com o ciclo de faturamento e limites de pedidos ativados!
 
 ---
 

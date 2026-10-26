@@ -176,7 +176,7 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
           onClick={() => changeTab('prompts')}
         >
           <Layers size={15} />
-          <span>Prompts de Conexão e Controle (1 a 6)</span>
+          <span>Prompts de Conexão e Controle (1 a 7)</span>
         </button>
 
         <button
@@ -193,7 +193,7 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
       {activeTab === 'prompts' && (
         <>
           <section className="panel site-integration-guide" aria-label="Ordem de envio dos prompts">
-            <h2>Ordem correta de envio dos Prompts de Conexão (1 a 6)</h2>
+            <h2>Ordem correta de envio dos Prompts de Conexão (1 a 7)</h2>
             <p>
               <strong>Atenção:</strong> O site da loja <strong>já deve estar criado</strong> antes de enviar o Prompt 1 (seja pelo gerador ao lado ou já existente). Todas as chaves e URLs oficiais já saem 100% preenchidas.
             </p>
@@ -203,7 +203,8 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
               3. Envie o <strong>Prompt 3</strong> (Central de Adicionais) para exibir o catálogo oficial no painel do lojista.<br />
               4. O <strong>Prompt 4</strong> é usado somente quando você aceitar um adicional específico no Master.<br />
               5. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia mensal (340 pedidos no Business ou 750 no Premium) com <strong>Zero Bloqueio</strong>.<br />
-              6. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos Premium (cupons e pedidos agendados).
+              6. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos Premium (cupons e pedidos agendados).<br />
+              7. O <strong>Prompt 7</strong> instala a Central de Suporte e Chamados no painel do lojista, conectando dúvidas e tickets em tempo real com o Master.
             </p>
             <p>
               Você pode copiar todos os prompts sem selecionar uma loja. O chat confirma os dados oficiais na

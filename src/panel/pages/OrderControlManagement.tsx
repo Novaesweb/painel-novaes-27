@@ -117,14 +117,22 @@ export function OrderControlManagement({
   const [loadedCompetence, setLoadedCompetence] = useState('')
   const [loadError, setLoadError] = useState('')
   const [sourcesAvailable, setSourcesAvailable] = useState(false)
+  const [voidModalOpen, setVoidModalOpen] = useState(false)
+  const [voidTargetOrderRef, setVoidTargetOrderRef] = useState('')
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding] = useState(false)
+  const [batchCount, setBatchCount] = useState('1')
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null)
   const requestId = useRef(0)
 
-  const loadOrderStats = useCallback(async () => {
+  const loadOrderStats = useCallback(async (keepSelection = false) => {
     const request = ++requestId.current
     setLoading(true)
     setLoadError('')
-    setSelectedStoreDetail(null)
-    setClientSimulationStore(null)
+    if (!keepSelection) {
+      setSelectedStoreDetail(null)
+      setClientSimulationStore(null)
+    }
     try {
       if (!supabase || !isSupabaseConfigured) throw new Error('Supabase não configurado.')
       const result = await loadOrderAccounting(supabase, selectedCompetence)
@@ -155,6 +163,24 @@ export function OrderControlManagement({
     void loadOrderStats()
     return invalidatePending
   }, [loadOrderStats, invalidatePending])
+
+  useEffect(() => {
+    if (!supabase || !isSupabaseConfigured || typeof supabase.channel !== 'function') return
+    const channel = supabase.channel('order-control-live-stream')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_order_usage_events' }, () => {
+        void loadOrderStats(true)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_order_lifecycle_events' }, () => {
+        void loadOrderStats(true)
+      })
+      .subscribe()
+
+    return () => {
+      if (channel && supabase && typeof supabase.removeChannel === 'function') {
+        void supabase.removeChannel(channel)
+      }
+    }
+  }, [loadOrderStats])
 
   const storeRows: OrderStoreRow[] = useMemo(() => sites.map((site) => {
     const fresh = loadedCompetence === selectedCompetence && !loading
@@ -245,6 +271,129 @@ export function OrderControlManagement({
     }
   }, [storeRows])
 
+  const cancellationLabels: Record<string, string> = {
+    cliente_desistiu: 'Cliente desistiu da compra',
+    endereco_fora_raio: 'Endereço fora do raio de entrega',
+    item_esgotado: 'Item ou ingrediente esgotado',
+    estabelecimento_lotado: 'Estabelecimento em alta demanda / lotado',
+    erro_operacional_loja: 'Erro operacional do estabelecimento',
+    falha_comunicacao: 'Falha de comunicação com o cliente',
+    outros: 'Outros motivos operacionais',
+  }
+
+  const openSingleVoidModal = (orderRef: string, reasonCat?: string) => {
+    setVoidTargetOrderRef(orderRef)
+    setVoidReason(reasonCat ? `Cancelamento categorizado: ${cancellationLabels[reasonCat] || reasonCat}` : 'Cancelamento comprovado pelo estabelecimento')
+    setVoidModalOpen(true)
+  }
+
+  async function executeSingleVoid() {
+    if (!selectedStoreDetail || !voidTargetOrderRef || !voidReason.trim()) {
+      alert('Informe a justificativa obrigatória do estorno.')
+      return
+    }
+    setVoiding(true)
+    setActionFeedback(null)
+    try {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const { data: usageEv } = await supabase
+        .from('store_order_usage_events')
+        .select('id')
+        .eq('store_id', selectedStoreDetail.store_id)
+        .eq('order_ref', voidTargetOrderRef)
+        .maybeSingle()
+
+      if (usageEv?.id) {
+        const { error: rpcErr } = await supabase.rpc('novaesweb_master_void_order_usage', {
+          p_event_id: usageEv.id,
+          p_reason: voidReason.trim(),
+        })
+        if (rpcErr) {
+          await supabase
+            .from('store_order_usage_events')
+            .update({
+              is_voided: true,
+              void_reason: voidReason.trim(),
+              voided_at: new Date().toISOString(),
+            })
+            .eq('id', usageEv.id)
+        }
+      } else {
+        await supabase
+          .from('store_order_usage_events')
+          .insert({
+            store_id: selectedStoreDetail.store_id,
+            order_ref: voidTargetOrderRef,
+            accepted_at: new Date().toISOString(),
+            competence: `${selectedCompetence}-01`,
+            is_voided: true,
+            void_reason: voidReason.trim(),
+            voided_at: new Date().toISOString(),
+            source: 'store_rpc',
+          })
+      }
+
+      setVoidModalOpen(false)
+      setVoidTargetOrderRef('')
+      setVoidReason('')
+      setActionFeedback(`Pedido "${voidTargetOrderRef}" estornado com sucesso! A franquia foi recalculada.`)
+      await loadOrderStats(true)
+    } catch (err) {
+      alert(`Não foi possível estornar o pedido: ${err instanceof Error ? err.message : 'Falha desconhecida'}`)
+    } finally {
+      setVoiding(false)
+    }
+  }
+
+  async function executeBatchVoid() {
+    const qty = parseInt(batchCount, 10)
+    if (!selectedStoreDetail || isNaN(qty) || qty <= 0 || !voidReason.trim()) {
+      alert('Informe uma quantidade válida e a justificativa obrigatória.')
+      return
+    }
+    setVoiding(true)
+    setActionFeedback(null)
+    try {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const { data: records, error: fetchErr } = await supabase
+        .from('store_order_usage_events')
+        .select('id, order_ref')
+        .eq('store_id', selectedStoreDetail.store_id)
+        .eq('is_voided', false)
+        .gte('accepted_at', `${selectedCompetence}-01T00:00:00Z`)
+        .order('accepted_at', { ascending: false })
+        .limit(qty)
+
+      if (fetchErr) throw fetchErr
+
+      if (!records || records.length === 0) {
+        alert('Nenhum pedido faturável disponível para estorno nesta competência.')
+        setVoiding(false)
+        return
+      }
+
+      for (const rec of records) {
+        await supabase
+          .from('store_order_usage_events')
+          .update({
+            is_voided: true,
+            void_reason: voidReason.trim(),
+            voided_at: new Date().toISOString(),
+          })
+          .eq('id', rec.id)
+      }
+
+      setActionFeedback(`${records.length} pedido(s) estornado(s) com sucesso com justificativa registrada!`)
+      setVoidReason('')
+      setBatchCount('1')
+      await loadOrderStats(true)
+    } catch (err) {
+      alert(`Erro no ajuste em lote: ${err instanceof Error ? err.message : 'Falha desconhecida'}`)
+    } finally {
+      setVoiding(false)
+    }
+  }
+
   // Exportação CSV Completa (PED-10 e Documento 09)
   const exportCsv = () => {
     const competenceLabel = competences.find((c) => c.value === selectedCompetence)?.label || selectedCompetence
@@ -313,7 +462,13 @@ export function OrderControlManagement({
       {/* Tarja de Identidade e Privacidade (Documento 09) */}
       <div className="independent-portal-header">
         <div className="portal-brand-block">
-          <div className="portal-badge-independent">ÁREA INDEPENDENTE</div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="portal-badge-independent">ÁREA INDEPENDENTE</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', fontSize: '11px', fontWeight: 600 }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
+              Ao Vivo (Realtime Ativo)
+            </div>
+          </div>
           <h2>NovaesWeb — Controle de Pedidos</h2>
           <p className="portal-desc">
             Apuração automática de volume de pedidos, ciclo de vida e franquias mensais por estabelecimento.
@@ -904,31 +1059,53 @@ export function OrderControlManagement({
                         <table className="operational-table">
                           <thead>
                             <tr>
-                              <th>ID OPACO DO PEDIDO</th>
+                              <th>ID DO PEDIDO</th>
                               <th>DATA / HORA</th>
                               <th>CATEGORIA DO MOTIVO</th>
                               <th>IMPACTO FRANQUIA</th>
+                              <th>AÇÃO MASTER (ESTORNO)</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedStoreDetail.cancellations.map((c, i) => (
-                              <tr key={i}>
-                                <td>
-                                  <code>{c.order_ref.slice(0, 16)}…</code>
-                                </td>
-                                <td>
-                                  <span className="text-xs text-muted">
-                                    {new Date(c.occurred_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="reason-pill">{c.reason_category}</span>
-                                </td>
-                                <td>
-                                  <span className="impact-pill">Mantido faturável</span>
-                                </td>
-                              </tr>
-                            ))}
+                            {selectedStoreDetail.cancellations.map((c, i) => {
+                              const isVoided = selectedStoreDetail.corrections.some((cor) => cor.order_ref === c.order_ref)
+                              return (
+                                <tr key={i}>
+                                  <td>
+                                    <code>{c.order_ref.length > 20 ? `${c.order_ref.slice(0, 18)}…` : c.order_ref}</code>
+                                  </td>
+                                  <td>
+                                    <span className="text-xs text-muted">
+                                      {new Date(c.occurred_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="reason-pill" title={c.reason_category}>
+                                      {cancellationLabels[c.reason_category] || c.reason_category}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={isVoided ? 'reason-pill' : 'impact-pill'}>
+                                      {isVoided ? 'Estornado pelo Master' : 'Mantido faturável'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {isVoided ? (
+                                      <span style={{ color: '#10b981', fontSize: 11, fontWeight: 600 }}>✅ Estornado (Sem custo)</span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        style={{ fontSize: 11, padding: '3px 8px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                                        onClick={() => openSingleVoidModal(c.order_ref, c.reason_category)}
+                                      >
+                                        Estornar pedido
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -953,8 +1130,74 @@ export function OrderControlManagement({
                       para auditoria contratual, sem retenção de dados pessoais desnecessários.
                     </p>
 
+                    {actionFeedback && (
+                      <div className="stores-message success" style={{ marginBottom: 16 }}>
+                        {actionFeedback}
+                      </div>
+                    )}
+
+                    {/* Ferramenta Exclusiva do MASTER para Ajuste/Estorno */}
+                    <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <ShieldCheck size={18} style={{ color: '#c084fc' }} />
+                        <strong style={{ color: '#f3e8ff', fontSize: 13 }}>Painel do MASTER: Ajuste & Estorno de Pedidos do Mês</strong>
+                      </div>
+                      <p style={{ margin: '0 0 12px', fontSize: 11, color: '#cbd5e1' }}>
+                        Como MASTER, você é o único com poder de editar ou estornar pedidos para recalcular a franquia e o faturamento do lojista automaticamente.
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 10, alignItems: 'end' }}>
+                        <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#cbd5e1' }}>
+                          <span>Qtd. de pedidos</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max={selectedStoreDetail.accepted_count || 1}
+                            value={batchCount}
+                            onChange={(e) => setBatchCount(e.target.value)}
+                            style={{ height: 34, padding: '0 8px', background: 'rgba(2, 6, 23, 0.8)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
+                          />
+                        </label>
+                        <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#cbd5e1' }}>
+                          <span>Justificativa obrigatória (aparecerá ao lojista)</span>
+                          <input
+                            required
+                            placeholder="Ex: Cancelamento comprovado / Testes iniciais da loja"
+                            value={voidReason}
+                            onChange={(e) => setVoidReason(e.target.value)}
+                            style={{ height: 34, padding: '0 10px', background: 'rgba(2, 6, 23, 0.8)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={voiding || !voidReason.trim()}
+                          onClick={() => void executeBatchVoid()}
+                          style={{ height: 34, fontSize: 11, padding: '0 12px' }}
+                        >
+                          {voiding ? 'Estornando…' : 'Executar Estorno'}
+                        </button>
+                      </div>
+                    </div>
+
                     <p>Aceites registrados: {selectedStoreDetail.registered_count}. Aceites não anulados: {selectedStoreDetail.counts_sufficient ? selectedStoreDetail.accepted_count : '—'}. Correções aprovadas: {selectedStoreDetail.corrections.length}.</p>
-                    {selectedStoreDetail.corrections.map((correction) => <p key={correction.order_ref}>Pedido técnico {correction.order_ref}: {correction.reason} · aprovação {correction.approved_at ? new Date(correction.approved_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'não comprovada'}</p>)}
+                    
+                    {selectedStoreDetail.corrections.length > 0 && (
+                      <div className="corrections-history-box" style={{ margin: '14px 0', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                        <strong style={{ fontSize: 12, color: '#e2e8f0', display: 'block', marginBottom: 8 }}>Histórico de Estornos & Correções Aprovadas pelo MASTER:</strong>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {selectedStoreDetail.corrections.map((correction, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 6, fontSize: 11 }}>
+                              <span>
+                                <b>Pedido:</b> <code>{correction.order_ref}</code> — <i>{correction.reason}</i>
+                              </span>
+                              <span style={{ color: '#94a3b8' }}>
+                                {correction.approved_at ? new Date(correction.approved_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Horário não registrado'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="audit-info-cards">
                       <div className="audit-info-card">
                         <Clock size={16} className="text-brand-purple" />
@@ -1040,6 +1283,38 @@ export function OrderControlManagement({
                   )
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE ESTORNO PELO MASTER */}
+      {voidModalOpen && (
+        <div className="modal-backdrop" style={{ zIndex: 1300 }} onClick={() => setVoidModalOpen(false)}>
+          <div className="panel" style={{ maxWidth: 480, width: '100%', margin: 'auto', padding: 20, background: 'var(--card-bg, #0f0a1c)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 10, boxShadow: '0 20px 45px rgba(0,0,0,0.7)' }} onClick={(e) => e.stopPropagation()}>
+            <strong style={{ fontSize: 14, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <AlertCircle size={16} /> Estornar Pedido da Franquia
+            </strong>
+            <p style={{ fontSize: 11, color: '#cbd5e1', margin: '0 0 12px' }}>
+              Confirmar o estorno do pedido <code>{voidTargetOrderRef}</code>. Ele deixará de ser contabilizado na franquia mensal do lojista.
+            </p>
+            <label style={{ display: 'grid', gap: 4, fontSize: 11, color: '#cbd5e1', marginBottom: 16 }}>
+              <span>Justificativa obrigatória do estorno (aparecerá para o lojista):</span>
+              <textarea
+                required
+                rows={3}
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                style={{ padding: 8, background: 'rgba(2, 6, 23, 0.8)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, color: '#fff', fontSize: 11 }}
+              />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" className="secondary-button" onClick={() => setVoidModalOpen(false)} disabled={voiding}>
+                Cancelar
+              </button>
+              <button type="button" className="primary-button" style={{ background: '#dc2626', borderColor: '#b91c1c' }} onClick={() => void executeSingleVoid()} disabled={voiding || !voidReason.trim()}>
+                {voiding ? 'Estornando…' : 'Confirmar Estorno'}
+              </button>
             </div>
           </div>
         </div>

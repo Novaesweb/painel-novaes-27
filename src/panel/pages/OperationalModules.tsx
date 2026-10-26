@@ -1,7 +1,7 @@
 import { planAssignmentIssue } from '../../../supabase/functions/_shared/planCommercialRules'
 import { OFFICIAL_PLANS } from '../lib/officialPlans'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, Building2, Check, CircleAlert, CreditCard, Globe2, HardDrive, RefreshCw, Save, Settings2, ShieldCheck, Store, Users } from 'lucide-react'
+import { Activity, AlertTriangle, Building2, Check, CheckCircle2, CircleAlert, CircleDollarSign, CreditCard, Globe2, HardDrive, RefreshCw, Save, Settings2, ShieldCheck, Store, Users } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { MasterSecuritySettings } from '../components/MasterSecuritySettings'
 import { PlanManagement } from './PlanManagement'
@@ -27,6 +27,15 @@ const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat('pt-B
 const statusNames: Record<string, string> = { active: 'Ativa', pending: 'Aguardando conexão', maintenance: 'Manutenção', suspended: 'Suspensa', archived: 'Arquivada', healthy: 'Atualizado', warning: 'Atenção', failed: 'Falha', unknown: 'Sem informação', paid: 'Pago', pending_payment: 'Pendente', overdue: 'Atrasado', waived: 'Isento' }
 const paymentNames: Record<string, string> = { unknown: 'Sem informação', paid: 'Pago', pending: 'Pendente', overdue: 'Atrasado', waived: 'Isento' }
 const ticketStatusLabels: Record<string, string> = { open: 'Aberto', in_progress: 'Em andamento', waiting: 'Aguardando', resolved: 'Resolvido', closed: 'Fechado' }
+
+function getPlanMonthlyPrice(planCode: string | null): number {
+  if (!planCode) return 0
+  const normalized = planCode.toUpperCase()
+  if (normalized.includes('PREMIUM')) return 270
+  if (normalized.includes('BUSINESS')) return 190
+  if (normalized.includes('START')) return 97
+  return 0
+}
 
 function normalizeDomain(value: string) {
   const trimmed = value.trim()
@@ -110,6 +119,16 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     if (selected && path === '/backups') {
       const dt = selected.last_backup_at ? new Date(selected.last_backup_at).toISOString().slice(0, 16) : ''
       setForm((f) => ({ ...f, backup_status: selected.backup_status || 'healthy', backup_date: dt }))
+    }
+    if (selected && path === '/financeiro') {
+      const expDate = selected.plan_expires_at ? selected.plan_expires_at.slice(0, 10) : ''
+      setForm((f) => ({
+        ...f,
+        plan: selected.plan_code || 'NOVAES_BUSINESS',
+        payment_status: selected.payment_status || 'pending',
+        expires: expDate,
+        grace_days: String(selected.grace_days ?? 0),
+      }))
     }
   }, [selectedSite, selected, path])
 
@@ -204,7 +223,19 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   async function saveBilling(event: React.FormEvent) {
     event.preventDefault()
     if (!selected) return
-    await run(async () => { await invoke('novaesweb-master-sites', { action: 'set_billing_details', store_id: selected.id, payment_status: form.payment_status, plan_expires_at: form.expires || null, grace_days: Number(form.grace_days) }) }, 'Dados administrativos de cobrança atualizados.')
+    await run(async () => {
+      if (form.plan && form.plan !== selected.plan_code) {
+        await assignPlanToStore(selected.id, form.plan, form.expires)
+      }
+      await invoke('novaesweb-master-sites', {
+        action: 'set_billing_details',
+        store_id: selected.id,
+        payment_status: form.payment_status,
+        plan_expires_at: form.expires || null,
+        grace_days: Number(form.grace_days),
+      })
+      await loadSites()
+    }, 'Dados administrativos de cobrança e plano atualizados com sucesso.')
   }
 
   async function saveBackup(event: React.FormEvent) {
@@ -335,7 +366,190 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     {path === '/contratos' && <ContractsAndProposalsPage sites={sites} plans={plans} />}
     {path === '/financeiro' && <nav className="income-finance-tabs" aria-label="Áreas do Financeiro"><button type="button" aria-pressed={financeTab === 'administration'} onClick={() => setFinanceTab('administration')}>Financeiro administrativo</button><button type="button" aria-pressed={financeTab === 'simulator'} onClick={() => setFinanceTab('simulator')}>Simulador de Renda</button></nav>}
     {path === '/financeiro' && <div hidden={financeTab !== 'simulator'}><IncomeSimulator key={sessionUserId} catalog={plans} storageScope={sessionUserId} /></div>}
-    {path === '/financeiro' && <div hidden={financeTab !== 'administration'}><div className="operational-note"><Activity size={17} /><span>A tela administra status contratual, vencimento e tolerância. Não gera faturas nem confirma recebimento bancário. Parcelas, adicionais e excedentes exigem conciliação e histórico próprios; infraestrutura de faturamento ainda depende de homologação. Ela não exibe transações, faturamento, lucro ou caixa das lojas.</span></div><section className="panel operational-panel"><div className="operational-toolbar"><div><strong>Resumo contratual</strong><span>Metadados administrativos do cadastro oficial</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar loja" /></div><div className="operational-table-wrap"><table className="operational-table"><thead><tr><th>LOJA</th><th>PLANO</th><th>SITUAÇÃO</th><th>PAGAMENTO INFORMADO</th><th>VENCIMENTO</th><th>TOLERÂNCIA</th></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedSite(site.id)}><td><b>{site.name}</b><small>{site.nx_id}</small></td><td>{site.plan_code || 'Sem plano'}</td><td>{site.billing_active ? 'Contrato ativo' : 'Contrato inativo'}</td><td>{paymentNames[site.payment_status] ?? site.payment_status}</td><td>{date(site.plan_expires_at)}</td><td>{site.grace_days} dias</td></tr>)}</tbody></table></div></section><section className="panel operational-panel"><h2>Atualizar dados administrativos</h2>{sitePicker}{selected && <p className="operational-subtitle">Selecionada: {selected.name} · {selected.nx_id}</p>}<form className="operational-form" onSubmit={(event) => void saveBilling(event)}><label>Status de pagamento informado<select value={form.payment_status} onChange={(e) => setForm({ ...form, payment_status: e.target.value })}><option value="unknown">Sem informação</option><option value="paid">Pago</option><option value="pending">Pendente</option><option value="overdue">Atrasado</option><option value="waived">Isento</option></select></label><label>Vencimento<input type="date" value={form.expires} onChange={(e) => setForm({ ...form, expires: e.target.value })} /></label><label>Dias de tolerância<input type="number" min="0" max="90" value={form.grace_days} onChange={(e) => setForm({ ...form, grace_days: e.target.value })} /></label><button className="primary-button" disabled={busy || !selected}>Salvar dados</button></form></section></div>}
+    {path === '/financeiro' && <div hidden={financeTab !== 'administration'}>
+      <div className="operational-note">
+        <Activity size={17} />
+        <span>Ciclo de faturamento automático NovaesWeb: no momento em que a loja é cadastrada com seu plano, o ciclo de faturamento começa a correr automaticamente a partir da data de cadastro, consolidando a mensalidade do plano e a franquia de pedidos.</span>
+      </div>
+
+      <div className="order-kpi-grid" style={{ marginBottom: 18 }}>
+        <div className="order-kpi-card">
+          <span className="kpi-label">Lojas no Financeiro</span>
+          <div className="kpi-value-row">
+            <Store size={20} className="kpi-icon" />
+            <strong className="kpi-value">{sites.length}</strong>
+          </div>
+          <small className="kpi-detail">Cadastros monitorados</small>
+        </div>
+        <div className="order-kpi-card">
+          <span className="kpi-label">Faturamento Mensal Previsto</span>
+          <div className="kpi-value-row">
+            <CircleDollarSign size={20} className="kpi-icon text-emerald" />
+            <strong className="kpi-value text-emerald">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                sites.reduce((acc, s) => acc + getPlanMonthlyPrice(s.plan_code), 0)
+              )}
+            </strong>
+          </div>
+          <small className="kpi-detail">Mensalidades contratuais base</small>
+        </div>
+        <div className="order-kpi-card">
+          <span className="kpi-label">Mensalidades Pagas</span>
+          <div className="kpi-value-row">
+            <CheckCircle2 size={20} className="kpi-icon text-emerald" />
+            <strong className="kpi-value">
+              {sites.filter((s) => s.payment_status === 'paid').length}
+            </strong>
+          </div>
+          <small className="kpi-detail">Em dia neste ciclo</small>
+        </div>
+        <div className="order-kpi-card">
+          <span className="kpi-label">Pendentes / Atrasadas</span>
+          <div className="kpi-value-row">
+            <AlertTriangle size={20} className="kpi-icon text-amber" />
+            <strong className="kpi-value text-amber">
+              {sites.filter((s) => s.payment_status === 'pending' || s.payment_status === 'overdue').length}
+            </strong>
+          </div>
+          <small className="kpi-detail">Aguardando confirmação</small>
+        </div>
+      </div>
+
+      <section className="panel operational-panel">
+        <div className="operational-toolbar">
+          <div>
+            <strong>Ciclo Financeiro por Estabelecimento</strong>
+            <span>Controle automático de planos, data de cadastro, ciclo do mês e cobrança</span>
+          </div>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar loja ou ID NX" />
+        </div>
+        <div className="operational-table-wrap">
+          <table className="operational-table">
+            <thead>
+              <tr>
+                <th>LOJA</th>
+                <th>CADASTRO</th>
+                <th>PLANO CONTRATADO</th>
+                <th>MENSALIDADE</th>
+                <th>FORMA PAGAMENTO</th>
+                <th>VENCIMENTO</th>
+                <th>STATUS</th>
+                <th>AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((site) => {
+                const planPrice = getPlanMonthlyPrice(site.plan_code)
+                return (
+                  <tr key={site.id} onClick={() => setSelectedSite(site.id)}>
+                    <td>
+                      <b>{site.name}</b>
+                      <small>{site.nx_id}</small>
+                    </td>
+                    <td>
+                      <span className="text-xs text-muted">
+                        {date(site.created_at)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="domain-chip" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe' }}>
+                        {site.plan_code || 'Sem plano'}
+                      </span>
+                    </td>
+                    <td>
+                      <b>{planPrice > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice) : '—'}</b>
+                      <small style={{ display: 'block', color: '#94a3b8' }}>mensal</small>
+                    </td>
+                    <td>
+                      <span className="text-xs">PIX Automático / Cartão</span>
+                    </td>
+                    <td>
+                      <strong>{date(site.plan_expires_at) !== '—' ? date(site.plan_expires_at) : 'Todo dia 10'}</strong>
+                      {site.grace_days > 0 && <small style={{ display: 'block', color: '#94a3b8' }}>+{site.grace_days}d tolerância</small>}
+                    </td>
+                    <td>
+                      <span className={`store-status status-${site.payment_status === 'paid' ? 'active' : site.payment_status === 'overdue' ? 'suspended' : 'pending'}`}>
+                        {paymentNames[site.payment_status] ?? site.payment_status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        style={{ fontSize: 11, padding: '3px 8px' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedSite(site.id)
+                        }}
+                      >
+                        Editar dados
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="panel operational-panel">
+        <h2>Atualizar dados administrativos</h2>
+        {sitePicker}
+        {selected && (
+          <p className="operational-subtitle">
+            Loja selecionada: <b>{selected.name}</b> ({selected.nx_id}) — Cadastrada em: {date(selected.created_at)}
+          </p>
+        )}
+        <form className="operational-form" onSubmit={(event) => void saveBilling(event)}>
+          <label>
+            Plano oficial contratado
+            <select
+              value={form.plan}
+              onChange={(e) => setForm({ ...form, plan: e.target.value })}
+            >
+              <option value="NOVAES_BUSINESS">NOVAES_BUSINESS (R$ 190,00/mês · 340 pedidos inclusos)</option>
+              <option value="NOVAES_PREMIUM">NOVAES_PREMIUM (R$ 270,00/mês · 750 pedidos inclusos)</option>
+              <option value="NOVAES_START">NOVAES_START (R$ 97,00/mês · Institucional)</option>
+            </select>
+          </label>
+          <label>
+            Status de pagamento informado
+            <select
+              value={form.payment_status}
+              onChange={(e) => setForm({ ...form, payment_status: e.target.value })}
+            >
+              <option value="unknown">Sem informação</option>
+              <option value="paid">Pago</option>
+              <option value="pending">Pendente</option>
+              <option value="overdue">Atrasado</option>
+              <option value="waived">Isento</option>
+            </select>
+          </label>
+          <label>
+            Vencimento da mensalidade
+            <input
+              type="date"
+              value={form.expires}
+              onChange={(e) => setForm({ ...form, expires: e.target.value })}
+            />
+          </label>
+          <label>
+            Dias de tolerância
+            <input
+              type="number"
+              min="0"
+              max="90"
+              value={form.grace_days}
+              onChange={(e) => setForm({ ...form, grace_days: e.target.value })}
+            />
+          </label>
+          <button className="primary-button" disabled={busy || !selected}>
+            {busy ? 'Salvando…' : 'Salvar dados financeiros'}
+          </button>
+        </form>
+      </section>
+    </div>}
     {path === '/dominios' && <><section className="panel operational-panel"><div className="operational-toolbar"><div><strong>Domínios cadastrados</strong><span>{sites.length} lojas reais consultadas</span></div><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar domínio ou loja" /></div><div className="operational-table-wrap"><table className="operational-table"><thead><tr><th>LOJA</th><th>ID NX</th><th>DOMÍNIOS</th><th>INTEGRAÇÃO</th></tr></thead><tbody>{filtered.map((site) => <tr key={site.id}><td>{site.name}</td><td>{site.nx_id}</td><td>{site.domains?.length ? site.domains.map((domain) => <span className="domain-chip" key={domain.domain}>{domain.domain}{domain.is_primary ? ' · principal' : ''} · ${domain.verification_status}</span>) : 'Nenhum domínio cadastrado'}</td><td>{site.status}</td></tr>)}</tbody></table></div></section><section className="panel operational-panel"><h2><Globe2 size={17} /> Adicionar domínio</h2>{sitePicker}<form className="operational-form" onSubmit={(event) => void addDomain(event)}><label>Domínio ou URL pública<input type="text" required value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} placeholder="Ex.: minhaloja.com ou https://minhaloja.com" /></label><button className="primary-button" disabled={busy || !selected}>Vincular domínio</button></form><p className="operational-subtitle">O cadastro é vinculado à loja no Supabase. A validação de DNS/publicação continua dependendo da configuração do provedor do domínio.</p></section></>}
     {path === '/backups' && <>
       <div className="operational-note warning"><CircleAlert size={17} /><span>O projeto ainda não tem um serviço que execute cópias de segurança. Este módulo acompanha e registra o status informado; não inicia nem verifica backups automaticamente.</span></div>

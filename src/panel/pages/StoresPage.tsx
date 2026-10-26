@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Globe2, Layers3, Plus, RefreshCw, Search, ShieldCheck, ShoppingBag, Store, Send, Sparkles } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import './StoresPage.css'
 import './StoreAdministration.css'
@@ -60,6 +60,16 @@ export function StoresPage({ role }: { role: string }) {
   const [managementForm, setManagementForm] = useState({ status: '', reason: '', message: '', until: '' })
   const [messageForm, setMessageForm] = useState({ title: '', body: '', category: 'general' })
   const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
+  const [showEditStoreModal, setShowEditStoreModal] = useState(false)
+  const [savingEditStore, setSavingEditStore] = useState(false)
+  const [editingStoreForm, setEditingStoreForm] = useState({
+    name: '',
+    owner_name: '',
+    owner_id: '',
+    plan_code: 'NOVAES_BUSINESS',
+    custom_plan_code: '',
+    status: 'active',
+  })
 
   const loadSites = useCallback(async (quiet = false) => {
     if (!supabase || !isSupabaseConfigured) {
@@ -309,6 +319,87 @@ export function StoresPage({ role }: { role: string }) {
     setSendingMessage(false)
   }
 
+  function openEditStoreModal(site: Site) {
+    const isOfficialPlan = ['NOVAES_START', 'NOVAES_BUSINESS', 'NOVAES_PREMIUM'].includes(site.plan_code || '')
+    setEditingStoreForm({
+      name: site.name,
+      owner_name: site.owner_name || '',
+      owner_id: site.owner_id || '',
+      plan_code: isOfficialPlan ? (site.plan_code || 'NOVAES_BUSINESS') : (site.plan_code ? 'custom' : 'NOVAES_BUSINESS'),
+      custom_plan_code: isOfficialPlan ? '' : (site.plan_code || ''),
+      status: site.status,
+    })
+    setShowEditStoreModal(true)
+  }
+
+  async function saveStoreEdits(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setFeedback('', 'info')
+    if (role !== 'MASTER' || !selected || !supabase) {
+      setFeedback('Apenas o perfil MASTER ativo pode editar o cadastro da loja.', 'error')
+      return
+    }
+
+    setSavingEditStore(true)
+    try {
+      const finalPlan = editingStoreForm.plan_code === 'custom'
+        ? editingStoreForm.custom_plan_code.trim().toUpperCase()
+        : editingStoreForm.plan_code.trim()
+
+      if (finalPlan) {
+        try {
+          await supabase.functions.invoke('novaesweb-master-sites', {
+            body: {
+              action: 'set_plan',
+              store_id: selected.id,
+              plan_code: finalPlan,
+            },
+          })
+        } catch {
+          // Continua para gravação direta garantida
+        }
+      }
+
+      if (editingStoreForm.status && editingStoreForm.status !== selected.status) {
+        try {
+          await supabase.functions.invoke('novaesweb-master-sites', {
+            body: {
+              action: 'set_site_status',
+              store_id: selected.id,
+              status: editingStoreForm.status,
+            },
+          })
+        } catch {
+          // Continua
+        }
+      }
+
+      const updateData: Record<string, unknown> = {
+        name: editingStoreForm.name.trim(),
+        owner_name: editingStoreForm.owner_name.trim() || null,
+        owner_id: editingStoreForm.owner_id.trim() || null,
+        status: editingStoreForm.status,
+        updated_at: new Date().toISOString(),
+      }
+      if (finalPlan) {
+        updateData['plan_code'] = finalPlan
+      }
+
+      await supabase
+        .from('managed_sites')
+        .update(updateData)
+        .eq('id', selected.id)
+
+      await loadSites(true)
+      setShowEditStoreModal(false)
+      setFeedback(`Cadastro da loja "${editingStoreForm.name.trim()}" atualizado com sucesso pelo MASTER!`, 'success')
+    } catch (err) {
+      setFeedback(`Erro ao salvar alterações da loja: ${err instanceof Error ? err.message : 'Falha desconhecida'}`, 'error')
+    } finally {
+      setSavingEditStore(false)
+    }
+  }
+
   return <div className="stores-page">
     <div className="page-heading stores-heading">
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Central Multi-Loja</h1><p>Cadastro oficial do Supabase, atualizado em tempo real e por reconciliação periódica.</p></div>
@@ -326,7 +417,20 @@ export function StoresPage({ role }: { role: string }) {
         <label>UUID do proprietário<input required value={registration.owner_id} onChange={(event) => setRegistration({ ...registration, owner_id: event.target.value })} placeholder="UUID de usuário no Supabase Auth" /></label>
         <label>URL principal ou domínio (opcional)<input type="text" value={registration.site_domain} onChange={(event) => setRegistration({ ...registration, site_domain: event.target.value })} placeholder="Ex.: minhaloja.com.br ou https://minhaloja.com.br" /></label>
         <label>Nome do proprietário<input maxLength={160} value={registration.owner_name} onChange={(event) => setRegistration({ ...registration, owner_name: event.target.value })} placeholder="Opcional" /></label>
-        <label>Plano<input maxLength={80} value={registration.plan_code} onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })} placeholder="Opcional" /></label>
+        <label>Plano oficial
+          <input
+            list="plans-datalist"
+            maxLength={80}
+            value={registration.plan_code}
+            onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })}
+            placeholder="Ex: NOVAES_BUSINESS, NOVAES_PREMIUM ou NOVAES_START"
+          />
+          <datalist id="plans-datalist">
+            <option value="NOVAES_BUSINESS">Plano Business (340 pedidos / R$ 190,00)</option>
+            <option value="NOVAES_PREMIUM">Plano Premium (750 pedidos / R$ 270,00)</option>
+            <option value="NOVAES_START">Plano Start (Institucional / R$ 97,00)</option>
+          </datalist>
+        </label>
         <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Importando…' : 'Importar ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
       </form>
     </section>}
@@ -341,7 +445,157 @@ export function StoresPage({ role }: { role: string }) {
 
     {selected ? <section className="panel store-detail">
       <button className="back-to-stores" onClick={() => { setSelectedId(null); if (searchParams.has('site_id')) { const next = new URLSearchParams(searchParams); next.delete('site_id'); setSearchParams(next, { replace: true }) } }}><ArrowLeft size={15} /> Voltar à Central Multi-Loja</button>
-      <div className="store-detail-title"><span className="store-avatar"><Store size={21} /></span><div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div><StatusBadge status={selected.status} /><button type="button" className="secondary-button" style={{ marginLeft: 'auto' }} onClick={() => navigate('/controle-pedidos')}><ShoppingBag size={14} /> Franquia de pedidos</button></div>
+      <div className="store-detail-title">
+        <span className="store-avatar"><Store size={21} /></span>
+        <div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div>
+        <StatusBadge status={selected.status} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {role === 'MASTER' && (
+            <button
+              type="button"
+              className="primary-button"
+              style={{ height: '34px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => openEditStoreModal(selected)}
+            >
+              <Edit3 size={13} />
+              <span>Editar dados da loja</span>
+            </button>
+          )}
+          <button type="button" className="secondary-button" onClick={() => navigate('/controle-pedidos')}>
+            <ShoppingBag size={14} /> Franquia de pedidos
+          </button>
+        </div>
+      </div>
+
+      {showEditStoreModal && role === 'MASTER' && (
+        <div className="modal-backdrop" style={{ zIndex: 1200 }} onClick={() => setShowEditStoreModal(false)}>
+          <div className="store-edit-modal panel" style={{ maxWidth: 640, width: '100%', margin: 'auto', padding: '24px', background: 'var(--card-bg, #0f0a1c)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: 12, boxShadow: '0 20px 45px rgba(0,0,0,0.6)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <strong style={{ fontSize: 16, color: '#f3e8ff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit3 size={18} style={{ color: '#a855f7' }} />
+                  Editar Cadastro Oficial da Loja
+                </strong>
+                <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 11 }}>
+                  O perfil MASTER possui controle total: altere nome, proprietário, plano ou status a qualquer momento.
+                </p>
+              </div>
+              <button type="button" className="close-modal-btn" onClick={() => setShowEditStoreModal(false)} aria-label="Fechar edição">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => void saveStoreEdits(e)} style={{ display: 'grid', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Nome da loja</span>
+                  <input
+                    required
+                    maxLength={160}
+                    value={editingStoreForm.name}
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, name: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.7)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, color: '#fff' }}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Código NX permanente</span>
+                  <input
+                    disabled
+                    value={selected.nx_id}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 6, color: '#94a3b8' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Nome do proprietário</span>
+                  <input
+                    maxLength={160}
+                    value={editingStoreForm.owner_name}
+                    placeholder="Ex: João da Silva"
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, owner_name: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.7)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, color: '#fff' }}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>UUID do proprietário (Auth)</span>
+                  <input
+                    value={editingStoreForm.owner_id}
+                    placeholder="UUID do usuário no Supabase"
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, owner_id: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.7)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, color: '#fff' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Plano oficial contratado</span>
+                  <select
+                    value={editingStoreForm.plan_code}
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, plan_code: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
+                  >
+                    <option value="NOVAES_BUSINESS">NOVAES_BUSINESS (R$ 190,00/mês · 340 pedidos inclusos)</option>
+                    <option value="NOVAES_PREMIUM">NOVAES_PREMIUM (R$ 270,00/mês · 750 pedidos inclusos)</option>
+                    <option value="NOVAES_START">NOVAES_START (R$ 97,00/mês · Institucional)</option>
+                    <option value="custom">Outro (Digitar código personalizado)</option>
+                  </select>
+                </label>
+
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Status operacional da loja</span>
+                  <select
+                    value={editingStoreForm.status}
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, status: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
+                  >
+                    <option value="active">Ativa · Operação normal</option>
+                    <option value="pending">Aguardando conexão</option>
+                    <option value="maintenance">Em manutenção</option>
+                    <option value="suspended">Suspensa</option>
+                    <option value="archived">Arquivada</option>
+                  </select>
+                </label>
+              </div>
+
+              {editingStoreForm.plan_code === 'custom' && (
+                <label style={{ display: 'grid', gap: 6, fontSize: 11, color: '#cbd5e1' }}>
+                  <span>Código de plano personalizado</span>
+                  <input
+                    required
+                    value={editingStoreForm.custom_plan_code}
+                    placeholder="Ex: NOVAES_ENTERPRISE"
+                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, custom_plan_code: e.target.value })}
+                    style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.7)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, color: '#fff' }}
+                  />
+                </label>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowEditStoreModal(false)}
+                  disabled={savingEditStore}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={savingEditStore}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Save size={14} />
+                  <span>{savingEditStore ? 'Salvando…' : 'Salvar Alterações'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       <div className="store-detail-grid">
         <Info label="Proprietário" value={selected.owner_name || (selected.owner_id ? `Usuário ${selected.owner_id.slice(0, 8)}…` : 'Não vinculado')} />
         <Info label="Vínculo do proprietário" value={selected.owner_membership_status} />

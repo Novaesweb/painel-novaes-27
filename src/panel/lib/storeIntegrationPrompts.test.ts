@@ -184,10 +184,10 @@ describe("Evidência e preservação", () => {
     );
     expect(INTEGRATION_PROGRESS).toHaveLength(8);
   });
-  it("seis prompts originais e três modelos continuam disponíveis e inalterados pela geração", () => {
+  it("sete prompts originais e três modelos continuam disponíveis e inalterados pela geração", () => {
     const before = integrationPrompts.map((prompt) => prompt.text);
     generateStoreIntegrationPrompt(integrationFixture(), BURGER_ID, "orders");
-    expect(integrationPrompts).toHaveLength(6);
+    expect(integrationPrompts).toHaveLength(7);
     expect(integrationPrompts.map((prompt) => prompt.text)).toEqual(before);
     expect(INITIAL_PROMPT_TEMPLATES.map((template) => template.id)).toEqual([
       "start",

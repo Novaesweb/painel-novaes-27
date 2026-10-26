@@ -13,8 +13,8 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 describe("Preservação dos modelos locais", () => {
-  it("mantém os seis prompts de integração", () => {
-    expect(integrationPrompts).toHaveLength(6);
+  it("mantém os sete prompts oficiais de integração", () => {
+    expect(integrationPrompts).toHaveLength(7);
   });
   it("salva três modelos e restaura personalização anterior após reset", () => {
     const custom = structuredClone(INITIAL_PROMPT_TEMPLATES);

@@ -244,10 +244,10 @@ Proporcionar uma experiência de compra e delivery rápida e intuitiva para o cl
 14. DADOS DEMONSTRATIVOS PERMITIDOS
 {{DADOS_DEMONSTRATIVOS}}
 
-15. TECNOLOGIA E INTEGRAÇÕES CENTRAIS
-- Identificação oficial no Painel Master: Configurar VITE_NOVAESWEB_STORE_ID e VITE_NOVAESWEB_NX_ID (ou VITE_STORE_ID e VITE_STORE_NX_ID) no .env da loja com os IDs oficiais fornecidos pelo Master ou obtidos via auto-cadastro na Edge Function novaesweb-site-register.
+- Identificação oficial no Painel Master: Configurar VITE_NOVAESWEB_STORE_ID e VITE_NOVAESWEB_NX_ID (ou VITE_STORE_ID e VITE_STORE_NX_ID) no .env da loja com os IDs oficiais fornecidos pelo Master ou obtidos via auto-cadastro na Edge Function novaesweb-site-register informando plan_code: 'NOVAES_BUSINESS'.
 - Conexão oficial ao Supabase central NovaesWeb: https://mabkzkawziqlmgfikwmh.supabase.co utilizando a chave pública anon.
 - Ao aceitar cada pedido, invocar a função RPC segura novaesweb_record_order_event (p_store_id, p_order_ref, p_event_type: 'accepted', p_occurred_at) para que o Painel Master identifique e contabilize o estabelecimento em tempo real sem expor dados financeiros.
+- Central de Suporte e Chamados: Incluir tela de atendimento conectada à tabela master_support_tickets do Supabase central para suporte direto com a equipe NovaesWeb.
 - Privacidade total: NUNCA trafegar faturamento de vendas, valores de carrinho ou dados pessoais de consumidores para o painel de franquias da NovaesWeb.
 - Embutir obrigatoriamente o componente StoreOrderUsageWidget em Configurações → Meu Plano → Consumo de Pedidos para acompanhamento transparente da franquia mensal de 340 pedidos.
 
@@ -348,9 +348,10 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 {{DADOS_DEMONSTRATIVOS}}
 
 15. TECNOLOGIA E INTEGRAÇÕES CENTRAIS
-- Identificação oficial no Painel Master: Configurar VITE_NOVAESWEB_STORE_ID e VITE_NOVAESWEB_NX_ID (ou VITE_STORE_ID e VITE_STORE_NX_ID) no .env da loja com os IDs oficiais fornecidos pelo Master ou obtidos via auto-cadastro na Edge Function novaesweb-site-register.
+- Identificação oficial no Painel Master: Configurar VITE_NOVAESWEB_STORE_ID e VITE_NOVAESWEB_NX_ID (ou VITE_STORE_ID e VITE_STORE_NX_ID) no .env da loja com os IDs oficiais fornecidos pelo Master ou obtidos via auto-cadastro na Edge Function novaesweb-site-register informando plan_code: 'NOVAES_PREMIUM'.
 - Conexão oficial ao Supabase central NovaesWeb: https://mabkzkawziqlmgfikwmh.supabase.co utilizando a chave pública anon com RLS de segurança estrita.
 - Ao aceitar cada pedido, invocar a função RPC segura novaesweb_record_order_event (p_store_id, p_order_ref, p_event_type: 'accepted', p_occurred_at) para que o Painel Master identifique e contabilize o estabelecimento em tempo real sem expor dados financeiros.
+- Central de Suporte e Chamados: Incluir tela de atendimento conectada à tabela master_support_tickets do Supabase central para suporte direto com a equipe NovaesWeb.
 - Privacidade total de dados de faturamento e consumidores finais (nunca trafegar valores de carrinho ou dados pessoais de clientes para o Master).
 - Embutir obrigatoriamente o componente StoreOrderUsageWidget em Configurações → Meu Plano → Consumo de Pedidos para acompanhamento transparente da franquia mensal de 750 pedidos.
 

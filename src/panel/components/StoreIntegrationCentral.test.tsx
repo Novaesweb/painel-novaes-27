@@ -200,10 +200,10 @@ describe("Autorização e recursos anteriores", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Sessão autenticada obrigatória");
     expect(screen.queryByRole("button", { name: "Selecionar Burger House" })).toBeNull();
   });
-  it("preserva os seis prompts e os três modelos de criação na página existente", () => {
+  it("preserva os prompts oficiais de integração (1 a 7) e os três modelos de criação na página existente", () => {
     render(<SiteIntegrationPage role="MASTER" />);
     expect(screen.getByRole("button", { name: "Copiar Prompt de Integração" })).toBeTruthy();
-    expect(screen.getAllByRole("listitem")).toHaveLength(6);
+    expect(screen.getAllByRole("listitem")).toHaveLength(7);
     fireEvent.click(screen.getByRole("button", { name: "Criador de Sites — Gerador de Prompts" }));
     expect(screen.getByText("Novaes Start")).toBeTruthy();
     expect(screen.getByText("Novaes Business")).toBeTruthy();

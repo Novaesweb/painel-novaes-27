@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from '../lib/router-compat'
-import { Bell, Command, LogOut, Menu, Search, X, Store, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Bell, Command, LogOut, Menu, Search, X, Store, PanelLeftClose, PanelLeftOpen, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { navigation } from '../lib/navigation'
 import { supabase } from '../lib/supabase'
 import { NotificationDropdown } from './NotificationDropdown'
 import { GooglePushBanner } from './GooglePushBanner'
+import { EvolutionWhatsAppModal } from './EvolutionWhatsAppModal'
 
 type Props = { profile: { role: string; display_name: string | null; permissions: string[] }; onSignOut: () => void; children: React.ReactNode }
 type SearchSite = { id: string; nx_id: string; name: string; owner_name: string | null }
@@ -18,6 +19,7 @@ export function DashboardLayout({ profile, onSignOut, children }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchSites, setSearchSites] = useState<SearchSite[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const current = navigation.find((item) => item.path === location.pathname) ?? navigation[0]
@@ -85,9 +87,33 @@ export function DashboardLayout({ profile, onSignOut, children }: Props) {
       <nav className="side-nav">{groups.map((group) => { const items = visibleNavigation.filter((item) => item.group === group && item.label.toLocaleLowerCase().includes(navSearch.toLocaleLowerCase())); return items.length ? <div className="nav-group" key={group}><span className="nav-group-title">{group}</span>{items.map(({ label, path, icon: Icon }) => <NavLink key={path} to={path} title={label} onClick={() => setMobileOpen(false)} className={({ isActive }) => `nav-link ${isActive && location.pathname === path ? 'active' : ''}`}><Icon size={17} strokeWidth={1.8} /><span>{label}</span></NavLink>)}</div> : null })}</nav>
       <div className="sidebar-bottom"><div className="environment"><span className="environment-dot" /><span>AMBIENTE</span><strong>{environmentLabel}</strong></div><div className="profile-card"><div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div><div className="profile-info"><strong>{displayName}</strong><span>{profile.role}</span></div><button className="profile-menu" onClick={onSignOut} aria-label="Sair"><LogOut size={16} /></button></div></div>
     </aside>
-    <main className="main-shell"><header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><img className="topbar-logo" src="/images/novaesweb-logo.jpeg" alt="NovaesWeb" /><div className="breadcrumbs"><span>NovaesWeb</span><i>/</i><strong>{current?.label}</strong></div></div><div className="topbar-actions"><div className="global-search-wrap"><label className="top-search global-search" onClick={() => { document.getElementById('master-global-search')?.focus(); setSearchOpen(true) }}><Search size={15} /><input id="master-global-search" value={globalSearch} onFocus={() => setSearchOpen(true)} onBlur={() => window.setTimeout(() => setSearchOpen(false), 140)} onChange={(event) => { setGlobalSearch(event.target.value); setSearchOpen(true) }} onKeyDown={(event) => { if (event.key === 'Enter') { const site = searchResults.sites[0]; const module = searchResults.modules[0]; if (site) openSearchResult(`/lojas?site_id=${encodeURIComponent(site.id)}`); else if (module) openSearchResult(module.path) } }} placeholder="Buscar loja ou módulo…" aria-label="Buscar lojas ou módulos" /><kbd>Ctrl K</kbd></label>{searchOpen && globalSearch.trim() && <div className="global-search-results" role="listbox" aria-label="Resultados da busca">{searchResults.sites.map((site) => <button key={site.id} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => openSearchResult(`/lojas?site_id=${encodeURIComponent(site.id)}`)}><Store size={15} /><span><strong>{site.name}</strong><small>{site.nx_id}{site.owner_name ? ` · ${site.owner_name}` : ''}</small></span><em>Loja</em></button>)}{searchResults.modules.map((item) => { const Icon = item.icon; return <button key={item.path} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => openSearchResult(item.path)}><Icon size={15} /><span><strong>{item.label}</strong><small>Abrir módulo</small></span><em>Módulo</em></button> })}{searchResults.sites.length === 0 && searchResults.modules.length === 0 && <p>Nenhuma loja ou módulo encontrado.</p>}</div>}</div><NotificationDropdown unreadCount={unreadCount} onCountChange={setUnreadCount} /><button className="top-avatar top-avatar-button" onClick={onSignOut} aria-label={`Sair da conta de ${displayName}`}>{displayName.slice(0, 1).toUpperCase()}</button></div></header><div className="page-content" onClick={() => { if (searchOpen && !globalSearch.trim()) setSearchOpen(false) }}>
+    <main className="main-shell"><header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><img className="topbar-logo" src="/images/novaesweb-logo.jpeg" alt="NovaesWeb" /><div className="breadcrumbs"><span>NovaesWeb</span><i>/</i><strong>{current?.label}</strong></div></div><div className="topbar-actions"><div className="global-search-wrap"><label className="top-search global-search" onClick={() => { document.getElementById('master-global-search')?.focus(); setSearchOpen(true) }}><Search size={15} /><input id="master-global-search" value={globalSearch} onFocus={() => setSearchOpen(true)} onBlur={() => window.setTimeout(() => setSearchOpen(false), 140)} onChange={(event) => { setGlobalSearch(event.target.value); setSearchOpen(true) }} onKeyDown={(event) => { if (event.key === 'Enter') { const site = searchResults.sites[0]; const module = searchResults.modules[0]; if (site) openSearchResult(`/lojas?site_id=${encodeURIComponent(site.id)}`); else if (module) openSearchResult(module.path) } }} placeholder="Buscar loja ou módulo…" aria-label="Buscar lojas ou módulos" /><kbd>Ctrl K</kbd></label>{searchOpen && globalSearch.trim() && <div className="global-search-results" role="listbox" aria-label="Resultados da busca">{searchResults.sites.map((site) => <button key={site.id} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => openSearchResult(`/lojas?site_id=${encodeURIComponent(site.id)}`)}><Store size={15} /><span><strong>{site.name}</strong><small>{site.nx_id}{site.owner_name ? ` · ${site.owner_name}` : ''}</small></span><em>Loja</em></button>)}{searchResults.modules.map((item) => { const Icon = item.icon; return <button key={item.path} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => openSearchResult(item.path)}><Icon size={15} /><span><strong>{item.label}</strong><small>Abrir módulo</small></span><em>Módulo</em></button> })}{searchResults.sites.length === 0 && searchResults.modules.length === 0 && <p>Nenhuma loja ou módulo encontrado.</p>}</div>}</div><NotificationDropdown unreadCount={unreadCount} onCountChange={setUnreadCount} />
+<button
+  type="button"
+  style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    background: 'rgba(37, 211, 102, 0.15)',
+    border: '1px solid rgba(37, 211, 102, 0.4)',
+    color: '#25d366',
+    cursor: 'pointer',
+    position: 'relative'
+  }}
+  onClick={() => setWhatsappModalOpen(true)}
+  title="Abrir Central WhatsApp (Evolution API v2)"
+  aria-label="Abrir WhatsApp Bot"
+>
+  <MessageSquare size={16} />
+  <span style={{ position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: '50%', background: '#25d366', boxShadow: '0 0 6px #25d366' }} />
+</button>
+<button className="top-avatar top-avatar-button" onClick={onSignOut} aria-label={`Sair da conta de ${displayName}`}>{displayName.slice(0, 1).toUpperCase()}</button></div></header><div className="page-content" onClick={() => { if (searchOpen && !globalSearch.trim()) setSearchOpen(false) }}>
       <GooglePushBanner />
       {children}
     </div></main>
+    <EvolutionWhatsAppModal isOpen={whatsappModalOpen} onClose={() => setWhatsappModalOpen(false)} />
   </div>
 }

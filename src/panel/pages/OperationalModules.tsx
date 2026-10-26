@@ -9,6 +9,7 @@ import { OrderControlManagement } from './OrderControlManagement'
 import { ContractsAndProposalsPage } from './ContractsAndProposalsPage'
 import { IncomeSimulator } from '../components/IncomeSimulator'
 import { calculateNextMonthDueDate, formatDateBR } from '../lib/dateUtils'
+import { sendEvolutionWhatsAppMessage, getEvolutionConfig } from '../lib/evolutionApi'
 import './OperationalModules.css'
 
 type Domain = { domain: string; is_primary: boolean; verification_status: string }
@@ -255,16 +256,33 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     }, `Pagamento registrado com sucesso para ${targetSite.name}! Vencimento avançado para ${formatDateBR(nextExpires)} e sincronizado com a loja.`)
   }
 
-  function openWhatsAppBillingReminder(targetSite: Site) {
+  async function openWhatsAppBillingReminder(targetSite: Site) {
     const expiresFormatted = targetSite.plan_expires_at ? formatDateBR(targetSite.plan_expires_at) : 'a vencer'
-    const text = encodeURIComponent(
+    const message =
       `*Lembrete de Mensalidade — Novaes Web* 🧾\n\n` +
       `Olá ${targetSite.owner_name || 'Lojista'}, tudo bem?\n` +
       `Passando para enviar o lembrete da mensalidade referente à loja *${targetSite.name}* (${targetSite.nx_id}).\n\n` +
       `📅 *Vencimento:* ${expiresFormatted}\n` +
       `📦 *Plano:* ${targetSite.plan_code || 'Novaes Web'}\n\n` +
       `Para qualquer dúvida ou envio de comprovante, estamos 100% à sua disposição!`
-    )
+
+    const evoConfig = getEvolutionConfig()
+    const rawPhone = (targetSite as unknown as { owner_phone?: string }).owner_phone || targetSite.owner_id || ''
+    if (evoConfig.autoSendEnabled && /\d{8,}/.test(rawPhone)) {
+      setMessage('Enviando cobrança via Evolution API...')
+      const res = await sendEvolutionWhatsAppMessage({
+        phone: rawPhone,
+        message,
+        category: 'billing',
+        recipientName: targetSite.name,
+      })
+      if (res.success) {
+        setMessage(`Cobrança enviada com sucesso no WhatsApp da ${targetSite.name} via Evolution API!`)
+        return
+      }
+    }
+
+    const text = encodeURIComponent(message)
     window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -585,7 +603,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                             }}
                             onClick={(e) => {
                               e.stopPropagation()
-                              openWhatsAppBillingReminder(site)
+                              void openWhatsAppBillingReminder(site)
                             }}
                             title="Enviar lembrete amigável de cobrança no WhatsApp"
                           >

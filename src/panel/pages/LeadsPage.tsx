@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, CircleAlert, Inbox, MessageCircle, RefreshCw, Search, UserRound } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { playNotificationSound } from '../lib/soundEffects'
+import { sendEvolutionWhatsAppMessage } from '../lib/evolutionApi'
 import './LeadsPage.css'
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost' | 'spam'
@@ -87,6 +88,30 @@ export function LeadsPage({ role }: { role: string }) {
     return `https://wa.me/55${cleanPhone}?text=${text}`
   }
 
+  async function sendLeadEvolutionDirect(lead: Lead) {
+    const message =
+      `*Novaes Web — Atendimento Oficial* 🚀\n\n` +
+      `Olá ${lead.name}! Tudo bem?\n` +
+      `Recebemos seu contato através do site oficial da Novaes Web referente a: *${lead.interest}*.\n\n` +
+      `Como podemos te ajudar hoje a ter o seu cardápio próprio e vender online sem pagar comissões por pedido?`
+
+    setMessage('Disparando atendimento via Evolution API...')
+    const res = await sendEvolutionWhatsAppMessage({
+      phone: lead.whatsapp,
+      message,
+      category: 'lead',
+      recipientName: lead.name,
+    })
+    if (res.success) {
+      playNotificationSound('site')
+      setMessage(`Mensagem de atendimento enviada com sucesso no WhatsApp de ${lead.name}!`)
+      void changeStatus(lead, 'contacted')
+    } else {
+      window.open(getLeadWhatsAppUrl(lead), '_blank', 'noopener,noreferrer')
+      setMessage('Aberto no WhatsApp Web para conferência e envio.')
+    }
+  }
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     return leads.filter((lead) => (filter === 'all' || lead.status === filter)
@@ -146,28 +171,27 @@ export function LeadsPage({ role }: { role: string }) {
               <td>{dateTime(lead.created_at)}</td><td><span className={`lead-status status-${lead.status}`}>{statusLabels[lead.status]}</span></td>
               <td>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <a
-                    href={getLeadWhatsAppUrl(lead)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void sendLeadEvolutionDirect(lead)}
                     className="primary-button"
                     style={{
                       fontSize: 11,
                       padding: '4px 9px',
-                      background: 'rgba(37, 211, 102, 0.2)',
+                      background: 'linear-gradient(135deg, rgba(37, 211, 102, 0.25), rgba(22, 163, 74, 0.25))',
                       borderColor: '#25d366',
                       color: '#4ade80',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      textDecoration: 'none',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer'
                     }}
-                    title="Chamar lead no WhatsApp com mensagem de apresentação pronta"
+                    title="Disparar mensagem oficial de atendimento via Evolution API / WhatsApp"
                   >
                     <MessageCircle size={12} />
-                    Atender
-                  </a>
+                    Atender Zap
+                  </button>
                   <select aria-label={`Atualizar status de ${lead.name}`} value={lead.status} disabled={busyId === lead.id} onChange={(event) => void changeStatus(lead, event.target.value as LeadStatus)}>
                     {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>

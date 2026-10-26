@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { playNotificationSound } from '../lib/soundEffects'
+import { sendEvolutionWhatsAppMessage } from '../lib/evolutionApi'
 import './QuickStoreModal.css'
 
 interface QuickStoreModalProps {
@@ -61,6 +62,8 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
     plan_code: string
   } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [sendingDirect, setSendingDirect] = useState(false)
+  const [sentDirectSuccess, setSentDirectSuccess] = useState(false)
 
   if (!isOpen) return null
 
@@ -201,10 +204,26 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
     setTimeout(() => setCopied(false), 3000)
   }
 
-  function handleSendWhatsApp() {
-    const text = encodeURIComponent(getWhatsAppMessage())
+  async function handleSendWhatsApp() {
+    const text = getWhatsAppMessage()
     const phone = successData?.owner_phone.replace(/\D/g, '') || ''
-    const url = phone ? `https://wa.me/55${phone}?text=${text}` : `https://wa.me/?text=${text}`
+    if (phone) {
+      setSendingDirect(true)
+      const res = await sendEvolutionWhatsAppMessage({
+        phone,
+        message: text,
+        category: 'welcome',
+        recipientName: successData?.name,
+      })
+      setSendingDirect(false)
+      if (res.success) {
+        setSentDirectSuccess(true)
+        playNotificationSound('site')
+        return
+      }
+    }
+    const encoded = encodeURIComponent(text)
+    const url = phone ? `https://wa.me/55${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
@@ -261,11 +280,12 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
             <div className="quick-store-share-actions">
               <button
                 type="button"
-                className="btn-whatsapp-send"
-                onClick={handleSendWhatsApp}
+                className={`btn-whatsapp-send ${sentDirectSuccess ? 'btn-whatsapp-sent' : ''}`}
+                onClick={() => void handleSendWhatsApp()}
+                disabled={sendingDirect}
               >
                 <Smartphone size={16} />
-                Enviar Acesso no WhatsApp do Lojista
+                {sendingDirect ? 'Enviando via Evolution...' : sentDirectSuccess ? 'Acesso Enviado no WhatsApp!' : 'Enviar Acesso no WhatsApp do Lojista'}
               </button>
               <button
                 type="button"

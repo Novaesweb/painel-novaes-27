@@ -23,6 +23,7 @@ import {
   Clock,
   Sparkles,
   Send,
+  MessageCircle,
 } from 'lucide-react'
 import { useNavigate } from '../lib/router-compat'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -108,6 +109,16 @@ export function OrderControlManagement({
     const isWarn = franchise && accepted >= franchise * 0.8
     const tpl = isOver ? 'franchise_100' : isWarn ? 'franchise_80' : 'general'
     navigate(`/notificacoes?tab=messenger&store_id=${encodeURIComponent(row.store_id)}&template=${tpl}`)
+  }
+
+  function openWhatsAppFranchiseUpgrade(row: OrderStoreRow) {
+    const text = encodeURIComponent(
+      `*Novaes Web — Gestão de Franquia de Pedidos* 🚀\n\n` +
+      `Olá equipe da *${row.store_name}* (${row.nx_id})!\n\n` +
+      `Parabéns pelas vendas deste mês! Notamos no sistema central que vocês já registraram *${row.accepted_count} pedidos* (atingindo a franquia do plano ${row.plan_name}).\n\n` +
+      `Para que sua operação continue sem preocupações e sem custos imprevistos, temos opções vantajosas de upgrade de franquia de pedidos. Deseja conferir?`
+    )
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer')
   }
   const [detailTab, setDetailTab] = useState<'consumption' | 'daily' | 'cancellations' | 'audit'>('consumption')
   const [clientSimulationStore, setClientSimulationStore] = useState<OrderStoreRow | null>(null)
@@ -825,6 +836,28 @@ export function OrderControlManagement({
                           <Send size={12} />
                           <span>Notificar</span>
                         </button>
+
+                        {pct >= 80 && (
+                          <button
+                            type="button"
+                            className="secondary-button action-btn-sm"
+                            onClick={() => openWhatsAppFranchiseUpgrade(row)}
+                            title="Oferecer upgrade de franquia para o lojista no WhatsApp"
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 8px',
+                              background: 'rgba(37, 211, 102, 0.15)',
+                              borderColor: '#25d366',
+                              color: '#4ade80',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <MessageCircle size={12} />
+                            <span>Upgrade Zap</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

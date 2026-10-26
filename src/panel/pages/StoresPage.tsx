@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from '../lib/router-compat'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { ConfirmModal } from '../components/ConfirmModal'
+import { QuickStoreModal } from '../components/QuickStoreModal'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -62,6 +63,7 @@ export function StoresPage({ role }: { role: string }) {
   const [messageForm, setMessageForm] = useState({ title: '', body: '', category: 'general' })
   const [registration, setRegistration] = useState({ nx_id: '', name: '', owner_id: '', site_domain: '', owner_name: '', plan_code: '' })
   const [showEditStoreModal, setShowEditStoreModal] = useState(false)
+  const [showQuickStoreModal, setShowQuickStoreModal] = useState(false)
   const [savingEditStore, setSavingEditStore] = useState(false)
   const [editingStoreForm, setEditingStoreForm] = useState({
     name: '',
@@ -442,6 +444,24 @@ export function StoresPage({ role }: { role: string }) {
     <div className="page-heading stores-heading">
       <div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>Central Multi-Loja</h1><p>Cadastro oficial do Supabase, atualizado em tempo real e por reconciliação periódica.</p></div>
       <div className="stores-heading-actions">
+        {role === 'MASTER' && (
+          <button
+            type="button"
+            className="primary-button"
+            style={{
+              background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
+              boxShadow: '0 4px 14px rgba(147, 51, 234, 0.4)',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+            onClick={() => setShowQuickStoreModal(true)}
+          >
+            <Sparkles size={14} style={{ color: '#fbbf24' }} />
+            <span>+ Cadastrar Nova Loja (Rápido)</span>
+          </button>
+        )}
         <button className="secondary-button" onClick={() => void loadSites(true)} disabled={refreshing}><RefreshCw size={14} className={refreshing ? 'spin' : ''} /> Atualizar</button>
         {role === 'MASTER' && <button className="secondary-button" onClick={() => setShowRegistration((value) => !value)}><Store size={14} /> Cadastro manual (secundário)</button>}
       </div>
@@ -740,7 +760,33 @@ export function StoresPage({ role }: { role: string }) {
         <Related title="Integrações" icon={<Layers3 size={16} />} empty="Nenhuma integração cadastrada." items={selected.store_integrations.map((integration) => `${integration.provider} · ${integration.status}${integration.project_ref ? ` · projeto ${integration.project_ref}` : ''}${integration.contract_version ? ` · contrato ${integration.contract_version}` : ''}${integration.last_seen_at ? ` · visto ${dateLabel(integration.last_seen_at)}` : ''}`)} />
       </div>
     </section> : <section className="panel store-list-panel">
-      <div className="store-list-heading"><div><h2>Lojas cadastradas oficialmente</h2><p>As buscas consultam registros existentes e nunca geram um ID NX.</p></div><span>{filtered.length} resultado{filtered.length === 1 ? '' : 's'}</span></div>
+      <div className="store-list-heading">
+        <div>
+          <h2>Lojas cadastradas oficialmente</h2>
+          <p>As buscas consultam registros existentes e nunca geram um ID NX.</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {role === 'MASTER' && (
+            <button
+              type="button"
+              className="primary-button"
+              style={{
+                fontSize: 12,
+                padding: '6px 14px',
+                background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+              onClick={() => setShowQuickStoreModal(true)}
+            >
+              <Sparkles size={13} style={{ color: '#fbbf24' }} />
+              <span>+ Nova Loja</span>
+            </button>
+          )}
+          <span>{filtered.length} resultado{filtered.length === 1 ? '' : 's'}</span>
+        </div>
+      </div>
       <form className="store-search-form" onSubmit={(event) => void searchOfficial(event)}>
         <label htmlFor="store-query">BUSCAR POR ID NX, NOME OU DOMÍNIO</label>
         <div className="store-search-row"><div className="input-wrap"><Search size={17} /><input id="store-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex.: NX-… ou nome da loja" /></div><button className="primary-button" disabled={loading}><Search size={15} /> Buscar loja</button></div>
@@ -759,6 +805,14 @@ export function StoresPage({ role }: { role: string }) {
       variant={confirmDialog.variant}
       onConfirm={confirmDialog.onConfirm}
       onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+    />
+    <QuickStoreModal
+      isOpen={showQuickStoreModal}
+      onClose={() => setShowQuickStoreModal(false)}
+      onSuccess={(newId) => {
+        setSelectedId(newId)
+        void loadSites(true)
+      }}
     />
     <div className="stores-footnote"><ShieldCheck size={14} /> A autorização é aplicada pelo Supabase Auth e RLS; o ID NX apenas identifica a loja.</div>
   </div>

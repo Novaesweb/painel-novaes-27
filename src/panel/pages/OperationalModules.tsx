@@ -1,7 +1,7 @@
 import { planAssignmentIssue } from '../../../supabase/functions/_shared/planCommercialRules'
 import { OFFICIAL_PLANS } from '../lib/officialPlans'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, Building2, Check, CheckCircle2, CircleAlert, CircleDollarSign, CreditCard, Globe2, HardDrive, RefreshCw, Save, Settings2, ShieldCheck, Store, Users } from 'lucide-react'
+import { Activity, AlertTriangle, Building2, Check, CheckCircle2, CircleAlert, CircleDollarSign, CreditCard, Globe2, HardDrive, MessageCircle, RefreshCw, Save, Settings2, ShieldCheck, Store, Users } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { MasterSecuritySettings } from '../components/MasterSecuritySettings'
 import { PlanManagement } from './PlanManagement'
@@ -253,6 +253,19 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
       }
       await loadSites()
     }, `Pagamento registrado com sucesso para ${targetSite.name}! Vencimento avançado para ${formatDateBR(nextExpires)} e sincronizado com a loja.`)
+  }
+
+  function openWhatsAppBillingReminder(targetSite: Site) {
+    const expiresFormatted = targetSite.plan_expires_at ? formatDateBR(targetSite.plan_expires_at) : 'a vencer'
+    const text = encodeURIComponent(
+      `*Lembrete de Mensalidade — Novaes Web* 🧾\n\n` +
+      `Olá ${targetSite.owner_name || 'Lojista'}, tudo bem?\n` +
+      `Passando para enviar o lembrete da mensalidade referente à loja *${targetSite.name}* (${targetSite.nx_id}).\n\n` +
+      `📅 *Vencimento:* ${expiresFormatted}\n` +
+      `📦 *Plano:* ${targetSite.plan_code || 'Novaes Web'}\n\n` +
+      `Para qualquer dúvida ou envio de comprovante, estamos 100% à sua disposição!`
+    )
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer')
   }
 
   const handlePaymentStatusChange = (newStatus: string) => {
@@ -556,6 +569,30 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                           <CheckCircle2 size={12} />
                           Quitar (+1 Mês)
                         </button>
+                        {site.payment_status !== 'paid' && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 9px',
+                              background: 'rgba(37, 211, 102, 0.12)',
+                              borderColor: 'rgba(37, 211, 102, 0.4)',
+                              color: '#4ade80',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openWhatsAppBillingReminder(site)
+                            }}
+                            title="Enviar lembrete amigável de cobrança no WhatsApp"
+                          >
+                            <MessageCircle size={12} />
+                            Cobrar WhatsApp
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="secondary-button"

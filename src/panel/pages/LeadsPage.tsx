@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, CircleAlert, Inbox, MessageCircle, RefreshCw, Search, UserRound } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { playNotificationSound } from '../lib/soundEffects'
 import './LeadsPage.css'
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'won' | 'lost' | 'spam'
@@ -60,6 +61,32 @@ export function LeadsPage({ role }: { role: string }) {
 
   useEffect(() => { void load() }, [load])
 
+  useEffect(() => {
+    if (!supabase) return
+    const channel = supabase.channel('website-leads-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'website_leads' }, () => {
+        playNotificationSound('lead')
+        void load()
+      })
+      .subscribe()
+    return () => {
+      if (supabase) {
+        void supabase.removeChannel(channel)
+      }
+    }
+  }, [load])
+
+  function getLeadWhatsAppUrl(lead: Lead): string {
+    const cleanPhone = lead.whatsapp.replace(/\D/g, '')
+    const text = encodeURIComponent(
+      `*Novaes Web — Atendimento Oficial* 🚀\n\n` +
+      `Olá ${lead.name}! Tudo bem?\n` +
+      `Recebemos seu contato através do site oficial da Novaes Web referente a: *${lead.interest}*.\n\n` +
+      `Como podemos te ajudar hoje a ter o seu cardápio próprio e vender online sem pagar comissões por pedido?`
+    )
+    return `https://wa.me/55${cleanPhone}?text=${text}`
+  }
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     return leads.filter((lead) => (filter === 'all' || lead.status === filter)
@@ -117,7 +144,35 @@ export function LeadsPage({ role }: { role: string }) {
               <td>{lead.interest}</td><td className="lead-message-cell">{lead.message || '—'}</td>
               <td><span className="lead-source">{lead.website_lead_sources?.name ?? 'NovaesWeb Oficial'}</span><small className="lead-source-id">{lead.website_lead_sources?.id ?? ''}</small></td>
               <td>{dateTime(lead.created_at)}</td><td><span className={`lead-status status-${lead.status}`}>{statusLabels[lead.status]}</span></td>
-              <td><select aria-label={`Atualizar status de ${lead.name}`} value={lead.status} disabled={busyId === lead.id} onChange={(event) => void changeStatus(lead, event.target.value as LeadStatus)}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></td>
+              <td>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <a
+                    href={getLeadWhatsAppUrl(lead)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="primary-button"
+                    style={{
+                      fontSize: 11,
+                      padding: '4px 9px',
+                      background: 'rgba(37, 211, 102, 0.2)',
+                      borderColor: '#25d366',
+                      color: '#4ade80',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Chamar lead no WhatsApp com mensagem de apresentação pronta"
+                  >
+                    <MessageCircle size={12} />
+                    Atender
+                  </a>
+                  <select aria-label={`Atualizar status de ${lead.name}`} value={lead.status} disabled={busyId === lead.id} onChange={(event) => void changeStatus(lead, event.target.value as LeadStatus)}>
+                    {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+              </td>
             </tr>)}
           </tbody></table></div>}
       {!loading && leads.length > 0 && <div className="leads-footnote"><Check size={14} /> Lista protegida no backend. Dados de pedidos, clientes e vendas das lojas não são consultados aqui.</div>}

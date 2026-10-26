@@ -9,6 +9,9 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(payload.title || 'NovaesWeb Master', {
     body: payload.body || 'Você recebeu uma nova notificação. Abra o painel para consultar.',
     icon: '/images/novaesweb-logo.jpeg',
+    badge: '/images/novaesweb-logo.jpeg',
+    vibrate: [250, 100, 250],
+    requireInteraction: true,
     tag: payload.tag || payload.notification_id || undefined,
     data: { url: url.origin === self.location.origin ? url.href : self.location.origin + '/notificacoes' },
   }))

@@ -195,14 +195,15 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
           <section className="panel site-integration-guide" aria-label="Ordem de envio dos prompts">
             <h2>Ordem correta de envio dos Prompts de Conexão (1 a 6)</h2>
             <p>
-              <strong>Atenção:</strong> O site da loja <strong>já deve estar criado</strong> antes de enviar o Prompt 1 (seja criado pelo gerador da aba ao lado ou já existente). O Prompt 1 conecta o Supabase a um projeto que já existe.
+              <strong>Atenção:</strong> O site da loja <strong>já deve estar criado</strong> antes de enviar o Prompt 1 (seja pelo gerador ao lado ou já existente). Todas as chaves e URLs oficiais já saem 100% preenchidas.
             </p>
             <p>
-              1. Envie o <strong>Prompt 1</strong> ao chat do site da loja e espere concluir o auto-cadastro e o check-in no Supabase.<br />
-              2. Depois envie o <strong>Prompt 2</strong> (Controles do Master) e, quando estiver pronto, o <strong>Prompt 3</strong> (Central de Adicionais).<br />
-              3. O <strong>Prompt 4</strong> é somente para quando você aprovar um adicional específico no Master.<br />
-              4. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia do plano (340 pedidos no Business ou 750 no Premium) com Zero Bloqueio.<br />
-              5. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos avançados.
+              1. Envie o <strong>Prompt 1</strong> ao chat do site da loja. O lojista <strong>não precisa</strong> de cadastro prévio: ao fazer o <strong>primeiro login</strong> no painel dele com e-mail e senha, ele se torna o Dono Oficial e o site faz check-in no Master na hora.<br />
+              2. Depois envie o <strong>Prompt 2</strong> (Controles do Master) para ativar avisos de bloqueio/manutenção e mensagens.<br />
+              3. Envie o <strong>Prompt 3</strong> (Central de Adicionais) para exibir o catálogo oficial no painel do lojista.<br />
+              4. O <strong>Prompt 4</strong> é usado somente quando você aceitar um adicional específico no Master.<br />
+              5. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia mensal (340 pedidos no Business ou 750 no Premium) com <strong>Zero Bloqueio</strong>.<br />
+              6. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos Premium (cupons e pedidos agendados).
             </p>
             <p>
               Você pode copiar todos os prompts sem selecionar uma loja. O chat confirma os dados oficiais na

@@ -4,25 +4,38 @@ Trabalhe no projeto existente desta loja. Esta é a etapa 2, depois do registro/
 
 ## Identidade e segurança
 
-- Projeto central: https://mabkzkawziqlmgfikwmh.supabase.co. Use chave pública publishable/anon em variável do framework e Supabase Auth central. Nunca use service_role, sb_secret, VAPID privada ou credencial MASTER no cliente ou repositório.
-- Confirme o UUID `managed_sites.id`, o NX público `managed_sites.nx_id` e o vínculo ativo em `store_members`. Os identificadores devem ser os oficiais retornados pelo backend; peça-os ao proprietário se faltarem. Nenhum ID é autorização.
-- Validar a loja/usuário no servidor em toda operação. Não criar usuários Master para o lojista nem permitir que a loja invoque APIs administrativas do Master.
+- Projeto central: https://mabkzkawziqlmgfikwmh.supabase.co (Chave Anon: `sb_publishable_j6QPu4fgCRZHhOnUPEdyvA_ixP9ibtr`).
+- Use as variáveis `VITE_NOVAESWEB_STORE_ID` e `VITE_NOVAESWEB_NX_ID` configuradas na Etapa 1.
+- Nunca use `service_role` ou credenciais MASTER no cliente. O site opera sob RLS com a sessão do lojista.
 
-## Status administrativo da loja
+## Status administrativo da loja (Bloqueio e Manutenção)
 
-1. Confira o contrato real no banco. O RPC público existente `delivery_public_availability(p_store_id uuid)` retorna somente `status`, `block_mode`, `block_message` e `block_until`. Ele identifica o estado público da loja e não concede acesso a dados privados. Para produtos que não sejam delivery, audite a adequação desse contrato compartilhado e apresente eventual adaptação antes de executá-la.
-2. No painel autenticado, membros autorizados também podem consultar `managed_sites` sob RLS. Observe os estados reais `pending`, `active`, `maintenance`, `suspended` e `archived`. `pending` é conexão ainda não finalizada, não uma aprovação manual do cadastro.
-3. `block_mode` aceita `message`, `maintenance` e `suspension`. Apresente `block_message` como texto seguro, nunca como HTML executável. Mostre prazo se `block_until` existir. O prazo mostrado não permite ao navegador reativar a loja: só aceite a decisão atual do servidor.
-4. Em manutenção, suspensão ou arquivamento, o site público deve apresentar o estado e impedir as operações restringidas pelo contrato. O backend/RLS também deve negar as gravações correspondentes, inclusive por chamadas diretas. Não limite o bloqueio ao CSS ou menu.
-5. Preserve o acesso de owner/admin às áreas de conta, mensagens e suporte quando as regras centrais o permitirem; não transforme um bloqueio da vitrine em perda indiscriminada do login. Audite as policies atuais antes de alterar permissões.
-6. Carregue o estado inicialmente, reconcilie ao voltar à aba e periodicamente, com intervalo moderado (por exemplo 60s enquanto visível). Realtime pode invalidar as consultas quando disponível. Não faça um `site_checkin` em loop para contornar bloqueios. Não reescreva `managed_sites.status` pelo frontend.
-7. O check-in existente é `supabase.functions.invoke('novaesweb-admin', { body: { action: 'site_checkin', nx_id: NX_OFICIAL } })`. Exige sessão e vínculo ativo. Resposta 403 pode conter status, mensagem e prazo; apresente o estado sem cadastrar outra loja nem trocar identificadores. Use retentativa com limite/backoff para falhas de rede; não chame uma vez por renderização.
+1. **Consulta do status público da loja:**
+   Chame o RPC oficial `delivery_public_availability`:
+   ```typescript
+   const { data } = await supabase.rpc('delivery_public_availability', {
+     p_store_id: import.meta.env.VITE_NOVAESWEB_STORE_ID
+   })
+   // Retorna: { status: 'active' | 'maintenance' | 'suspended', block_mode, block_message, block_until }
+   ```
+2. **Comportamento em Manutenção ou Suspensão:**
+   - Se `status` for `'maintenance'`, exiba a tela/aviso amigável de manutenção com a mensagem `block_message` configurada pelo Master.
+   - Se for `'suspended'`, bloqueie novas compras e o checkout, mantendo o painel do lojista acessível para contato com a administração.
+3. **Reconciliação periódica:**
+   - Faça uma checagem a cada 60 segundos enquanto a aba estiver visível para atualizar o status automaticamente quando o Master liberar a loja.
 
-## Mensagens para o proprietário
+## Mensagens da Administração para o Lojista
 
-- A caixa disponível é `public.store_owner_messages`: `id`, `store_id`, `recipient_user_id`, `category`, `title`, `body`, `created_by`, `created_at`, `read_at`.
-- A RLS permite ao destinatário autenticado com vínculo ativo ler somente suas mensagens e marcar `read_at`. Confirme os grants de coluna antes de gravar. Use filtros de loja e destinatário como organização, mantendo RLS como autorização.
-- Mostre sino/lista e leitura no painel do lojista, reaproveitando a área existente. Não grave título, conteúdo, destinatário ou remetente pelo cliente. O envio administrativo pertence ao Master.
+- As mensagens enviadas pelo Painel Master ficam na tabela `public.store_owner_messages`.
+- Exiba um ícone de sino de notificações no painel administrativo do lojista:
+  ```typescript
+  const { data: messages } = await supabase
+    .from('store_owner_messages')
+    .select('id, category, title, body, created_at, read_at')
+    .eq('store_id', import.meta.env.VITE_NOVAESWEB_STORE_ID)
+    .order('created_at', { ascending: false })
+  ```
+- O lojista pode marcar mensagens como lidas (`read_at: new Date().toISOString()`).
 - Se Realtime da tabela não estiver habilitado, use reconciliação ao abrir/voltar e periódica. Não afirme tempo real sem conferir publicação e evento real.
 - `master_notifications`, `push_subscriptions`, `notification_preferences`, `push_delivery_jobs` e `novaesweb-push` pertencem ao Master. Não copie esse backend ou use a conta Master para fazer push ao lojista. Se ele precisar de push próprio, apresente um contrato separado, autorizado e isolado por usuário/loja.
 

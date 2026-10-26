@@ -32,7 +32,7 @@ No arquivo `.env` ou nas variáveis de ambiente da loja, certifique-se de config
 
 ```env
 VITE_SUPABASE_URL=https://mabkzkawziqlmgfikwmh.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-chave-anon-publica-fornecida-pelo-master
+VITE_SUPABASE_ANON_KEY=sb_publishable_j6QPu4fgCRZHhOnUPEdyvA_ixP9ibtr
 VITE_NOVAESWEB_STORE_ID=00000000-0000-0000-0000-000000000000 # UUID oficial da loja no Master
 VITE_NOVAESWEB_NX_ID=NX-00123                            # Identificador oficial da loja
 ```

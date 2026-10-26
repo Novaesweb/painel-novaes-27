@@ -84,7 +84,7 @@ O contrato central atualmente documentado usa a Edge Function `novaesweb-addon-c
 
 ## Supabase, autenticação e configuração
 
-Projeto central: https://mabkzkawziqlmgfikwmh.supabase.co. Para Vite, prefira os nomes já usados no Master: `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. Se o projeto usa um nome ANON_KEY equivalente, confirme o código e preserve a convenção existente com a chave pública correta. Não use chave de outro projeto.
+Projeto central: https://mabkzkawziqlmgfikwmh.supabase.co (Chave Anon: `sb_publishable_j6QPu4fgCRZHhOnUPEdyvA_ixP9ibtr`). Para Vite, utilize: `VITE_SUPABASE_URL=https://mabkzkawziqlmgfikwmh.supabase.co` e `VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_j6QPu4fgCRZHhOnUPEdyvA_ixP9ibtr`.
 
 - Preserve login existente e use Supabase Auth central de forma compatível com o produto.
 - Use apenas a URL e chave pública apropriada ao framework no navegador. Exemplos: `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` ou `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`; confirme nomes já usados antes de alterá-los.

@@ -191,9 +191,10 @@ function scopeText(
    - 'maintenance' (Manutenção Institucional): vitrina com tela/aviso amigável de manutenção configurado pelo Master e dados de suporte.
    - 'suspended': suspensão total das operações.
 3. Modo Suporte com Impersonação Segura: aceite tokens temporários de 15 min do Master via parâmetros de URL (?impersonate_token=SUP-...&support_mode=true) para suporte técnico assistido, exibindo faixa indicativa no topo do painel do lojista.
-4. Exiba avisos do Master na caixa autorizada da loja, nunca notificações internas de todas as empresas.
-5. Aplique plano, configurações e permissões recebidos de fonte autorizada. Loja não pode editar preço, franquia, tarifa, contratos ou ativação. Não converta códigos legados 130/delivery para Business nem faça upgrade.
-6. Não retire funções existentes antes de conferir sua origem contratual. Informe pendências de backend em vez de simular bloqueio, vigência ou sincronização.`;
+4. Rodapé Institucional e Versão v5.2: no rodapé público de todas as páginas, exiba 'Feito com ❤️ por NovaesWeb' (com link seguro para https://novaesweb.com.br) e o copyright com a versão 'v5.2'. No painel do lojista, exiba '🟢 v5.2 • Sistema Atualizado'.
+5. Exiba avisos do Master na caixa autorizada da loja, nunca notificações internas de todas as empresas.
+6. Aplique plano, configurações e permissões recebidos de fonte autorizada. Loja não pode editar preço, franquia, tarifa, contratos ou ativação. Não converta códigos legados 130/delivery para Business nem faça upgrade.
+7. Não retire funções existentes antes de conferir sua origem contratual. Informe pendências de backend em vez de simular bloqueio, vigência ou sincronização.`;
     case "orders":
       return `OBJETIVO ESPECÍFICO — CONTAGEM AUTOMÁTICA DE PEDIDOS
 Mapeie criação, aceite real, recusa, entrega, cancelamento e exclusão/ocultação do código existente. Instrumente apenas transições comprovadas, com eventos mínimos, sem reconstruir o fluxo.

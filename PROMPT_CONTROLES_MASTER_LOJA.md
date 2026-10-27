@@ -56,7 +56,17 @@ Trabalhe no projeto existente desta loja. Esta é a etapa 2, depois do registro/
 
 - Os metadados administrativos do plano ficam no registro autorizado em `managed_sites`: `plan_code`, `billing_active`, `plan_started_at`, `plan_expires_at`, `grace_days`, `payment_status`. Exiba só os campos permitidos à loja. Não altere preços, assinatura, cobrança ou vencimentos diretamente.
 - `master_plan_catalog` e `master_support_tickets` têm uso administrativo via backend e não devem ser tratados como tabelas de escrita livre do lojista. Confira os contratos disponíveis: não invente RPC de compra de plano, abertura de chamado ou resposta de suporte. Se não houver endpoint autorizado para a loja, reporte a pendência e proponha a implementação para aprovação; não use uma Edge Function exclusiva de MASTER.
-- Nunca exponha nomes de outras lojas, histórico administrativo global, leads do site oficial, chaves, senhas ou dados comerciais de outra empresa. O Master gerencia a plataforma sem consultar pedidos, clientes, catálogo, faturamento, lucro ou caixa privado da loja.
+## Rodapé Institucional e Controle de Versão (v5.2)
+
+1. **Assinatura Oficial no Rodapé Público da Loja:**
+   - Adicione no rodapé de todas as páginas públicas (vitrina, cardápio, checkout):
+     `Feito com ❤️ por NovaesWeb` (com link seguro `https://novaesweb.com.br` abrindo em nova aba).
+   - Ao lado ou abaixo, exiba o copyright e versão ativa:
+     `© {anoAtual} {Nome da Loja}. Todos os direitos reservados. • v5.2`
+
+2. **Indicador no Painel Administrativo (`/painel`):**
+   - Exiba no rodapé do menu lateral ou da barra do painel a badge indicativa:
+     `🟢 v5.2 • Sistema Atualizado` (identificando a conformidade com o motor NovaesWeb Commerce Engine).
 
 ## Integração com as próximas etapas
 

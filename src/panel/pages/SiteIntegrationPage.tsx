@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle, Heart } from 'lucide-react'
 import { useSearchParams } from '../lib/router-compat'
 import { integrationPrompts } from '../lib/integrationPrompt'
+import footerVersionPrompt from '../../../PROMPT_RODAPE_E_VERSAO_LOJA.md?raw'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
 import './SiteIntegrationPage.css'
 import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
@@ -250,6 +251,28 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
               </li>
             ))}
           </ol>
+
+          {/* Card Rápido: Rodapé Oficial e Versão v5.2 */}
+          <section className="panel site-footer-quick-banner" aria-label="Padronização de Rodapé e Versão v5.2">
+            <div className="site-footer-quick-content">
+              <div className="site-footer-badge">
+                <Heart size={14} className="heart-icon-pulse" />
+                <span>Identidade Visual & Versão Oficial</span>
+              </div>
+              <h3>Rodapé Oficial: Feito com ❤️ por NovaesWeb e Versão v5.2</h3>
+              <p>
+                Prompt pronto e autônomo para padronizar a assinatura institucional (com link e coração) no rodapé de todas as páginas públicas e adicionar o indicador <code>v5.2</code> no painel administrativo do lojista.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="primary-button site-footer-quick-copy"
+              onClick={() => void copyPrompt('footer-v52', footerVersionPrompt.trim())}
+            >
+              {copied === 'footer-v52' ? <Check size={16} /> : <Copy size={16} />}
+              <span>{copied === 'footer-v52' ? 'Prompt de Rodapé Copiado!' : 'Copiar Prompt de Rodapé e Versão (v5.2)'}</span>
+            </button>
+          </section>
         </>
       )}
 

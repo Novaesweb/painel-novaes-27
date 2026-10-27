@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, KeyRound, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, KeyRound, X, Gift } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { QuickStoreModal } from '../components/QuickStoreModal'
 import { WhatsAppBillingModal, getStoreStoredPhone, WhatsAppBillingTargetSite } from '../components/WhatsAppBillingModal'
 import { ImpersonateStoreModal } from '../components/ImpersonateStoreModal'
+import { StoreReferralModal } from '../components/StoreReferralModal'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -83,6 +84,7 @@ export function StoresPage({ role }: { role: string }) {
   })
   const [whatsAppTargetStore, setWhatsAppTargetStore] = useState<WhatsAppBillingTargetSite | null>(null)
   const [impersonateStore, setImpersonateStore] = useState<Site | null>(null)
+  const [referralStore, setReferralStore] = useState<Site | null>(null)
 
   function openWhatsAppForStore(siteItem: Site, defaultCategory: 'billing' | 'support' = 'support') {
     const target: WhatsAppBillingTargetSite = {
@@ -601,6 +603,25 @@ export function StoresPage({ role }: { role: string }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              borderColor: 'rgba(245, 158, 11, 0.45)',
+              color: '#fcd34d',
+              background: 'rgba(245, 158, 11, 0.08)',
+            }}
+            onClick={() => setReferralStore(selected)}
+            title="Gerenciar link e bônus do programa Indique e Ganhe"
+          >
+            <Gift size={13} style={{ color: '#fbbf24' }} />
+            <span>Indique e Ganhe</span>
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            style={{
+              height: '34px',
+              fontSize: '11px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
               borderColor: 'rgba(37, 211, 102, 0.4)',
               color: '#4ade80',
               background: 'rgba(37, 211, 102, 0.08)',
@@ -1015,6 +1036,24 @@ export function StoresPage({ role }: { role: string }) {
           : null
       }
       onClose={() => setImpersonateStore(null)}
+    />
+    <StoreReferralModal
+      isOpen={Boolean(referralStore)}
+      store={
+        referralStore
+          ? {
+              id: referralStore.id,
+              nx_id: referralStore.nx_id,
+              name: referralStore.name,
+              owner_name: referralStore.owner_name,
+              primary_domain:
+                referralStore.store_domains.find((d) => d.is_primary)?.domain ||
+                referralStore.store_domains[0]?.domain ||
+                null,
+            }
+          : null
+      }
+      onClose={() => setReferralStore(null)}
     />
     <div className="stores-footnote"><ShieldCheck size={14} /> A autorização é aplicada pelo Supabase Auth e RLS; o ID NX apenas identifica a loja.</div>
   </div>

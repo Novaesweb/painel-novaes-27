@@ -183,11 +183,17 @@ function scopeText(
 5. Teste login, vínculo, isolamento e retomada após falha. Faça somente a ligação desta loja aos contratos existentes; não instale módulos nem redesenhe o site.`;
     case "controls":
       return `OBJETIVO ESPECÍFICO — CONTROLES DO MASTER
-1. Analise o código antes de modificar componentes. Localize o contrato real de status administrativo, bloqueio, manutenção, reativação e avisos. Reutilize os serviços existentes; não invente endpoint administrativo acessível ao lojista.
-2. Aplique o estado administrativo em rotas/APIs/jobs sensíveis, preservando os acessos de owner/admin autorizados para manutenção. Teste suspensão, expiração, retorno à operação e mensagens sem duplicação.
-3. Exiba avisos do Master na caixa autorizada da loja, nunca notificações internas de todas as empresas.
-4. Aplique plano, configurações e permissões recebidos de fonte autorizada. Loja não pode editar preço, franquia, tarifa, contratos ou ativação. Não converta códigos legados 130/delivery para Business nem faça upgrade.
-5. Não retire funções existentes antes de conferir sua origem contratual. Informe pendências de backend em vez de simular bloqueio, vigência ou sincronização.`;
+1. Analise o código antes de modificar componentes. Localize o contrato real de status administrativo (delivery_public_availability), bloqueio em 3 camadas, manutenção, reativação e avisos. Reutilize os serviços existentes; não invente endpoint administrativo acessível ao lojista.
+2. Aplique as camadas operacionais graduais da loja:
+   - 'active': operação regular do catálogo, checkout e painel administrativo.
+   - 'showcase_only' (Modo Vitrine / Checkout Suspenso): vitrina e produtos visíveis ao público para preservar tráfego e SEO, desativando o fechamento do checkout com aviso amigável.
+   - 'management_locked' (Bloqueio de Gestão): checkout recebendo pedidos normalmente, com painel do lojista operando em modo de leitura (impede edição de produtos e configurações).
+   - 'maintenance' (Manutenção Institucional): vitrina com tela/aviso amigável de manutenção configurado pelo Master e dados de suporte.
+   - 'suspended': suspensão total das operações.
+3. Modo Suporte com Impersonação Segura: aceite tokens temporários de 15 min do Master via parâmetros de URL (?impersonate_token=SUP-...&support_mode=true) para suporte técnico assistido, exibindo faixa indicativa no topo do painel do lojista.
+4. Exiba avisos do Master na caixa autorizada da loja, nunca notificações internas de todas as empresas.
+5. Aplique plano, configurações e permissões recebidos de fonte autorizada. Loja não pode editar preço, franquia, tarifa, contratos ou ativação. Não converta códigos legados 130/delivery para Business nem faça upgrade.
+6. Não retire funções existentes antes de conferir sua origem contratual. Informe pendências de backend em vez de simular bloqueio, vigência ou sincronização.`;
     case "orders":
       return `OBJETIVO ESPECÍFICO — CONTAGEM AUTOMÁTICA DE PEDIDOS
 Mapeie criação, aceite real, recusa, entrega, cancelamento e exclusão/ocultação do código existente. Instrumente apenas transições comprovadas, com eventos mínimos, sem reconstruir o fluxo.
@@ -227,8 +233,8 @@ Para cada item, informar: executado/aprovado, executado/com erro, não executado
 [ ] Identidade e projeto da loja; [ ] login e usuários; [ ] isolamento entre lojas; [ ] produtos/categorias preservados;
 [ ] carrinho/checkout quando contratados; [ ] pedido criado; [ ] aceite real e rejeição; [ ] cancelamento antes/depois do aceite;
 [ ] entrega/conclusão; [ ] exclusão/ocultação; [ ] contagem única sob reenvio e falha de rede; [ ] anulação auditada;
-[ ] competência mensal/franquia proporcional; [ ] notificações em 80%/100%; [ ] continuidade após franquia;
-[ ] suspensão/manutenção/reativação administrativa; [ ] permissões do Master e impossibilidade de alteração contratual pelo lojista;
+[ ] virada do mês/fuso America/Sao_Paulo; [ ] suspensão/modo vitrine/bloqueio de gestão/manutenção/reativação administrativa;
+[ ] suporte assistido com impersonação temporária auditada; [ ] permissões do Master;
 [ ] adicionais contratados, check-ins e bloqueio de módulos não autorizados; [ ] segurança/privacidade; [ ] tablet/celular.
 Não transforme itens não executados em aprovados. Testes que exijam outro ambiente, credencial, migração ou operação externa dependem de autorização específica. Não crie compras reais nem envie notificações a consumidores para demonstrar funcionamento.
 Gere a auditoria de homologação para o Master. Não marque integração como verificada por uma declaração manual ou por ter recebido este texto.`;

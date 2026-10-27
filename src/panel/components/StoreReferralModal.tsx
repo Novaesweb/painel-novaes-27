@@ -12,9 +12,11 @@ import {
   Store,
   DollarSign,
   Smartphone,
-  Check
+  Check,
+  FileText
 } from 'lucide-react'
 import { playNotificationSound } from '../lib/soundEffects'
+import referralPromptTemplate from '../../../PROMPT_INDIQUE_E_GANHE_LOJA.md?raw'
 import './StoreReferralModal.css'
 
 export interface ReferralStoreTarget {
@@ -70,6 +72,7 @@ export const StoreReferralModal: React.FC<StoreReferralModalProps> = ({
 }) => {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedMessage, setCopiedMessage] = useState(false)
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [newReferredName, setNewReferredName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
 
@@ -109,6 +112,16 @@ export const StoreReferralModal: React.FC<StoreReferralModalProps> = ({
     playNotificationSound('site')
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleCopyPrompt() {
+    const customizedPrompt = referralPromptTemplate
+      .replace(/NX-LOJA/g, store.nx_id)
+    navigator.clipboard.writeText(customizedPrompt).then(() => {
+      setCopiedPrompt(true)
+      playNotificationSound('site')
+      setTimeout(() => setCopiedPrompt(false), 2500)
+    })
   }
 
   function handleAddManualReferral(e: React.FormEvent) {
@@ -231,6 +244,25 @@ export const StoreReferralModal: React.FC<StoreReferralModalProps> = ({
               </div>
             </div>
             <pre className="ref-msg-preview">{shareMessage}</pre>
+          </div>
+
+          {/* Card do Prompt para a IA da Loja */}
+          <div className="ref-prompt-card">
+            <div className="ref-prompt-header">
+              <div className="ref-prompt-title-row">
+                <FileText size={15} className="ref-sparkle" />
+                <strong>Prompt Oficial para a IA da Loja</strong>
+              </div>
+              <p>Envie este prompt no chat da loja para instalar o card de indicação no painel do lojista (<code>/painel</code>).</p>
+            </div>
+            <button
+              type="button"
+              className={`ref-btn-copy-prompt ${copiedPrompt ? 'copied' : ''}`}
+              onClick={handleCopyPrompt}
+            >
+              {copiedPrompt ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+              <span>{copiedPrompt ? 'Prompt da Loja Copiado!' : 'Copiar Prompt para a IA da Loja'}</span>
+            </button>
           </div>
 
           {/* Registro de Indicação Manual */}

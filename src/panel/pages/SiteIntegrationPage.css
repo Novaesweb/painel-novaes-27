@@ -124,5 +124,59 @@
   box-shadow:0 6px 18px rgba(147,51,234,.5);
 }
 
-@media(max-width:900px){.site-integration-prompts,.workflow-scenarios-grid{grid-template-columns:1fr}.site-footer-quick-banner{flex-direction:column;align-items:stretch}}@media(max-width:760px){.site-integration-card,.site-integration-guide,.site-workflow-banner{padding:18px 15px}.site-integration-copy{font-size:12px}.site-integration-card-heading{gap:10px}.site-integration-card h2{font-size:14px}}
+/* Banner Rápido: Programa Indique e Ganhe */
+.site-referral-quick-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:22px 24px;
+  background:linear-gradient(135deg,rgba(36,22,12,.9),rgba(18,11,7,.95));
+  border:1px solid rgba(245,158,11,.4);
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 25px rgba(245,158,11,.08);
+  flex-wrap:wrap;
+  margin-top:4px;
+}
+.site-referral-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 10px;
+  border-radius:20px;
+  background:rgba(245,158,11,.15);
+  border:1px solid rgba(245,158,11,.4);
+  color:#fde68a;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  width:fit-content;
+}
+.gift-icon-bounce{
+  color:#fbbf24;
+}
+.site-referral-quick-copy{
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 18px;
+  font-size:13px;
+  font-weight:700;
+  border-radius:10px;
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+  border:1px solid rgba(245,158,11,.6);
+  color:#1c1917;
+  cursor:pointer;
+  transition:all .2s ease;
+  box-shadow:0 4px 14px rgba(245,158,11,.3);
+}
+.site-referral-quick-copy:hover{
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(245,158,11,.45);
+}
+
+@media(max-width:900px){.site-integration-prompts,.workflow-scenarios-grid{grid-template-columns:1fr}.site-footer-quick-banner,.site-referral-quick-banner{flex-direction:column;align-items:stretch}}@media(max-width:760px){.site-integration-card,.site-integration-guide,.site-workflow-banner{padding:18px 15px}.site-integration-copy{font-size:12px}.site-integration-card-heading{gap:10px}.site-integration-card h2{font-size:14px}}
 

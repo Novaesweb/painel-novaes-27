@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle, Heart } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle, Heart, Gift } from 'lucide-react'
 import { useSearchParams } from '../lib/router-compat'
 import { integrationPrompts } from '../lib/integrationPrompt'
 import footerVersionPrompt from '../../../PROMPT_RODAPE_E_VERSAO_LOJA.md?raw'
+import referralPrompt from '../../../PROMPT_INDIQUE_E_GANHE_LOJA.md?raw'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
 import './SiteIntegrationPage.css'
 import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
@@ -271,6 +272,28 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
             >
               {copied === 'footer-v52' ? <Check size={16} /> : <Copy size={16} />}
               <span>{copied === 'footer-v52' ? 'Prompt de Rodapé Copiado!' : 'Copiar Prompt de Rodapé e Versão (v5.2)'}</span>
+            </button>
+          </section>
+
+          {/* Card Rápido: Programa Indique e Ganhe */}
+          <section className="panel site-referral-quick-banner" aria-label="Programa Indique e Ganhe">
+            <div className="site-footer-quick-content">
+              <div className="site-referral-badge">
+                <Gift size={14} className="gift-icon-bounce" />
+                <span>Crescimento Viral & Bonificação</span>
+              </div>
+              <h3>Programa Indique e Ganhe: Card no Painel do Lojista</h3>
+              <p>
+                Prompt oficial para instalar o card <strong>"Ganhe R$ 30 por indicação"</strong> com link exclusivo de parceiro e botão de compartilhamento no WhatsApp dentro do painel do lojista (<code>/painel</code>).
+              </p>
+            </div>
+            <button
+              type="button"
+              className="primary-button site-referral-quick-copy"
+              onClick={() => void copyPrompt('referral-prompt', referralPrompt.trim())}
+            >
+              {copied === 'referral-prompt' ? <Check size={16} /> : <Copy size={16} />}
+              <span>{copied === 'referral-prompt' ? 'Prompt de Indicação Copiado!' : 'Copiar Prompt Indique e Ganhe'}</span>
             </button>
           </section>
         </>

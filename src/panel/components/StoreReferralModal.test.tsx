@@ -92,4 +92,20 @@ describe('StoreReferralModal (Programa Indique e Ganhe)', () => {
       'noopener,noreferrer'
     )
   })
+
+  it('copia o prompt oficial personalizado para a IA da loja', async () => {
+    render(<StoreReferralModal isOpen={true} onClose={vi.fn()} store={mockStore} />)
+
+    const copyPromptBtn = screen.getByText('Copiar Prompt para a IA da Loja')
+    await act(async () => {
+      fireEvent.click(copyPromptBtn)
+    })
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('NX-BURGER77')
+    )
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('PROMPT OFICIAL NOVAESWEB: PROGRAMA INDIQUE E GANHE')
+    )
+  })
 })

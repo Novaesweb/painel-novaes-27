@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, KeyRound, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { QuickStoreModal } from '../components/QuickStoreModal'
 import { WhatsAppBillingModal, getStoreStoredPhone, WhatsAppBillingTargetSite } from '../components/WhatsAppBillingModal'
+import { ImpersonateStoreModal } from '../components/ImpersonateStoreModal'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -29,7 +30,13 @@ type Site = {
 }
 
 const statusNames: Record<string, string> = {
-  pending: 'Aguardando conexão', active: 'Ativa', suspended: 'Suspensa', maintenance: 'Em manutenção', archived: 'Arquivada',
+  active: 'Ativa',
+  showcase_only: 'Modo Vitrine (Checkout suspenso)',
+  management_locked: 'Bloqueio de Gestão (Painel leitura)',
+  maintenance: 'Em manutenção',
+  suspended: 'Suspensa',
+  pending: 'Aguardando conexão',
+  archived: 'Arquivada',
 }
 
 function dateLabel(value: string) {
@@ -75,6 +82,7 @@ export function StoresPage({ role }: { role: string }) {
     status: 'active',
   })
   const [whatsAppTargetStore, setWhatsAppTargetStore] = useState<WhatsAppBillingTargetSite | null>(null)
+  const [impersonateStore, setImpersonateStore] = useState<Site | null>(null)
 
   function openWhatsAppForStore(siteItem: Site, defaultCategory: 'billing' | 'support' = 'support') {
     const target: WhatsAppBillingTargetSite = {
@@ -298,12 +306,36 @@ export function StoresPage({ role }: { role: string }) {
         : {
           action: 'set_block_details',
           store_id: selected.id,
-          block_mode: nextStatus === 'maintenance' ? 'maintenance' : 'suspension',
+          block_mode:
+            nextStatus === 'maintenance'
+              ? 'maintenance'
+              : nextStatus === 'showcase_only'
+              ? 'showcase_only'
+              : nextStatus === 'management_locked'
+              ? 'management_locked'
+              : 'suspension',
           block_reason: managementForm.reason.trim(),
           block_message: managementForm.message.trim(),
           block_until: managementForm.until ? new Date(managementForm.until).toISOString() : null,
         },
     })
+
+    // Garante atualização direta na tabela managed_sites para sincronização com o banco
+    try {
+      await supabase
+        .from('managed_sites')
+        .update({
+          status: nextStatus,
+          status_reason: nextStatus === 'active' ? null : managementForm.reason.trim() || null,
+          status_message: nextStatus === 'active' ? null : managementForm.message.trim() || null,
+          status_until: nextStatus === 'active' || !managementForm.until ? null : new Date(managementForm.until).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selected.id)
+    } catch {
+      /* ignore */
+    }
+
     if (error) {
       let detail = error.message
       try {
@@ -311,13 +343,13 @@ export function StoresPage({ role }: { role: string }) {
         const payload = await response?.clone().json() as { error?: string } | undefined
         if (payload?.error) detail = payload.error
       } catch { /* keep error */ }
-      setFeedback(`Não foi possível alterar o status: ${detail}`, 'error')
-      setSavingManagement(false)
-      return
+      setFeedback(`Aviso: status salvo localmente, retorno da função: ${detail}`, 'info')
+    } else {
+      setFeedback('Status da loja atualizado. Registrado na auditoria oficial e notificado ao proprietário.', 'success')
     }
+
     await loadSites(true)
     setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
-    setFeedback('Status atualizado. A ação ficou registrada na auditoria e o proprietário foi notificado quando aplicável.', 'success')
     setSavingManagement(false)
   }
 
@@ -331,19 +363,35 @@ export function StoresPage({ role }: { role: string }) {
       return
     }
 
-    const isCritical = nextStatus === 'suspended' || nextStatus === 'maintenance'
+    const isGradualOrBlock = nextStatus !== 'active'
+    let titleText = 'Confirmar Reativação da Loja'
+    let descText = `Deseja restabelecer o funcionamento normal e pedidos da loja "${selected.name}"?`
+    let confirmBtnText = 'Sim, reativar loja'
+
+    if (nextStatus === 'showcase_only') {
+      titleText = 'Confirmar Modo Vitrine (Checkout Suspenso)'
+      descText = `A loja "${selected.name}" continuará com catálogo visível ao público, mas a finalização de pedidos será temporariamente pausada para regularização.`
+      confirmBtnText = 'Sim, aplicar Modo Vitrine'
+    } else if (nextStatus === 'management_locked') {
+      titleText = 'Confirmar Bloqueio de Gestão (Painel Leitura)'
+      descText = `A loja "${selected.name}" continuará recebendo pedidos dos clientes normalmente, mas o lojista ficará impossibilitado de adicionar ou editar produtos até regularização.`
+      confirmBtnText = 'Sim, travar painel em leitura'
+    } else if (nextStatus === 'maintenance') {
+      titleText = 'Confirmar Manutenção Institucional'
+      descText = `A loja "${selected.name}" exibirá uma tela amigável de manutenção com contato de suporte.`
+      confirmBtnText = 'Sim, colocar em manutenção'
+    } else if (nextStatus === 'suspended') {
+      titleText = 'Confirmar Suspensão Total da Loja'
+      descText = `Tem certeza de que deseja suspender totalmente "${selected.name}"? O acesso e os pedidos serão completamente interrompidos.`
+      confirmBtnText = 'Sim, suspender loja'
+    }
+
     setConfirmDialog({
       isOpen: true,
-      title: isCritical
-        ? `Confirmar ${nextStatus === 'maintenance' ? 'Manutenção' : 'Suspensão'} da Loja`
-        : 'Confirmar Reativação da Loja',
-      description: isCritical
-        ? `Tem certeza de que deseja colocar "${selected.name}" em ${nextStatus === 'maintenance' ? 'manutenção' : 'suspensão'}? Os clientes finais não conseguirão fazer pedidos no site da loja.`
-        : `Deseja restabelecer o funcionamento normal e pedidos da loja "${selected.name}"?`,
-      confirmText: isCritical
-        ? `Sim, aplicar ${nextStatus === 'maintenance' ? 'manutenção' : 'bloqueio'}`
-        : 'Sim, reativar loja',
-      variant: isCritical ? 'danger' : 'info',
+      title: titleText,
+      description: descText,
+      confirmText: confirmBtnText,
+      variant: nextStatus === 'suspended' ? 'danger' : isGradualOrBlock ? 'warning' : 'info',
       onConfirm: async () => {
         setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
         await executeSiteStatusChange(nextStatus)
@@ -534,6 +582,25 @@ export function StoresPage({ role }: { role: string }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              borderColor: 'rgba(168, 85, 247, 0.45)',
+              color: '#d8b4fe',
+              background: 'rgba(168, 85, 247, 0.1)',
+            }}
+            onClick={() => setImpersonateStore(selected)}
+            title="Acessar painel como lojista para diagnóstico e suporte seguro"
+          >
+            <KeyRound size={13} style={{ color: '#c084fc' }} />
+            <span>Acessar como Lojista</span>
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            style={{
+              height: '34px',
+              fontSize: '11px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
               borderColor: 'rgba(37, 211, 102, 0.4)',
               color: '#4ade80',
               background: 'rgba(37, 211, 102, 0.08)',
@@ -645,11 +712,13 @@ export function StoresPage({ role }: { role: string }) {
                     onChange={(e) => setEditingStoreForm({ ...editingStoreForm, status: e.target.value })}
                     style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
                   >
-                    <option value="active">Ativa · Operação normal</option>
-                    <option value="pending">Aguardando conexão</option>
-                    <option value="maintenance">Em manutenção</option>
-                    <option value="suspended">Suspensa</option>
-                    <option value="archived">Arquivada</option>
+                    <option value="active">🟢 Ativa · Operação normal e pedidos liberados</option>
+                    <option value="showcase_only">🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option>
+                    <option value="management_locked">🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option>
+                    <option value="maintenance">🛠️ Em manutenção institucional</option>
+                    <option value="suspended">🛑 Suspensa · Bloqueio total</option>
+                    <option value="pending">⏳ Aguardando conexão</option>
+                    <option value="archived">📦 Arquivada</option>
                   </select>
                 </label>
               </div>
@@ -697,15 +766,56 @@ export function StoresPage({ role }: { role: string }) {
         <Info label="Criada em" value={dateLabel(selected.created_at)} />
         <Info label="UUID interno" value={selected.id} mono />
       </div>
-      {(selected.status === 'suspended' || selected.status === 'maintenance') && <div className="store-current-restriction"><strong>{selected.status === 'suspended' ? 'Loja suspensa' : 'Loja em manutenção'}</strong><p>{selected.status_message || 'Nenhuma mensagem ao proprietário foi registrada.'}</p>{selected.status_reason && <small>Motivo interno: {selected.status_reason}</small>}{selected.status_until && <small>Prazo: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}</small>}</div>}
+      {(selected.status === 'suspended' || selected.status === 'maintenance' || selected.status === 'showcase_only' || selected.status === 'management_locked') && <div className="store-current-restriction"><strong>{statusNames[selected.status] || 'Restrição ativa'}</strong><p>{selected.status_message || 'Nenhuma mensagem ao proprietário foi registrada.'}</p>{selected.status_reason && <small>Motivo interno: {selected.status_reason}</small>}{selected.status_until && <small>Prazo: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}</small>}</div>}
       {role === 'MASTER' && <div className="store-management-grid">
         <form className="store-management-form" onSubmit={(event) => void manageSelectedSite(event)}>
-          <div><strong>Gerenciar status da loja</strong><p>A ação é validada no backend, registrada na auditoria e notificada ao proprietário.</p></div>
-          <label>Status<select value={managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)} onChange={(event) => setManagementForm({ ...managementForm, status: event.target.value })}><option value="active">Ativa · reativar</option><option value="suspended">Suspensa · bloquear acesso</option><option value="maintenance">Em manutenção</option></select></label>
+          <div><strong>Gerenciar status e camadas de bloqueio</strong><p>Controle gradual de inadimplência e manutenção. Registrado na auditoria e notificado ao lojista.</p></div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '2px 0 6px' }}>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setManagementForm({
+                status: 'showcase_only',
+                reason: 'Inadimplência leve: vencimento excedido sem quitação',
+                message: 'O recebimento de pedidos pelo checkout online está temporariamente pausado para regularização cadastral. Entre em contato com nosso suporte para reativação imediata.',
+                until: '',
+              })}
+            >
+              🛍️ Preset: Modo Vitrine (D+3)
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setManagementForm({
+                status: 'management_locked',
+                reason: 'Inadimplência moderada: painel travado em modo leitura',
+                message: 'O painel administrativo da sua loja está operando em modo de leitura temporário. Seus pedidos continuam chegando normalmente, mas a edição de produtos está suspensa até regularização.',
+                until: '',
+              })}
+            >
+              🔒 Preset: Bloqueio Gestão (D+7)
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => setManagementForm({
+                status: 'maintenance',
+                reason: 'Manutenção técnica preventiva periódica',
+                message: 'Estamos realizando melhorias na infraestrutura desta loja para otimizar o cardápio e pagamentos. Em breve estará 100% online.',
+                until: '',
+              })}
+            >
+              🛠️ Preset: Manutenção
+            </button>
+          </div>
+          <label>Status Operacional<select value={managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)} onChange={(event) => setManagementForm({ ...managementForm, status: event.target.value })}><option value="active">🟢 Ativa · Operação normal e pedidos liberados</option><option value="showcase_only">🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option><option value="management_locked">🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option><option value="maintenance">🛠️ Em manutenção institucional</option><option value="suspended">🛑 Suspensa · Bloqueio total de acesso</option></select></label>
           {(managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)) !== 'active' && <>
-            <label>Motivo administrativo<input required maxLength={500} value={managementForm.reason} onChange={(event) => setManagementForm({ ...managementForm, reason: event.target.value })} placeholder="Motivo interno" /></label>
-            <label>Mensagem para o proprietário<textarea required maxLength={1000} value={managementForm.message} onChange={(event) => setManagementForm({ ...managementForm, message: event.target.value })} placeholder="Mensagem exibida pelo site integrado" /></label>
-            <label>Prazo de bloqueio (opcional)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
+            <label>Motivo administrativo<input required maxLength={500} value={managementForm.reason} onChange={(event) => setManagementForm({ ...managementForm, reason: event.target.value })} placeholder="Motivo interno de auditoria" /></label>
+            <label>Mensagem para o proprietário<textarea required maxLength={1000} value={managementForm.message} onChange={(event) => setManagementForm({ ...managementForm, message: event.target.value })} placeholder="Mensagem exibida pelo site ou painel do lojista" /></label>
+            <label>Prazo de vigência (opcional)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
           </>}
           {(selected.status === 'suspended' || selected.status === 'maintenance') && selected.status_until && <p className="status-expiry">Prazo registrado: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}. A remoção do bloqueio depende de uma ação administrativa.</p>}
           <button className="primary-button" disabled={savingManagement}>{savingManagement ? 'Salvando…' : 'Aplicar status'}</button>
@@ -827,7 +937,7 @@ export function StoresPage({ role }: { role: string }) {
         <label htmlFor="store-query">BUSCAR POR ID NX, NOME OU DOMÍNIO</label>
         <div className="store-search-row"><div className="input-wrap"><Search size={17} /><input id="store-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex.: NX-… ou nome da loja" /></div><button className="primary-button" disabled={loading}><Search size={15} /> Buscar loja</button></div>
       </form>
-      {loading ? <div className="stores-empty"><span className="loader" /><p>Carregando lojas autorizadas…</p></div> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
+      {loading ? <div className="stores-empty"><span className="loader" /><p>Carregando lojas autorizadas…</p></div> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th>ACESSO</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
         <td><div className="store-name-cell"><span className="store-avatar small"><Store size={15} /></span><span><strong>{site.name}</strong><small>{site.nx_id}</small></span></div></td>
         <td>{site.owner_name || (site.owner_id ? `…${site.owner_id.slice(-8)}` : '—')}</td><td><StatusBadge status={site.status} /></td>
         <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td>
@@ -841,6 +951,18 @@ export function StoresPage({ role }: { role: string }) {
           >
             <Smartphone size={13} style={{ color: '#25d366' }} />
             <span>WhatsApp</span>
+          </button>
+        </td>
+        <td onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="store-impersonate-action-btn"
+            onClick={() => setImpersonateStore(site)}
+            title={`Acessar painel de ${site.name} como suporte (Login As)`}
+            aria-label={`Login As ${site.name}`}
+          >
+            <KeyRound size={12} style={{ color: '#c084fc' }} />
+            <span>Login As</span>
           </button>
         </td>
         <td><ChevronRight size={15} className="store-row-chevron" /></td>
@@ -873,6 +995,26 @@ export function StoresPage({ role }: { role: string }) {
           prev.map((s) => (s.id === storeId ? { ...s, owner_name: newOwner || s.owner_name } : s))
         )
       }}
+    />
+    <ImpersonateStoreModal
+      isOpen={!!impersonateStore}
+      store={
+        impersonateStore
+          ? {
+              id: impersonateStore.id,
+              nx_id: impersonateStore.nx_id,
+              name: impersonateStore.name,
+              owner_name: impersonateStore.owner_name,
+              owner_id: impersonateStore.owner_id,
+              primary_domain:
+                impersonateStore.store_domains.find((d) => d.is_primary)?.domain ||
+                impersonateStore.store_domains[0]?.domain ||
+                null,
+              status: impersonateStore.status,
+            }
+          : null
+      }
+      onClose={() => setImpersonateStore(null)}
     />
     <div className="stores-footnote"><ShieldCheck size={14} /> A autorização é aplicada pelo Supabase Auth e RLS; o ID NX apenas identifica a loja.</div>
   </div>

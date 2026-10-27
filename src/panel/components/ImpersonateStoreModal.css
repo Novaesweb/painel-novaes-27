@@ -1,0 +1,380 @@
+/* Modal de Impersonação Segura (Login As / Acesso de Suporte) */
+.imp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.78);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+  animation: impFadeIn 0.2s ease-out;
+}
+
+@keyframes impFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.imp-modal-card {
+  width: 100%;
+  max-width: 620px;
+  background: #0b1120;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.imp-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, transparent 100%);
+}
+
+.imp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.imp-badge-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.2);
+}
+
+.imp-header-left h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.imp-header-left p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.imp-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.imp-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Resumo da Loja */
+.imp-target-summary {
+  padding: 14px 20px;
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.imp-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.imp-sum-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.imp-sum-item strong {
+  color: #f1f5f9;
+}
+
+.imp-icon-purple {
+  color: #a855f7;
+}
+
+.imp-nx-tag {
+  font-family: monospace;
+  font-size: 10px;
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.imp-domain-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.imp-domain-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #60a5fa;
+  text-decoration: none;
+  font-family: monospace;
+}
+
+.imp-domain-link:hover {
+  text-decoration: underline;
+  color: #93c5fd;
+}
+
+/* Corpo */
+.imp-modal-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.imp-security-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+}
+
+.imp-shield-ok {
+  color: #34d399;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.imp-security-notice strong {
+  display: block;
+  font-size: 12px;
+  color: #6ee7b7;
+  margin-bottom: 2px;
+}
+
+.imp-security-notice p {
+  margin: 0;
+  font-size: 11px;
+  color: #a7f3d0;
+  line-height: 1.45;
+}
+
+/* Credenciais */
+.imp-credentials-box {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.imp-cred-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.imp-cred-item span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.imp-token-code {
+  font-family: monospace;
+  font-size: 12px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.imp-expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.imp-reason-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.imp-reason-label input {
+  height: 38px;
+  padding: 0 12px;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.imp-reason-label input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+}
+
+/* Link Box */
+.imp-link-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.imp-link-box label {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.imp-link-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.imp-link-input-row input {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 6px;
+  color: #c4b5fd;
+  font-family: monospace;
+  font-size: 11px;
+  outline: none;
+}
+
+.imp-btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 38px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 6px;
+  color: #e9d5ff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.imp-btn-copy:hover {
+  background: rgba(168, 85, 247, 0.28);
+  color: #fff;
+}
+
+.imp-btn-copy.copied {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #86efac;
+}
+
+/* Rodapé */
+.imp-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.4);
+}
+
+.imp-btn-cancel {
+  padding: 9px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.imp-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.imp-btn-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  border: 1px solid rgba(192, 132, 252, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(147, 51, 234, 0.4);
+  transition: all 0.2s ease;
+}
+
+.imp-btn-launch:hover {
+  background: linear-gradient(135deg, #a855f7, #9333ea);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.55);
+}

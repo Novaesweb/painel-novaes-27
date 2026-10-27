@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle, Heart, Gift } from 'lucide-react'
+import { Check, Copy, Sparkles, Layers, Store, ArrowRight, CheckCircle2, HelpCircle, Heart, Gift, BookOpen } from 'lucide-react'
 import { useSearchParams } from '../lib/router-compat'
 import { integrationPrompts } from '../lib/integrationPrompt'
 import footerVersionPrompt from '../../../PROMPT_RODAPE_E_VERSAO_LOJA.md?raw'
 import referralPrompt from '../../../PROMPT_INDIQUE_E_GANHE_LOJA.md?raw'
+import onboardingPrompt from '../../../PROMPT_GUIA_PASSO_A_PASSO_LOJISTA.md?raw'
 import { PromptGeneratorSection } from './PromptGeneratorSection'
 import './SiteIntegrationPage.css'
 import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
@@ -294,6 +295,28 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
             >
               {copied === 'referral-prompt' ? <Check size={16} /> : <Copy size={16} />}
               <span>{copied === 'referral-prompt' ? 'Prompt de Indicação Copiado!' : 'Copiar Prompt Indique e Ganhe'}</span>
+            </button>
+          </section>
+
+          {/* Card Rápido: Guia Passo a Passo Oficial (Business & Premium) */}
+          <section className="panel site-onboarding-quick-banner" aria-label="Guia Passo a Passo do Lojista">
+            <div className="site-footer-quick-content">
+              <div className="site-onboarding-badge">
+                <BookOpen size={14} className="guide-icon-pulse" />
+                <span>Onboarding & Manual do Lojista</span>
+              </div>
+              <h3>Guia Passo a Passo: Mapa do Painel e Regras dos Planos (Business & Premium)</h3>
+              <p>
+                Prompt oficial completo para instalar a <strong>Central de Boas-Vindas e Tour Operacional</strong> no painel do lojista (<code>/painel</code>), explicando o que fazer em cada tela (pedidos, produtos, horários, Pix, frete), o significado do Código NX e a regra de <strong>Zero Bloqueio</strong> na franquia de pedidos.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="primary-button site-onboarding-quick-copy"
+              onClick={() => void copyPrompt('onboarding-prompt', onboardingPrompt.trim())}
+            >
+              {copied === 'onboarding-prompt' ? <Check size={16} /> : <Copy size={16} />}
+              <span>{copied === 'onboarding-prompt' ? 'Prompt do Guia Copiado!' : 'Copiar Prompt do Guia Passo a Passo'}</span>
             </button>
           </section>
         </>

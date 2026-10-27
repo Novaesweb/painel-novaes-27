@@ -368,3 +368,182 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Histórico do Último Envio */
+.wb-last-sent-bar {
+  margin: 10px 20px 0;
+  padding: 10px 14px;
+  background: rgba(147, 51, 234, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-last-sent-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.wb-clock-icon {
+  color: #c084fc;
+}
+
+.wb-history-status {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.wb-status-sent {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.wb-status-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.wb-last-sent-snippet {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Validação Visual de Telefone */
+.wb-field-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.wb-validation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.wb-val-valid {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.wb-val-warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.wb-input-phone.wb-input-valid {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+/* Seletor de Modelos em 1 Clique (Templates) */
+.wb-templates-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 10px;
+}
+
+.wb-templates-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.wb-sparkle-icon {
+  color: #fbbf24;
+}
+
+.wb-template-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.wb-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.wb-chip.active {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #a855f7;
+  color: #f3e8ff;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+}
+
+.wb-chip-friendly.active {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.18);
+  color: #ecfdf5;
+}
+
+.wb-chip-due.active {
+  border-color: #fbbf24;
+  background: rgba(245, 158, 11, 0.18);
+  color: #fffbeb;
+}
+
+.wb-chip-overdue.active {
+  border-color: #f87171;
+  background: rgba(239, 68, 68, 0.18);
+  color: #fef2f2;
+}
+
+.wb-chip-suspension.active {
+  border-color: #ef4444;
+  background: rgba(220, 38, 38, 0.22);
+  color: #fff;
+}
+
+.wb-chip-support.active {
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.18);
+  color: #eff6ff;
+}
+

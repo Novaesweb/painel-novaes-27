@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
-import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, X } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { QuickStoreModal } from '../components/QuickStoreModal'
+import { WhatsAppBillingModal, getStoreStoredPhone, WhatsAppBillingTargetSite } from '../components/WhatsAppBillingModal'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -73,6 +74,22 @@ export function StoresPage({ role }: { role: string }) {
     custom_plan_code: '',
     status: 'active',
   })
+  const [whatsAppTargetStore, setWhatsAppTargetStore] = useState<WhatsAppBillingTargetSite | null>(null)
+
+  function openWhatsAppForStore(siteItem: Site, defaultCategory: 'billing' | 'support' = 'support') {
+    const target: WhatsAppBillingTargetSite = {
+      id: siteItem.id,
+      nx_id: siteItem.nx_id,
+      name: siteItem.name,
+      owner_name: siteItem.owner_name,
+      owner_phone: getStoreStoredPhone(siteItem.id) || null,
+      plan_code: siteItem.plan_code,
+      plan_expires_at: null,
+      payment_status: siteItem.status === 'suspended' ? 'overdue' : 'pending',
+    }
+    setWhatsAppTargetStore(target)
+  }
+
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
@@ -508,6 +525,25 @@ export function StoresPage({ role }: { role: string }) {
         <div><span className="store-nx">{selected.nx_id}</span><h2>{selected.name}</h2></div>
         <StatusBadge status={selected.status} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="secondary-button"
+            style={{
+              height: '34px',
+              fontSize: '11px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderColor: 'rgba(37, 211, 102, 0.4)',
+              color: '#4ade80',
+              background: 'rgba(37, 211, 102, 0.08)',
+            }}
+            onClick={() => openWhatsAppForStore(selected, 'support')}
+            title="Conversar com o lojista no WhatsApp oficial"
+          >
+            <Smartphone size={13} style={{ color: '#25d366' }} />
+            <span>WhatsApp do Lojista</span>
+          </button>
           {role === 'MASTER' && (
             <button
               type="button"
@@ -791,10 +827,23 @@ export function StoresPage({ role }: { role: string }) {
         <label htmlFor="store-query">BUSCAR POR ID NX, NOME OU DOMÍNIO</label>
         <div className="store-search-row"><div className="input-wrap"><Search size={17} /><input id="store-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex.: NX-… ou nome da loja" /></div><button className="primary-button" disabled={loading}><Search size={15} /> Buscar loja</button></div>
       </form>
-      {loading ? <div className="stores-empty"><span className="loader" /><p>Carregando lojas autorizadas…</p></div> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
+      {loading ? <div className="stores-empty"><span className="loader" /><p>Carregando lojas autorizadas…</p></div> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
         <td><div className="store-name-cell"><span className="store-avatar small"><Store size={15} /></span><span><strong>{site.name}</strong><small>{site.nx_id}</small></span></div></td>
         <td>{site.owner_name || (site.owner_id ? `…${site.owner_id.slice(-8)}` : '—')}</td><td><StatusBadge status={site.status} /></td>
-        <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td><td><ChevronRight size={15} className="store-row-chevron" /></td>
+        <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td>
+        <td onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="store-whatsapp-action-btn"
+            onClick={() => openWhatsAppForStore(site, 'support')}
+            title={`Conversar com o lojista de ${site.name} no WhatsApp`}
+            aria-label={`WhatsApp ${site.name}`}
+          >
+            <Smartphone size={13} style={{ color: '#25d366' }} />
+            <span>WhatsApp</span>
+          </button>
+        </td>
+        <td><ChevronRight size={15} className="store-row-chevron" /></td>
       </tr>)}</tbody></table></div>}
     </section>}
     <ConfirmModal
@@ -812,6 +861,17 @@ export function StoresPage({ role }: { role: string }) {
       onSuccess={(newId) => {
         setSelectedId(newId)
         void loadSites(true)
+      }}
+    />
+    <WhatsAppBillingModal
+      isOpen={!!whatsAppTargetStore}
+      site={whatsAppTargetStore}
+      onClose={() => setWhatsAppTargetStore(null)}
+      initialCategory="support"
+      onSavedPhone={(storeId, newPhone, newOwner) => {
+        setSites((prev) =>
+          prev.map((s) => (s.id === storeId ? { ...s, owner_name: newOwner || s.owner_name } : s))
+        )
       }}
     />
     <div className="stores-footnote"><ShieldCheck size={14} /> A autorização é aplicada pelo Supabase Auth e RLS; o ID NX apenas identifica a loja.</div>

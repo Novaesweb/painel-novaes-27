@@ -97,6 +97,60 @@ export function normalizeWhatsAppNumber(rawPhone: string): string {
 }
 
 /**
+ * Formata visualmente um número brasileiro com máscara dinâmica: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX.
+ */
+export function formatPhoneMaskBR(rawValue: string): string {
+  let digits = rawValue.replace(/\D/g, '')
+  if (digits.startsWith('55') && digits.length >= 12) {
+    digits = digits.slice(2)
+  }
+  digits = digits.slice(0, 11)
+  if (!digits) return ''
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+}
+
+/**
+ * Validação estruturada de número para envio WhatsApp.
+ */
+export function validateWhatsAppNumberBR(rawValue: string): {
+  valid: boolean
+  cleanNumber: string
+  digitsOnly: string
+  reason?: string
+} {
+  const digits = rawValue.replace(/\D/g, '')
+  if (!digits) {
+    return { valid: false, cleanNumber: '', digitsOnly: '', reason: 'Informe o número com DDD' }
+  }
+  const nationalDigits = digits.startsWith('55') && digits.length >= 12 ? digits.slice(2) : digits
+  if (nationalDigits.length < 10) {
+    const missing = 11 - nationalDigits.length
+    return {
+      valid: false,
+      cleanNumber: normalizeWhatsAppNumber(digits),
+      digitsOnly: digits,
+      reason: `Faltam ${missing} dígito${missing > 1 ? 's' : ''} (DDD + número)`,
+    }
+  }
+  if (nationalDigits.length > 11) {
+    return {
+      valid: false,
+      cleanNumber: normalizeWhatsAppNumber(digits),
+      digitsOnly: digits,
+      reason: 'Número com dígitos a mais que o padrão nacional',
+    }
+  }
+  return {
+    valid: true,
+    cleanNumber: normalizeWhatsAppNumber(digits),
+    digitsOnly: digits,
+  }
+}
+
+/**
  * Checa o estado da instância da Evolution API (ex: open, connecting, close).
  */
 export async function checkEvolutionConnection(): Promise<{
@@ -283,3 +337,32 @@ export function getEvolutionHistory(): WhatsAppHistoryEntry[] {
     return []
   }
 }
+
+/**
+ * Busca a mensagem mais recente enviada para um telefone ou loja específica.
+ */
+export function getLatestWhatsAppHistoryForStore(
+  phoneOrName: string
+): WhatsAppHistoryEntry | undefined {
+  const history = getEvolutionHistory()
+  if (!history.length || !phoneOrName) return undefined
+
+  const cleanDigits = phoneOrName.replace(/\D/g, '')
+  const queryLower = phoneOrName.trim().toLowerCase()
+
+  return history.find((entry) => {
+    if (cleanDigits && cleanDigits.length >= 8) {
+      const entryDigits = entry.recipientPhone.replace(/\D/g, '')
+      if (entryDigits.includes(cleanDigits) || cleanDigits.includes(entryDigits)) {
+        return true
+      }
+    }
+    if (entry.recipientName && queryLower.length >= 3) {
+      if (entry.recipientName.toLowerCase().includes(queryLower)) {
+        return true
+      }
+    }
+    return false
+  })
+}
+

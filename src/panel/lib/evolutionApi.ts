@@ -31,11 +31,11 @@ const STORAGE_KEY = 'novaesweb_evolution_config'
 const HISTORY_STORAGE_KEY = 'novaesweb_evolution_history'
 
 export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
-  apiUrl: 'http://127.0.0.1:8080',
-  apiKey: '139867a788c3b642cac13625250d223821a194511934363f37d289809ae771e3',
-  instanceName: 'novaesweb_teste',
+  apiUrl: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_EVOLUTION_API_URL) || 'http://127.0.0.1:8080',
+  apiKey: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_EVOLUTION_API_KEY) || '',
+  instanceName: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_EVOLUTION_INSTANCE) || 'novaesweb_teste',
   autoSendEnabled: true,
-  defaultRecipientPhone: '51981964238',
+  defaultRecipientPhone: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_EVOLUTION_DEFAULT_PHONE) || '51981964238',
 }
 
 /**

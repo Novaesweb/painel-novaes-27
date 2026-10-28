@@ -36,3 +36,7 @@ dist-ssr
 
 # Cache local da CLI Supabase (não versionar)
 supabase/.temp/
+
+# Pasta confidencial de ideias guardadas (NUNCA enviar ao GitHub)
+guardado_na_gaveta/
+guardado_na_gaveta/**

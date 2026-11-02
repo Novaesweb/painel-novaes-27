@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as ApiCronSupabaseKeepaliveRouteImport } from './routes/api/cron/supabase-keepalive'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronSupabaseKeepaliveRoute = ApiCronSupabaseKeepaliveRouteImport.update({
+  id: '/api/cron/supabase-keepalive',
+  path: '/api/cron/supabase-keepalive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$'
+  fullPaths: '/' | '/$' | '/api/cron/supabase-keepalive'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$'
-  id: '__root__' | '/' | '/$'
+  to: '/' | '/$' | '/api/cron/supabase-keepalive'
+  id: '__root__' | '/' | '/$' | '/api/cron/supabase-keepalive'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ApiCronSupabaseKeepaliveRoute: typeof ApiCronSupabaseKeepaliveRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/supabase-keepalive': {
+      id: '/api/cron/supabase-keepalive'
+      path: '/api/cron/supabase-keepalive'
+      fullPath: '/api/cron/supabase-keepalive'
+      preLoaderRoute: typeof ApiCronSupabaseKeepaliveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ApiCronSupabaseKeepaliveRoute: ApiCronSupabaseKeepaliveRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
@@ -85,3 +103,4 @@ declare module '@tanstack/react-start' {
     config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
+

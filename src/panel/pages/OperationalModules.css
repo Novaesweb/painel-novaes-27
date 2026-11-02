@@ -1794,4 +1794,16 @@
   overflow-y: auto;
 }
 
+.keepalive-panel { display: grid; gap: 10px; }
+.keepalive-panel .operational-toolbar { margin-bottom: 0; }
+.keepalive-status { display: flex; align-items: flex-start; gap: 10px; padding: 12px 13px; border: 1px solid; border-radius: 9px; font-size: 10px; line-height: 1.5; }
+.keepalive-status > span { display: grid; gap: 2px; }
+.keepalive-status b { font-size: 10px; }
+.keepalive-status small { font-size: 9px; }
+.keepalive-status.is-healthy { border-color: rgba(16,185,129,.28); background: rgba(6,78,59,.14); color: #83e8bd; }
+.keepalive-status.is-healthy svg { color: #55dca0; }
+.keepalive-status.is-failed { border-color: rgba(244,63,94,.28); background: rgba(127,29,29,.14); color: #fbb0bd; }
+.keepalive-status.is-failed svg { color: #fb7185; }
+
+
 

@@ -8,7 +8,7 @@ const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.
   },
 })
 
-export const Route = createFileRoute('/api/cron/supabase-keepalive' as never)({
+export const Route = createFileRoute('/api/cron/supabase-keepalive')({
   server: {
     handlers: {
       GET: async ({ request }) => {

@@ -1,3 +1,4 @@
+import { Master2StoreIntegration } from '../components/Master2StoreIntegration'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, KeyRound, X, Gift } from 'lucide-react'
@@ -788,6 +789,7 @@ export function StoresPage({ role }: { role: string }) {
         <Info label="UUID interno" value={selected.id} mono />
       </div>
       {(selected.status === 'suspended' || selected.status === 'maintenance' || selected.status === 'showcase_only' || selected.status === 'management_locked') && <div className="store-current-restriction"><strong>{statusNames[selected.status] || 'Restrição ativa'}</strong><p>{selected.status_message || 'Nenhuma mensagem ao proprietário foi registrada.'}</p>{selected.status_reason && <small>Motivo interno: {selected.status_reason}</small>}{selected.status_until && <small>Prazo: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}</small>}</div>}
+      {role === 'MASTER' && selected && <Master2StoreIntegration key={selected.id} storeId={selected.id} />}
       {role === 'MASTER' && <div className="store-management-grid">
         <form className="store-management-form" onSubmit={(event) => void manageSelectedSite(event)}>
           <div><strong>Gerenciar status e camadas de bloqueio</strong><p>Controle gradual de inadimplência e manutenção. Registrado na auditoria e notificado ao lojista.</p></div>

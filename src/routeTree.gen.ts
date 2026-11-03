@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as ApiCronSupabaseKeepaliveRouteImport } from './routes/api/cron/supabase-keepalive'
+import { Route as ApiMaster2StoreIntegrationRouteImport } from './routes/api/master2.store-integration'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +24,64 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronSupabaseKeepaliveRoute = ApiCronSupabaseKeepaliveRouteImport.update({
-  id: '/api/cron/supabase-keepalive',
-  path: '/api/cron/supabase-keepalive',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ApiCronSupabaseKeepaliveRoute =
+  ApiCronSupabaseKeepaliveRouteImport.update({
+    id: '/api/cron/supabase-keepalive',
+    path: '/api/cron/supabase-keepalive',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMaster2StoreIntegrationRoute =
+  ApiMaster2StoreIntegrationRouteImport.update({
+    id: '/api/master2/store-integration',
+    path: '/api/master2/store-integration',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
+  '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
+  '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
+  '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$' | '/api/cron/supabase-keepalive'
+  fullPaths:
+    | '/'
+    | '/$'
+    | '/api/cron/supabase-keepalive'
+    | '/api/master2/store-integration'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$' | '/api/cron/supabase-keepalive'
-  id: '__root__' | '/' | '/$' | '/api/cron/supabase-keepalive'
+  to:
+    | '/'
+    | '/$'
+    | '/api/cron/supabase-keepalive'
+    | '/api/master2/store-integration'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/api/cron/supabase-keepalive'
+    | '/api/master2/store-integration'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   ApiCronSupabaseKeepaliveRoute: typeof ApiCronSupabaseKeepaliveRoute
+  ApiMaster2StoreIntegrationRoute: typeof ApiMaster2StoreIntegrationRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +107,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronSupabaseKeepaliveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/master2/store-integration': {
+      id: '/api/master2/store-integration'
+      path: '/api/master2/store-integration'
+      fullPath: '/api/master2/store-integration'
+      preLoaderRoute: typeof ApiMaster2StoreIntegrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,18 +121,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   ApiCronSupabaseKeepaliveRoute: ApiCronSupabaseKeepaliveRoute,
+  ApiMaster2StoreIntegrationRoute: ApiMaster2StoreIntegrationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
-

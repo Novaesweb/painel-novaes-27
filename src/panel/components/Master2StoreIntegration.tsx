@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-type State = { authorized: boolean; canSend: boolean; status: string | null; connection: string }
+type State = { name: string; officialStoreId: string; plan: string | null; canAuthorize: boolean; authorized: boolean; canSend: boolean; status: string | null; connection: string }
 const labels: Record<string, string> = {
   pending_diagnosis: 'Pendente de diagnóstico', preparing: 'Preparando integração',
   awaiting_implementation: 'Aguardando implementação', testing: 'Em testes',
@@ -13,7 +13,7 @@ export function Master2StoreIntegration({ storeId }: { storeId: string }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
-  async function run(action: 'send' | 'status', signal?: AbortSignal) {
+  async function run(action: 'send' | 'status' | 'authorize', signal?: AbortSignal) {
     setBusy(true)
     setMessage('')
     try {
@@ -27,6 +27,7 @@ export function Master2StoreIntegration({ storeId }: { storeId: string }) {
       if (signal?.aborted) return
       if (typeof data.authorized === 'boolean') setState(data)
       if (!response.ok) throw new Error(data.error || 'Falha na comunicação.')
+      if (action === 'authorize') setMessage('Kit autorizado internamente.')
       if (action === 'send') setMessage('Loja recebida pelo Master 2 com o ID oficial.')
     } catch (error) {
       if (!signal?.aborted) setMessage(error instanceof Error ? error.message : 'Falha na comunicação.')
@@ -46,9 +47,11 @@ export function Master2StoreIntegration({ storeId }: { storeId: string }) {
   return <section className="panel">
     <h3>Integrações NovaesWeb</h3>
     <strong>Kit NovaesWeb Entregador</strong>
-    <p>Autorização comercial — {state ? state.authorized ? 'Autorizado' : 'Sem contrato ativo do Kit' : 'Aguardando consulta'}</p>
+    {state && <p>{state.name} · {state.officialStoreId} · {state.plan === 'premium' ? 'Premium' : state.plan === 'business' ? 'Business' : 'Plano não elegível'}</p>}
+    <p>Autorização comercial — {state ? state.authorized ? 'Autorizado' : 'Autorização interna pendente' : 'Aguardando consulta'}</p>
     <p>Estado — {state?.status ? labels[state.status] ?? state.status : state?.connection === 'ready' ? 'Ainda não enviada' : 'Aguardando conexão'}</p>
     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      {state?.canAuthorize && <button type="button" className="secondary-button" disabled={busy} onClick={() => void run('authorize')}>Autorizar Kit internamente</button>}
       {state?.canSend && <button type="button" className="secondary-button" disabled={busy} onClick={() => void run('send')}>
         {state.status ? 'Atualizar dados no Master 2' : 'Enviar ao Master 2'}
       </button>}

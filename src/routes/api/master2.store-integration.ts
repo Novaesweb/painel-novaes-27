@@ -62,7 +62,7 @@ async function handle(request: Request) {
     if (!remote.ok && remote.status !== 404) return reply({ ...details, canSend: false, status: null, connection: 'unavailable', error: 'O Master 2 não confirmou a consulta.' }, 502)
     const record = remote.ok ? (await remote.json()).store : null
     if (record && (record.id !== site.id || !Number.isSafeInteger(record.revision) || record.revision < 1)) return reply({ error: 'Resposta do Master 2 inválida.' }, 502)
-    if (input.action === 'status') return reply({ ...details, canSend, status: record?.status ?? null, connection: 'ready' })
+    if (input.action !== 'send') return reply({ ...details, canSend, status: record?.status ?? null, connection: 'ready' })
 
     const { data: domain, error: domainError } = await db.from('store_domains').select('domain').eq('store_id', site.id).eq('is_primary', true).eq('verification_status', 'verified').maybeSingle()
     if (domainError) throw domainError

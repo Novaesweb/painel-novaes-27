@@ -241,7 +241,11 @@ Proporcionar uma experiência de compra e delivery rápida e intuitiva para o cl
 - Zero Bloqueio: novos pedidos continuam sendo aceitos normalmente mesmo acima de 340.
 
 12. LIMITES E RESTRIÇÕES DO PLANO BUSINESS
-- Limite máximo: até 200 produtos ativos.
+- Limite máximo: até 200 produtos ativos.\n- CONTROLE OBRIGATÓRIO DE PRODUTOS ATIVOS: o plano oficial do Master 1 define o teto, Business = 200 e Premium = 500, por store_id; consultar o limite efetivo no backend, não aceitar limite digitado pelo cliente.
+- A tabela central public.delivery_products tem bloqueio no Supabase para INSERT ativo e UPDATE de inativo para ativo acima do teto. Respeitar o erro PRODUCT_ACTIVE_LIMIT_REACHED e exibir mensagem amigável com limite e contagem. NÃO tentar contornar o trigger, mudar plan_code ou usar service_role na loja.
+- Mostrar contador de ativos e restantes no painel de produtos; quando o teto estiver cheio, desabilitar criação/ativação na interface, mas manter edição de ativos, desativação e exclusão disponíveis. O bloqueio de verdade fica no banco.
+- Verificar os casos: Business com 199 ativos permite o 200º e rejeita o 201º; Premium com 499 permite o 500º e rejeita o 501º; reativação conta no teto; edição/desativação não bloqueiam. Simular duas lojas no mesmo Supabase e confirmar que uma não consome a cota da outra.
+- Em downgrade com produtos acima do teto, preservar os registros e bloquear apenas novas ativações até a quantidade voltar ao limite; não excluir nem desativar produtos automaticamente. Planos legados ou personalizados exigem contrato e regra própria, sem atribuir 200 por suposição.
 - Limite de usuários gestores: até 2 administradores.
 - Franquia mensal: 340 pedidos aceitos inclusos.
 - Exclusões: NÃO incluir cupons de desconto, pedidos agendados, gráficos analíticos ou rastreamento em tempo real (exclusivos do Premium).
@@ -316,7 +320,11 @@ Oferecer o mais alto padrão em experiência de delivery digital e presença de 
 {{DIRETRIZES_SEGMENTO}}
 
 8. RECURSOS EXCLUSIVOS DO PLANO PREMIUM
-- Limite expandido: até 500 produtos cadastrados no catálogo.
+- Limite expandido: até 500 produtos ativos no catálogo.\n- CONTROLE OBRIGATÓRIO DE PRODUTOS ATIVOS: o plano oficial do Master 1 define o teto, Business = 200 e Premium = 500, por store_id; consultar o limite efetivo no backend, não aceitar limite digitado pelo cliente.
+- A tabela central public.delivery_products tem bloqueio no Supabase para INSERT ativo e UPDATE de inativo para ativo acima do teto. Respeitar o erro PRODUCT_ACTIVE_LIMIT_REACHED e exibir mensagem amigável com limite e contagem. NÃO tentar contornar o trigger, mudar plan_code ou usar service_role na loja.
+- Mostrar contador de ativos e restantes no painel de produtos; quando o teto estiver cheio, desabilitar criação/ativação na interface, mas manter edição de ativos, desativação e exclusão disponíveis. O bloqueio de verdade fica no banco.
+- Verificar os casos: Business com 199 ativos permite o 200º e rejeita o 201º; Premium com 499 permite o 500º e rejeita o 501º; reativação conta no teto; edição/desativação não bloqueiam. Simular duas lojas no mesmo Supabase e confirmar que uma não consome a cota da outra.
+- Em downgrade com produtos acima do teto, preservar os registros e bloquear apenas novas ativações até a quantidade voltar ao limite; não excluir nem desativar produtos automaticamente. Planos legados ou personalizados exigem contrato e regra própria, sem atribuir 200 por suposição.
 - Limite de equipe: até 5 administradores/atendentes com perfis de acesso.
 - Franquia robusta: 750 pedidos aceitos inclusos no mês (excedente reduzido a R$ 0,15).
 - Sistema de Cupons de Desconto Simples (LOJA-08): Criação e gestão de cupons promocionais (valor fixo R$ ou porcentagem %, validade e valor mínimo). Validação imediata no checkout público da loja com dedução no subtotal dos produtos (sem descontar taxa de entrega).

@@ -42,9 +42,8 @@ async function handle(request: Request) {
         .select('store_id').eq('store_id', claim.store_id).maybeSingle()
       if (authError) throw authError
       const basePlan = site?.plan_code === 'NOVAES_BUSINESS' ? 'business' : site?.plan_code === 'NOVAES_PREMIUM' ? 'premium' : null
-      if (!site || !auth || site.status !== 'active' || !basePlan) {
-        // No unauthorized install; retain queue until store becomes eligible.
-        error = 'Loja sem autorização ativa ou plano elegível.'
+      if (!site) {
+        error = 'Loja removida. Verifique o histórico e a política de exclusão.'
       } else {
         const { data: domain, error: domainError } = await db.from('store_domains')
           .select('domain,verification_status').eq('store_id', site.id).eq('is_primary', true).maybeSingle()
@@ -55,7 +54,7 @@ async function handle(request: Request) {
         const domainVerificationStatus = verified ? 'verified' : candidate ? 'pending' : 'none'
         const groups = JSON.parse(process.env['MASTER2_STORE_GROUPS'] || '{}')
         const group = Object.hasOwn(groups, site.id) ? groups[site.id] : null
-        if (group != null && (typeof group !== 'string' || !/^[\w-]{1,80}$/.test(group))) {
+        if (!!auth && site.status === 'active' && !!basePlan && group != null && (typeof group !== 'string' || !/^[\w-]{1,80}$/.test(group))) {
           error = 'Grupo Supabase inválido.'
         } else {
           const query = { schemaVersion: 1, eventType: 'kit.status', officialStoreId: site.id }
@@ -64,7 +63,8 @@ async function handle(request: Request) {
           const record = status.ok ? (await status.json()).store : null
           if (record && (record.id !== site.id || !Number.isSafeInteger(record.revision) || record.revision < 1)) throw new Error('Status remoto inválido.')
           const revision = (record?.revision ?? 0) + 1
-          const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: verified, domainCandidate: candidate, domainVerificationStatus, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
+          const kitAuthorized = !!auth && site.status === 'active' && !!basePlan
+          const payload = { ...query, eventType: kitAuthorized ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: kitAuthorized ? verified : null, domainCandidate: kitAuthorized ? candidate : null, domainVerificationStatus: kitAuthorized ? domainVerificationStatus : 'none', basePlan, storeStatus: site.status, kitAuthorized, supabaseGroupId: kitAuthorized ? group : null, revision }
           const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
           const sent = await signedPost({ ...payload, eventId }, secret)
           if (!sent.ok) throw new Error('Envio ao Master 2 falhou: HTTP ' + sent.status)

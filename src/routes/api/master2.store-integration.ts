@@ -31,7 +31,7 @@ async function handle(request: Request) {
     if (profileError) throw profileError
     if (profile?.role !== 'MASTER' || profile.is_active !== true) return reply({ error: 'Acesso exclusivo do perfil MASTER ativo.' }, 403)
     const input = await request.json().catch(() => null)
-    if (!input || typeof input.storeId !== 'string' || !uuid.test(input.storeId) || !['status', 'send', 'authorize'].includes(input.action)) return reply({ error: 'Operação inválida.' }, 400)
+    if (!input || typeof input.storeId !== 'string' || !uuid.test(input.storeId) || !['status', 'send', 'authorize', 'revoke'].includes(input.action)) return reply({ error: 'Operação inválida.' }, 400)
     const storeId = input.storeId.toLowerCase()
     const { data: site, error: siteError } = await db.from('managed_sites').select('id,name,status,plan_code').eq('id', storeId).maybeSingle()
     if (siteError) throw siteError
@@ -44,6 +44,12 @@ async function handle(request: Request) {
       if (!eligible) return reply({ error: 'A autorização interna exige loja ativa Business ou Premium.' }, 422)
       const { error } = await grants.upsert({ store_id: site.id, authorized_by: identity.user.id }, { onConflict: 'store_id', ignoreDuplicates: true })
       if (error) throw error
+    }
+    if (input.action === 'revoke') {
+      const { error } = await grants.delete().eq('store_id', site.id)
+      if (error) throw error
+      // A trigger do Master 1 registra a revogação para reenvio resiliente.
+      // Mesmo se o destino estiver indisponível, o Kit deixa de estar autorizado na origem.
     }
     const { data: authorization, error: authorizationError } = await grants.select('store_id').eq('store_id', site.id).maybeSingle()
     if (authorizationError && authorizationError.code !== 'PGRST205') throw authorizationError
@@ -77,17 +83,18 @@ async function handle(request: Request) {
     const remoteDomainStatus = typeof remoteProfile?.domainVerificationStatus === 'string' ? remoteProfile.domainVerificationStatus : remoteDomain ? 'verified' : remoteCandidate ? 'pending' : 'none'
     const expectedRemoteDomain = verifiedDomain ?? pendingDomain ?? ''
     const actualRemoteDomain = remoteDomainStatus === 'verified' ? remoteDomain ?? '' : remoteDomainStatus === 'pending' ? remoteCandidate ?? '' : ''
-    const needsSync = !!record && (expectedRemoteDomain !== actualRemoteDomain || domainVerificationStatus !== remoteDomainStatus)
+    const needsSync = !!record && (expectedRemoteDomain !== actualRemoteDomain || domainVerificationStatus !== remoteDomainStatus || remoteProfile?.name !== site.name || remoteProfile?.plan !== basePlan || ((record.status === 'suspended') === (authorized && eligible)))
     const syncDetails = { ...domainDetails, remoteDomain: actualRemoteDomain || null, remoteDomainStatus, needsSync }
-    if (input.action !== 'send') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
+    if (input.action !== 'send' && input.action !== 'revoke' && input.action !== 'authorize') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
     const revision = (record?.revision ?? 0) + 1
-    const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: verifiedDomain, domainCandidate: pendingDomain, domainVerificationStatus, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
+    const shouldAuthorize = (input.action === 'send' || input.action === 'authorize') && authorized && eligible
+    const payload = { ...query, eventType: shouldAuthorize ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: shouldAuthorize ? verifiedDomain : null, domainCandidate: shouldAuthorize ? pendingDomain : null, domainVerificationStatus: shouldAuthorize ? domainVerificationStatus : 'none', basePlan, storeStatus: site.status, kitAuthorized: shouldAuthorize, supabaseGroupId: shouldAuthorize ? group : null, revision }
     const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
     const sent = await send({ ...payload, eventId }, secret)
-    if (!sent.ok) return reply({ error: sent.status === 409 ? 'A revisão mudou. Atualize o status e tente novamente.' : 'O Master 2 não confirmou o envio. Confira a conexão e o grupo.' }, sent.status === 409 ? 409 : 502)
+    if (!sent.ok) return reply({ ...details, queued: input.action === 'revoke', error: sent.status === 409 ? 'A revisão mudou. Atualize o status e tente novamente.' : 'O Master 2 não confirmou o envio. A fila tentará novamente a revogação.' }, sent.status === 409 ? 409 : 502)
     const receipt = await sent.json()
     if (receipt.received !== true || receipt.officialStoreId !== site.id || receipt.eventId !== eventId || receipt.revision !== revision) return reply({ error: 'Recibo inválido.' }, 502)
-    return reply({ ...details, ...domainDetails, remoteDomain: domainValue || null, remoteDomainStatus: domainVerificationStatus, needsSync: false, canSend, status: record?.status ?? 'pending_diagnosis', connection: 'ready', received: true })
+    return reply({ ...details, ...domainDetails, remoteDomain: domainValue || null, remoteDomainStatus: domainVerificationStatus, needsSync: false, canSend, status: shouldAuthorize ? (record?.status === 'suspended' ? 'pending_diagnosis' : record?.status ?? 'pending_diagnosis') : 'suspended', connection: 'ready', received: true })
   } catch {
     return reply({ error: 'Não foi possível completar a comunicação. Consulte o status antes de reenviar.' }, 503)
   }

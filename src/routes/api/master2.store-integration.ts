@@ -88,7 +88,7 @@ async function handle(request: Request) {
     if (input.action !== 'send' && input.action !== 'revoke' && input.action !== 'authorize') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
     const revision = (record?.revision ?? 0) + 1
     const shouldAuthorize = (input.action === 'send' || input.action === 'authorize') && authorized && eligible
-    const payload = { ...query, eventType: shouldAuthorize ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: verifiedDomain, domainCandidate: pendingDomain, domainVerificationStatus, basePlan, storeStatus: site.status, kitAuthorized: shouldAuthorize, supabaseGroupId: group, revision }
+    const payload = { ...query, eventType: shouldAuthorize ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: shouldAuthorize ? verifiedDomain : null, domainCandidate: shouldAuthorize ? pendingDomain : null, domainVerificationStatus: shouldAuthorize ? domainVerificationStatus : 'none', basePlan, storeStatus: site.status, kitAuthorized: shouldAuthorize, supabaseGroupId: shouldAuthorize ? group : null, revision }
     const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
     const sent = await send({ ...payload, eventId }, secret)
     if (!sent.ok) return reply({ ...details, queued: input.action === 'revoke', error: sent.status === 409 ? 'A revisão mudou. Atualize o status e tente novamente.' : 'O Master 2 não confirmou o envio. A fila tentará novamente a revogação.' }, sent.status === 409 ? 409 : 502)

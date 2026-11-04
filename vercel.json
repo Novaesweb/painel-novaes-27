@@ -1,7 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/supabase-keepalive", "schedule": "0 12 * * *" }
+    {
+      "path": "/api/cron/supabase-keepalive",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/master2-sync",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }
-

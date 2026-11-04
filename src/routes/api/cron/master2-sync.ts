@@ -55,7 +55,7 @@ async function handle(request: Request) {
         const domainVerificationStatus = verified ? 'verified' : candidate ? 'pending' : 'none'
         const groups = JSON.parse(process.env['MASTER2_STORE_GROUPS'] || '{}')
         const group = Object.hasOwn(groups, site.id) ? groups[site.id] : null
-        if (group != null && (typeof group !== 'string' || !/^[\\w-]{1,80}$/.test(group))) {
+        if (group != null && (typeof group !== 'string' || !/^[\w-]{1,80}$/.test(group))) {
           error = 'Grupo Supabase inválido.'
         } else {
           const query = { schemaVersion: 1, eventType: 'kit.status', officialStoreId: site.id }

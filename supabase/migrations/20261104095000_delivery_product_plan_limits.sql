@@ -22,6 +22,9 @@ begin
     return new;
   end if;
 
+  -- UPSERT existente: INSERT dispara antes da verificação de ON CONFLICT.
+  -- Editar um produto ativo já existente não consome nova vaga.
+  -- A checagem dentro do lock abaixo também evita rejeitar edição no teto.
   -- Serialização POR LOJA: impede dois cadastros concorrentes ultrapassarem o limite.
   select m.plan_code into official_plan
     from public.managed_sites as m
@@ -38,6 +41,14 @@ begin
   end;
   -- Não inventar limite para plano legado/Empresarial sem contrato confirmado.
   if max_active is null then return new; end if;
+  -- INSERT que vira UPDATE por ON CONFLICT em um produto já ativo.
+  -- Se o produto for inativo, reativá-lo deverá consumir uma vaga.
+  if tg_op = 'INSERT' and exists (
+    select 1 from public.delivery_products p
+     where p.store_id = new.store_id and p.id = new.id and p.is_active = true
+  ) then
+    return new;
+  end if;
 
   select count(*) into current_active
     from public.delivery_products as p

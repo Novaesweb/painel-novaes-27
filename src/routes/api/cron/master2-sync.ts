@@ -64,7 +64,7 @@ async function handle(request: Request) {
           if (record && (record.id !== site.id || !Number.isSafeInteger(record.revision) || record.revision < 1)) throw new Error('Status remoto inválido.')
           const revision = (record?.revision ?? 0) + 1
           const kitAuthorized = !!auth && site.status === 'active' && !!basePlan
-          const payload = { ...query, eventType: kitAuthorized ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: verified, domainCandidate: candidate, domainVerificationStatus, basePlan, storeStatus: site.status, kitAuthorized, supabaseGroupId: group, revision }
+          const payload = { ...query, eventType: kitAuthorized ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: kitAuthorized ? verified : null, domainCandidate: kitAuthorized ? candidate : null, domainVerificationStatus: kitAuthorized ? domainVerificationStatus : 'none', basePlan, storeStatus: site.status, kitAuthorized, supabaseGroupId: kitAuthorized ? group : null, revision }
           const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
           const sent = await signedPost({ ...payload, eventId }, secret)
           if (!sent.ok) throw new Error('Envio ao Master 2 falhou: HTTP ' + sent.status)

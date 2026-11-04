@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-type State = { name: string; officialStoreId: string; plan: string | null; canAuthorize: boolean; authorized: boolean; canSend: boolean; status: string | null; connection: string }
+type State = { name: string; officialStoreId: string; plan: string | null; canAuthorize: boolean; authorized: boolean; canSend: boolean; status: string | null; connection: string; localDomain?: string | null; localDomainStatus?: string; remoteDomain?: string | null; remoteDomainStatus?: string; needsSync?: boolean }
 const labels: Record<string, string> = {
   pending_diagnosis: 'Pendente de diagnóstico', preparing: 'Preparando integração',
   awaiting_implementation: 'Aguardando implementação', testing: 'Em testes',
   homologation: 'Em homologação', integrated: 'Integrada', error: 'Erro ou pendência', suspended: 'Suspensa',
 }
 
-export function Master2StoreIntegration({ storeId }: { storeId: string }) {
+export function Master2StoreIntegration({ storeId, domainVersion }: { storeId: string; domainVersion?: string }) {
+  const lastDomainVersion = useRef(domainVersion)
   const [state, setState] = useState<State>()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -44,12 +45,27 @@ export function Master2StoreIntegration({ storeId }: { storeId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId])
 
+  useEffect(() => {
+    if (lastDomainVersion.current === domainVersion) return
+    lastDomainVersion.current = domainVersion
+    // Uma atualização de domínio detectada no cadastro oficial inicia a reconciliação.
+    // Nunca autorize uma instalação sem o contrato existente.
+    if (state?.canSend && state?.status) void run('send')
+    else void run('status')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domainVersion])
+
+  const domainLabel = (status?: string) => status === 'verified' ? 'Verificado' : status === 'pending' ? 'Pendente de verificação' : 'Não cadastrado'
+
   return <section className="panel">
     <h3>Integrações NovaesWeb</h3>
     <strong>Kit NovaesWeb Entregador</strong>
     {state && <p>{state.name} · {state.officialStoreId} · {state.plan === 'premium' ? 'Premium' : state.plan === 'business' ? 'Business' : 'Plano não elegível'}</p>}
     <p>Autorização comercial — {state ? state.authorized ? 'Autorizado' : 'Autorização interna pendente' : 'Aguardando consulta'}</p>
     <p>Estado — {state?.status ? labels[state.status] ?? state.status : state?.connection === 'ready' ? 'Ainda não enviada' : 'Aguardando conexão'}</p>
+    {state && <p>Domínio no Master 1 — {state.localDomain || 'Não informado'} · {domainLabel(state.localDomainStatus)}</p>}
+    {state?.status && <p>Domínio no Master 2 — {state.remoteDomain || 'Não informado'} · {domainLabel(state.remoteDomainStatus)}</p>}
+    {state?.needsSync && <p role="status">Domínio alterado no Master 1. Atualização pendente no Master 2.</p>}
     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
       {state?.canAuthorize && <button type="button" className="secondary-button" disabled={busy} onClick={() => void run('authorize')}>Autorizar Kit internamente</button>}
       {state?.canSend && <button type="button" className="secondary-button" disabled={busy} onClick={() => void run('send')}>

@@ -83,11 +83,11 @@ async function handle(request: Request) {
     const remoteDomainStatus = typeof remoteProfile?.domainVerificationStatus === 'string' ? remoteProfile.domainVerificationStatus : remoteDomain ? 'verified' : remoteCandidate ? 'pending' : 'none'
     const expectedRemoteDomain = verifiedDomain ?? pendingDomain ?? ''
     const actualRemoteDomain = remoteDomainStatus === 'verified' ? remoteDomain ?? '' : remoteDomainStatus === 'pending' ? remoteCandidate ?? '' : ''
-    const needsSync = !!record && (expectedRemoteDomain !== actualRemoteDomain || domainVerificationStatus !== remoteDomainStatus)
+    const needsSync = !!record && (expectedRemoteDomain !== actualRemoteDomain || domainVerificationStatus !== remoteDomainStatus || remoteProfile?.name !== site.name || remoteProfile?.plan !== basePlan || ((record.status === 'suspended') === (authorized && eligible)))
     const syncDetails = { ...domainDetails, remoteDomain: actualRemoteDomain || null, remoteDomainStatus, needsSync }
-    if (input.action !== 'send' && input.action !== 'revoke') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
+    if (input.action !== 'send' && input.action !== 'revoke' && input.action !== 'authorize') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
     const revision = (record?.revision ?? 0) + 1
-    const shouldAuthorize = input.action === 'send' && authorized && eligible
+    const shouldAuthorize = (input.action === 'send' || input.action === 'authorize') && authorized && eligible
     const payload = { ...query, eventType: shouldAuthorize ? 'kit.authorized' : 'kit.revoked', name: site.name, domain: verifiedDomain, domainCandidate: pendingDomain, domainVerificationStatus, basePlan, storeStatus: site.status, kitAuthorized: shouldAuthorize, supabaseGroupId: group, revision }
     const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
     const sent = await send({ ...payload, eventId }, secret)

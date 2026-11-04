@@ -49,34 +49,45 @@ async function handle(request: Request) {
     if (authorizationError && authorizationError.code !== 'PGRST205') throw authorizationError
     const authorized = !!authorization
     const details = { authorized, canAuthorize: eligible && !authorized && !authorizationError, name: site.name, plan: basePlan, officialStoreId: site.id }
+    // Consulte o domínio principal mesmo quando a verificação ainda está pendente.
+    // Uma pendência não pode ser publicada como domínio verificado no Master 2.
+    const { data: domain, error: domainError } = await db.from('store_domains').select('domain,verification_status').eq('store_id', site.id).eq('is_primary', true).maybeSingle()
+    if (domainError) throw domainError
+    const domainValue = domain?.domain?.trim().toLowerCase() ?? ''
+    const verifiedDomain = domain?.verification_status === 'verified' ? domainValue || null : null
+    const pendingDomain = domainValue && !verifiedDomain ? domainValue : null
+    const domainVerificationStatus = verifiedDomain ? 'verified' : pendingDomain ? 'pending' : 'none'
+    const domainDetails = { localDomain: domainValue || null, localDomainStatus: domainVerificationStatus }
     const secret = process.env['MASTER2_MASTER1_SECRET']
     const groups = JSON.parse(process.env['MASTER2_STORE_GROUPS'] || '{}')
     const group = Object.hasOwn(groups, storeId) ? groups[storeId] : null
     const configured = !!secret && secret.length >= 32
     const canSend = authorized && site.status === 'active' && !!basePlan && (group === null || (typeof group === 'string' && /^[\w-]{1,80}$/.test(group))) && configured
     if (input.action === 'send' && !canSend) return reply({ error: 'Confira o contrato ativo do Kit, o plano, o grupo autorizado e a conexão.' }, 403)
-    if (!configured || !secret) return reply({ ...details, canSend, status: null, connection: 'unconfigured' })
+    if (!configured || !secret) return reply({ ...details, ...domainDetails, canSend, status: null, connection: 'unconfigured' })
 
     const query = { schemaVersion: 1, eventType: 'kit.status', officialStoreId: site.id }
     const remote = await send(query, secret)
     if (!remote.ok && remote.status !== 404) return reply({ ...details, canSend: false, status: null, connection: 'unavailable', error: 'O Master 2 não confirmou a consulta.' }, 502)
     const record = remote.ok ? (await remote.json()).store : null
     if (record && (record.id !== site.id || !Number.isSafeInteger(record.revision) || record.revision < 1)) return reply({ error: 'Resposta do Master 2 inválida.' }, 502)
-    if (input.action !== 'send') return reply({ ...details, canSend, status: record?.status ?? null, connection: 'ready' })
-
-    const { data: domain, error: domainError } = await db.from('store_domains').select('domain').eq('store_id', site.id).eq('is_primary', true).eq('verification_status', 'verified').maybeSingle()
-    if (domainError) throw domainError
-    // O domínio é opcional nesta fase: o Master 2 recebe a loja antes da publicação do site.
-    // Só transmitimos domínios que o Master 1 já marcou como verificados.
-    const verifiedDomain = domain?.domain ?? null
+    const remoteProfile = record?.profile && typeof record.profile === 'object' ? record.profile : null
+    const remoteDomain = typeof remoteProfile?.domain === 'string' ? remoteProfile.domain : null
+    const remoteCandidate = typeof remoteProfile?.domainCandidate === 'string' ? remoteProfile.domainCandidate : null
+    const remoteDomainStatus = typeof remoteProfile?.domainVerificationStatus === 'string' ? remoteProfile.domainVerificationStatus : remoteDomain ? 'verified' : remoteCandidate ? 'pending' : 'none'
+    const expectedRemoteDomain = verifiedDomain ?? pendingDomain ?? ''
+    const actualRemoteDomain = remoteDomainStatus === 'verified' ? remoteDomain ?? '' : remoteDomainStatus === 'pending' ? remoteCandidate ?? '' : ''
+    const needsSync = !!record && (expectedRemoteDomain !== actualRemoteDomain || domainVerificationStatus !== remoteDomainStatus)
+    const syncDetails = { ...domainDetails, remoteDomain: actualRemoteDomain || null, remoteDomainStatus, needsSync }
+    if (input.action !== 'send') return reply({ ...details, ...syncDetails, canSend, status: record?.status ?? null, connection: 'ready' })
     const revision = (record?.revision ?? 0) + 1
-    const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: verifiedDomain, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
+    const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: verifiedDomain, domainCandidate: pendingDomain, domainVerificationStatus, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
     const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
     const sent = await send({ ...payload, eventId }, secret)
     if (!sent.ok) return reply({ error: sent.status === 409 ? 'A revisão mudou. Atualize o status e tente novamente.' : 'O Master 2 não confirmou o envio. Confira a conexão e o grupo.' }, sent.status === 409 ? 409 : 502)
     const receipt = await sent.json()
     if (receipt.received !== true || receipt.officialStoreId !== site.id || receipt.eventId !== eventId || receipt.revision !== revision) return reply({ error: 'Recibo inválido.' }, 502)
-    return reply({ ...details, canSend, status: record?.status ?? 'pending_diagnosis', connection: 'ready', received: true })
+    return reply({ ...details, ...domainDetails, remoteDomain: domainValue || null, remoteDomainStatus: domainVerificationStatus, needsSync: false, canSend, status: record?.status ?? 'pending_diagnosis', connection: 'ready', received: true })
   } catch {
     return reply({ error: 'Não foi possível completar a comunicação. Consulte o status antes de reenviar.' }, 503)
   }

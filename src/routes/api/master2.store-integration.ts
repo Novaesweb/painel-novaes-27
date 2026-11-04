@@ -66,9 +66,11 @@ async function handle(request: Request) {
 
     const { data: domain, error: domainError } = await db.from('store_domains').select('domain').eq('store_id', site.id).eq('is_primary', true).eq('verification_status', 'verified').maybeSingle()
     if (domainError) throw domainError
-    if (!domain?.domain) return reply({ error: 'A loja precisa de um domínio principal verificado.' }, 422)
+    // O domínio é opcional nesta fase: o Master 2 recebe a loja antes da publicação do site.
+    // Só transmitimos domínios que o Master 1 já marcou como verificados.
+    const verifiedDomain = domain?.domain ?? null
     const revision = (record?.revision ?? 0) + 1
-    const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: domain.domain, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
+    const payload = { ...query, eventType: 'kit.authorized', name: site.name, domain: verifiedDomain, basePlan, storeStatus: 'active', kitAuthorized: true, supabaseGroupId: group, revision }
     const eventId = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
     const sent = await send({ ...payload, eventId }, secret)
     if (!sent.ok) return reply({ error: sent.status === 409 ? 'A revisão mudou. Atualize o status e tente novamente.' : 'O Master 2 não confirmou o envio. Confira a conexão e o grupo.' }, sent.status === 409 ? 409 : 502)

@@ -302,58 +302,53 @@ export function StoresPage({ role }: { role: string }) {
 
   async function executeSiteStatusChange(nextStatus: string) {
     if (role !== 'MASTER' || !selected || !supabase) return
+    const targetId = selected.id
+    const modes: Record<string, string> = { suspended: 'suspension', maintenance: 'maintenance' }
+    if (nextStatus !== 'active' && !modes[nextStatus]) {
+      setFeedback('Este tipo de bloqueio ainda não é aceito pelo serviço oficial. Nenhuma alteração foi aplicada.', 'error')
+      return
+    }
     setSavingManagement(true)
-    const { error } = await supabase.functions.invoke('novaesweb-master-sites', {
-      body: nextStatus === 'active'
-        ? { action: 'set_site_status', store_id: selected.id, status: 'active' }
-        : {
-          action: 'set_block_details',
-          store_id: selected.id,
-          block_mode:
-            nextStatus === 'maintenance'
-              ? 'maintenance'
-              : nextStatus === 'showcase_only'
-              ? 'showcase_only'
-              : nextStatus === 'management_locked'
-              ? 'management_locked'
-              : 'suspension',
-          block_reason: managementForm.reason.trim(),
-          block_message: managementForm.message.trim(),
-          block_until: managementForm.until ? new Date(managementForm.until).toISOString() : null,
-        },
-    })
-
-    // Garante atualização direta na tabela managed_sites para sincronização com o banco
     try {
-      await supabase
-        .from('managed_sites')
-        .update({
-          status: nextStatus,
-          status_reason: nextStatus === 'active' ? null : managementForm.reason.trim() || null,
-          status_message: nextStatus === 'active' ? null : managementForm.message.trim() || null,
-          status_until: nextStatus === 'active' || !managementForm.until ? null : new Date(managementForm.until).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selected.id)
+      const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
+        body: nextStatus === 'active'
+          ? { action: 'set_site_status', store_id: targetId, status: 'active' }
+          : {
+              action: 'set_block_details',
+              store_id: targetId,
+              block_mode: modes[nextStatus],
+              block_reason: managementForm.reason.trim(),
+              block_message: managementForm.message.trim(),
+              block_until: managementForm.until ? new Date(managementForm.until).toISOString() : null,
+            },
+      })
+      if (error || data?.error) {
+        let detail = data?.error || error?.message || 'Erro não identificado'
+        if (error) {
+          try {
+            const response = (error as Error & { context?: Response }).context
+            const payload = await response?.clone().json() as { error?: string } | undefined
+            if (payload?.error) detail = payload.error
+          } catch { /* resposta indisponível */ }
+        }
+        setFeedback(`Bloqueio não confirmado pelo servidor: ${detail}`, 'error')
+        return
+      }
+      if (data?.store_id !== targetId || data?.status !== nextStatus) {
+        setFeedback('O servidor não confirmou o estado solicitado. Confira o histórico antes de repetir.', 'error')
+        return
+      }
+      // A fonte oficial é a Edge Function. Nunca fazer escrita paralela com campos inexistentes.
+      await loadSites(true)
+      setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
+      setFeedback(nextStatus === 'active'
+        ? 'Reativação confirmada pelo servidor MASTER.'
+        : 'Bloqueio registrado pelo servidor MASTER. A loja permanece suspensa até liberação autorizada.', 'success')
     } catch {
-      /* ignore */
+      setFeedback('Não foi possível confirmar a alteração. Verifique a conexão e a auditoria.', 'error')
+    } finally {
+      setSavingManagement(false)
     }
-
-    if (error) {
-      let detail = error.message
-      try {
-        const response = (error as Error & { context?: Response }).context
-        const payload = await response?.clone().json() as { error?: string } | undefined
-        if (payload?.error) detail = payload.error
-      } catch { /* keep error */ }
-      setFeedback(`Aviso: status salvo localmente, retorno da função: ${detail}`, 'info')
-    } else {
-      setFeedback('Status da loja atualizado. Registrado na auditoria oficial e notificado ao proprietário.', 'success')
-    }
-
-    await loadSites(true)
-    setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
-    setSavingManagement(false)
   }
 
   function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {

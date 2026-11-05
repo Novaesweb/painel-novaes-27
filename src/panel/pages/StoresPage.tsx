@@ -442,62 +442,43 @@ export function StoresPage({ role }: { role: string }) {
       setFeedback('Apenas o perfil MASTER ativo pode editar o cadastro da loja.', 'error')
       return
     }
-
+    if (editingStoreForm.status !== selected.status) {
+      setFeedback('Para bloquear ou desbloquear use Gestão operacional, com confirmação e auditoria. Nenhuma alteração foi aplicada.', 'error')
+      return
+    }
     setSavingEditStore(true)
     try {
       const finalPlan = editingStoreForm.plan_code === 'custom'
         ? editingStoreForm.custom_plan_code.trim().toUpperCase()
         : editingStoreForm.plan_code.trim()
-
-      if (finalPlan) {
-        try {
-          await supabase.functions.invoke('novaesweb-master-sites', {
-            body: {
-              action: 'set_plan',
-              store_id: selected.id,
-              plan_code: finalPlan,
-            },
-          })
-        } catch {
-          // Continua para gravação direta garantida
-        }
-      }
-
-      if (editingStoreForm.status && editingStoreForm.status !== selected.status) {
-        try {
-          await supabase.functions.invoke('novaesweb-master-sites', {
-            body: {
-              action: 'set_site_status',
-              store_id: selected.id,
-              status: editingStoreForm.status,
-            },
-          })
-        } catch {
-          // Continua
-        }
-      }
-
-      const updateData: Record<string, unknown> = {
-        name: editingStoreForm.name.trim(),
-        owner_name: editingStoreForm.owner_name.trim() || null,
-        owner_id: editingStoreForm.owner_id.trim() || null,
-        status: editingStoreForm.status,
-        updated_at: new Date().toISOString(),
-      }
-      if (finalPlan) {
-        updateData['plan_code'] = finalPlan
-      }
-
-      await supabase
+      // Cadastro e status são fluxos diferentes: nunca escrever status diretamente por aqui.
+      const { data: updated, error: updateError } = await supabase
         .from('managed_sites')
-        .update(updateData)
+        .update({
+          name: editingStoreForm.name.trim(),
+          owner_name: editingStoreForm.owner_name.trim() || null,
+          owner_id: editingStoreForm.owner_id.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', selected.id)
-
+        .select('id')
+        .maybeSingle()
+      if (updateError || updated?.id !== selected.id) {
+        throw new Error('O banco não confirmou as alterações cadastrais.')
+      }
+      if (finalPlan && finalPlan !== selected.plan_code) {
+        const { data: planData, error: planError } = await supabase.functions.invoke('novaesweb-master-sites', {
+          body: { action: 'set_plan', store_id: selected.id, plan_code: finalPlan },
+        })
+        if (planError || planData?.error) {
+          throw new Error(planData?.error || planError?.message || 'Plano não confirmado pelo servidor.')
+        }
+      }
       await loadSites(true)
       setShowEditStoreModal(false)
-      setFeedback(`Cadastro da loja "${editingStoreForm.name.trim()}" atualizado com sucesso pelo MASTER!`, 'success')
+      setFeedback('Alterações cadastrais confirmadas. O status operacional não foi alterado.', 'success')
     } catch (err) {
-      setFeedback(`Erro ao salvar alterações da loja: ${err instanceof Error ? err.message : 'Falha desconhecida'}`, 'error')
+      setFeedback(`Falha ao salvar cadastro: ${err instanceof Error ? err.message : 'Falha desconhecida'}. Confirme os dados antes de repetir.`, 'error')
     } finally {
       setSavingEditStore(false)
     }
@@ -726,7 +707,7 @@ export function StoresPage({ role }: { role: string }) {
                   <span>Status operacional da loja</span>
                   <select
                     value={editingStoreForm.status}
-                    onChange={(e) => setEditingStoreForm({ ...editingStoreForm, status: e.target.value })}
+                    disabled aria-describedby="store-status-edit-help"
                     style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
                   >
                     <option value="active">🟢 Ativa · Operação normal e pedidos liberados</option>
@@ -737,6 +718,7 @@ export function StoresPage({ role }: { role: string }) {
                     <option value="pending">⏳ Aguardando conexão</option>
                     <option value="archived">📦 Arquivada</option>
                   </select>
+                  <small id="store-status-edit-help" style={{ color: "#e9b7f6", fontSize: 11 }}>Para alterar o status, use Gestão operacional da loja com motivo, confirmação e auditoria.</small>
                 </label>
               </div>
 

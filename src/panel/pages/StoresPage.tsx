@@ -711,8 +711,8 @@ export function StoresPage({ role }: { role: string }) {
                     style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
                   >
                     <option value="active">🟢 Ativa · Operação normal e pedidos liberados</option>
-                    <option value="showcase_only">🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option>
-                    <option value="management_locked">🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option>
+                    <option value="showcase_only" disabled>🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option>
+                    <option value="management_locked" disabled>🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option>
                     <option value="maintenance">🛠️ Em manutenção institucional</option>
                     <option value="suspended">🛑 Suspensa · Bloqueio total</option>
                     <option value="pending">⏳ Aguardando conexão</option>
@@ -811,11 +811,11 @@ export function StoresPage({ role }: { role: string }) {
               🛠️ Preset: Manutenção
             </button>
           </div>
-          <label>Status Operacional<select value={managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)} onChange={(event) => setManagementForm({ ...managementForm, status: event.target.value })}><option value="active">🟢 Ativa · Operação normal e pedidos liberados</option><option value="showcase_only">🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option><option value="management_locked">🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option><option value="maintenance">🛠️ Em manutenção institucional</option><option value="suspended">🛑 Suspensa · Bloqueio total de acesso</option></select></label>
+          <label>Status Operacional<select value={managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)} onChange={(event) => setManagementForm({ ...managementForm, status: event.target.value })}><option value="active">🟢 Ativa · Operação normal e pedidos liberados</option><option value="showcase_only" disabled>🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option><option value="management_locked" disabled>🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option><option value="maintenance">🛠️ Em manutenção institucional</option><option value="suspended">🛑 Suspensa · Bloqueio total de acesso</option></select></label>
           {(managementForm.status || (selected.status === 'pending' ? 'active' : selected.status)) !== 'active' && <>
             <label>Motivo administrativo<input required maxLength={500} value={managementForm.reason} onChange={(event) => setManagementForm({ ...managementForm, reason: event.target.value })} placeholder="Motivo interno de auditoria" /></label>
             <label>Mensagem para o proprietário<textarea required maxLength={1000} value={managementForm.message} onChange={(event) => setManagementForm({ ...managementForm, message: event.target.value })} placeholder="Mensagem exibida pelo site ou painel do lojista" /></label>
-            <label>Prazo de vigência (opcional)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
+            <label>Data para revisão (não desbloqueia automaticamente)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
           </>}
           {(selected.status === 'suspended' || selected.status === 'maintenance') && selected.status_until && <p className="status-expiry">Prazo registrado: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}. A remoção do bloqueio depende de uma ação administrativa.</p>}
           <button className="primary-button" disabled={savingManagement}>{savingManagement ? 'Salvando…' : 'Aplicar status'}</button>

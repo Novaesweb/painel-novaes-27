@@ -1,0 +1,10 @@
+.nw-block-screen{min-height:100svh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 5%,#4a176b 0%,transparent 54%),linear-gradient(145deg,#0d0b19,#1a0e2b);color:#f8f4ff;padding:24px;font-family:Inter,system-ui,sans-serif}
+.nw-block-card{width:min(100%,620px);padding:clamp(26px,6vw,55px);text-align:center;border:1px solid #80519d80;border-radius:26px;background:linear-gradient(145deg,#261737ee,#130f21ed);box-shadow:0 30px 90px #05000b80,0 0 36px #8425d81c}
+.nw-block-logo{width:124px;height:124px;max-width:35%;object-fit:contain;display:block;margin:0 auto 26px;border-radius:20px}
+.nw-block-label{display:inline-flex;align-items:center;gap:8px;color:#d4a5ff;background:#4e226751;border:1px solid #8b50b67e;border-radius:30px;padding:9px 14px;font-size:12px;font-weight:750;letter-spacing:.06em}
+.nw-block-card h1{font-size:clamp(28px,6vw,42px);line-height:1.18;margin:25px 0 16px;font-weight:800}
+.nw-block-card p{line-height:1.7;color:#d5c6e5;font-size:clamp(15px,2.7vw,18px);overflow-wrap:anywhere}
+.nw-block-footer{display:flex;align-items:center;justify-content:center;gap:10px;border-top:1px solid #5b3c6d;padding-top:20px;margin-top:27px;color:#c4a6d7;font-size:13px;line-height:1.5}
+.nw-block-signature{color:#a99ab6;font-size:12px;margin-top:26px}
+.nw-block-signature strong{color:#dcbbf4}
+@media(max-width:420px){.nw-block-screen{padding:14px}.nw-block-card{border-radius:19px}.nw-block-logo{width:96px;height:96px;margin-bottom:20px}}

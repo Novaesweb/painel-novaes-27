@@ -301,59 +301,67 @@ export function StoresPage({ role }: { role: string }) {
   }
 
   async function executeSiteStatusChange(nextStatus: string) {
-    if (role !== 'MASTER' || !selected || !supabase) return
+    if (role !== 'MASTER' || !selected || !supabase || savingManagement) return
+    const storeId = selected.id
+    // These two modes need enforcement inside each store's checkout/panel, not merely a Master label.
+    // Do not pretend they work until the store integration and backend support them.
+    if (nextStatus === 'showcase_only' || nextStatus === 'management_locked') {
+      setFeedback('Este modo ainda não está homologado no backend das lojas. Use Suspensão Total ou Manutenção até concluir a integração.', 'error')
+      return
+    }
+    if (!['active', 'suspended', 'maintenance'].includes(nextStatus)) {
+      setFeedback('Status operacional não permitido.', 'error')
+      return
+    }
     setSavingManagement(true)
-    const { error } = await supabase.functions.invoke('novaesweb-master-sites', {
-      body: nextStatus === 'active'
-        ? { action: 'set_site_status', store_id: selected.id, status: 'active' }
+    try {
+      const body = nextStatus === 'active'
+        ? { action: 'set_site_status', store_id: storeId, status: 'active' }
         : {
           action: 'set_block_details',
-          store_id: selected.id,
-          block_mode:
-            nextStatus === 'maintenance'
-              ? 'maintenance'
-              : nextStatus === 'showcase_only'
-              ? 'showcase_only'
-              : nextStatus === 'management_locked'
-              ? 'management_locked'
-              : 'suspension',
+          store_id: storeId,
+          block_mode: nextStatus === 'maintenance' ? 'maintenance' : 'suspension',
           block_reason: managementForm.reason.trim(),
           block_message: managementForm.message.trim(),
           block_until: managementForm.until ? new Date(managementForm.until).toISOString() : null,
-        },
-    })
-
-    // Garante atualização direta na tabela managed_sites para sincronização com o banco
-    try {
-      await supabase
-        .from('managed_sites')
-        .update({
-          status: nextStatus,
-          status_reason: nextStatus === 'active' ? null : managementForm.reason.trim() || null,
-          status_message: nextStatus === 'active' ? null : managementForm.message.trim() || null,
-          status_until: nextStatus === 'active' || !managementForm.until ? null : new Date(managementForm.until).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selected.id)
-    } catch {
-      /* ignore */
+        }
+      const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', { body })
+      // Never write directly to managed_sites in the browser. The authenticated Edge Function
+      // is the single authority; direct RLS writes had invalid column names and silent failures.
+      const backendError = typeof data?.error === 'string' ? data.error : error?.message
+      // An Edge Function can report an error after the DB transaction (e.g. inbox notification).
+      // Always reconcile the persisted status before describing the outcome.
+      const { data: check, error: checkError } = await supabase.functions.invoke('novaesweb-master-sites', {
+        body: { action: 'list_sites' },
+      })
+      const persisted = !checkError && Array.isArray(check?.sites)
+        ? check.sites.find((site: { id: string }) => site.id === storeId)
+        : null
+      await loadSites(true)
+      if (!persisted) {
+        setFeedback(backendError
+          ? `Não foi possível confirmar o bloqueio: ${backendError}. Consulte o status oficial antes de tentar novamente.`
+          : 'A função respondeu, mas não foi possível confirmar a gravação no banco. Atualize e consulte o status antes de repetir.',
+        'error')
+        return
+      }
+      if (persisted.status !== nextStatus) {
+        setFeedback(backendError
+          ? `Bloqueio não confirmado: ${backendError}. O banco ainda informa ${statusNames[persisted.status] || persisted.status}.`
+          : `Bloqueio não aplicado: o banco continua informando ${statusNames[persisted.status] || persisted.status}.`, 'error')
+        return
+      }
+      if (backendError) {
+        setFeedback(`Status confirmado no banco, mas a operação não foi totalmente concluída: ${backendError}. Verifique a comunicação ao proprietário.`, 'info')
+        return
+      }
+      setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
+      setFeedback(`Status ${statusNames[nextStatus] || nextStatus} confirmado no banco oficial. ${data?.message || 'Alteração registrada.'}`, 'success')
+    } catch (caught) {
+      setFeedback(`Falha ao consultar o bloqueio: ${caught instanceof Error ? caught.message : 'erro desconhecido'}. Confira o status no banco antes de repetir.`, 'error')
+    } finally {
+      setSavingManagement(false)
     }
-
-    if (error) {
-      let detail = error.message
-      try {
-        const response = (error as Error & { context?: Response }).context
-        const payload = await response?.clone().json() as { error?: string } | undefined
-        if (payload?.error) detail = payload.error
-      } catch { /* keep error */ }
-      setFeedback(`Aviso: status salvo localmente, retorno da função: ${detail}`, 'info')
-    } else {
-      setFeedback('Status da loja atualizado. Registrado na auditoria oficial e notificado ao proprietário.', 'success')
-    }
-
-    await loadSites(true)
-    setManagementForm({ status: nextStatus, reason: '', message: '', until: '' })
-    setSavingManagement(false)
   }
 
   function manageSelectedSite(event: React.FormEvent<HTMLFormElement>) {
@@ -468,18 +476,9 @@ export function StoresPage({ role }: { role: string }) {
         }
       }
 
-      if (editingStoreForm.status && editingStoreForm.status !== selected.status) {
-        try {
-          await supabase.functions.invoke('novaesweb-master-sites', {
-            body: {
-              action: 'set_site_status',
-              store_id: selected.id,
-              status: editingStoreForm.status,
-            },
-          })
-        } catch {
-          // Continua
-        }
+      if (editingStoreForm.status !== selected.status) {
+        setFeedback('O status da loja deve ser alterado exclusivamente em Gerenciar status e camadas de bloqueio.', 'error')
+        return
       }
 
       const updateData: Record<string, unknown> = {
@@ -735,8 +734,8 @@ export function StoresPage({ role }: { role: string }) {
                     style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
                   >
                     <option value="active">🟢 Ativa · Operação normal e pedidos liberados</option>
-                    <option value="showcase_only">🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option>
-                    <option value="management_locked">🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option>
+                    <option value="showcase_only" disabled>🛍️ Modo Vitrine · Checkout suspenso (Inadimplência leve)</option>
+                    <option value="management_locked" disabled>🔒 Bloqueio de Gestão · Painel em leitura (Inadimplência moderada)</option>
                     <option value="maintenance">🛠️ Em manutenção institucional</option>
                     <option value="suspended">🛑 Suspensa · Bloqueio total</option>
                     <option value="pending">⏳ Aguardando conexão</option>
@@ -792,7 +791,7 @@ export function StoresPage({ role }: { role: string }) {
       {role === 'MASTER' && selected && <Master2StoreIntegration key={selected.id} storeId={selected.id} domainVersion={selected.store_domains.map((domain) => `${domain.domain}:${domain.is_primary}:${domain.verification_status}`).sort().join('|')} />}
       {role === 'MASTER' && <div className="store-management-grid">
         <form className="store-management-form" onSubmit={(event) => void manageSelectedSite(event)}>
-          <div><strong>Gerenciar status e camadas de bloqueio</strong><p>Controle gradual de inadimplência e manutenção. Registrado na auditoria e notificado ao lojista.</p></div>
+          <div><strong>Gerenciar status e camadas de bloqueio</strong><p>Suspensão total e manutenção são controladas pelo backend oficial. Vitrine e bloqueio parcial ficam indisponíveis até integração real com cada loja.</p></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '2px 0 6px' }}>
             <button
               type="button"
@@ -840,7 +839,7 @@ export function StoresPage({ role }: { role: string }) {
             <label>Mensagem para o proprietário<textarea required maxLength={1000} value={managementForm.message} onChange={(event) => setManagementForm({ ...managementForm, message: event.target.value })} placeholder="Mensagem exibida pelo site ou painel do lojista" /></label>
             <label>Prazo de vigência (opcional)<input type="datetime-local" value={managementForm.until} onChange={(event) => setManagementForm({ ...managementForm, until: event.target.value })} /></label>
           </>}
-          {(selected.status === 'suspended' || selected.status === 'maintenance') && selected.status_until && <p className="status-expiry">Prazo registrado: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}. A remoção do bloqueio depende de uma ação administrativa.</p>}
+          {(selected.status === 'suspended' || selected.status === 'maintenance') && selected.status_until && <p className="status-expiry">Prazo registrado: {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selected.status_until))}. O status público é reativado automaticamente ao término do prazo configurado. Para bloqueio sem expiração, deixe o prazo vazio.</p>}
           <button className="primary-button" disabled={savingManagement}>{savingManagement ? 'Salvando…' : 'Aplicar status'}</button>
         </form>
         <form className="store-management-form" onSubmit={(event) => void sendStoreMessage(event)}>

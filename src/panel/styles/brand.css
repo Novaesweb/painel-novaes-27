@@ -137,3 +137,19 @@ h1,h2,h3,h4{color:#f8f5fb}
 .income-finance-tabs { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
 .income-finance-tabs button { border:1px solid #60417a; color:#eaddf5; background:#21162e; border-radius:10px; padding:12px 18px; cursor:pointer; }
 .income-finance-tabs button[aria-pressed="true"] { background:linear-gradient(105deg,#7c25e8,#e52f67); color:white; }
+
+/* Skeleton para o primeiro carregamento, sem piscar a cada atualização manual. */
+.master-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:16px 0 20px}
+.master-skeleton-card{min-height:126px;padding:20px;border:1px solid rgba(168,85,247,.14);border-radius:16px;background:rgba(22,12,30,.88);display:grid;align-content:center;gap:17px}
+.master-skeleton-rows,.master-skeleton-table{display:grid;gap:12px;padding:14px 0}
+.master-skeleton-row,.master-skeleton-table-row{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid rgba(168,85,247,.12);border-radius:14px;background:rgba(22,12,30,.75)}
+.master-skeleton-copy{min-width:0;flex:1;display:grid;gap:9px}
+.master-skeleton-avatar{width:42px;height:42px;min-width:42px;border-radius:12px!important}
+.master-skeleton-line{height:12px!important;border-radius:8px!important}
+.master-skeleton-line.short{width:35%}
+.master-skeleton-line.medium{width:65%}
+.master-skeleton-line.amount{width:54%;height:32px!important}
+.master-skeleton-grid .master-skeleton-line,.master-skeleton-rows .master-skeleton-line,.master-skeleton-table .master-skeleton-line,.master-skeleton-avatar{background:linear-gradient(100deg,rgba(139,44,255,.14) 12%,rgba(255,45,85,.28) 34%,rgba(139,44,255,.14) 56%)!important;background-size:250% 100%!important;animation:master-skeleton-shimmer 1.6s ease-in-out infinite!important}
+@keyframes master-skeleton-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+@media(prefers-reduced-motion:reduce){.master-skeleton-grid .master-skeleton-line,.master-skeleton-rows .master-skeleton-line,.master-skeleton-table .master-skeleton-line,.master-skeleton-avatar{animation:none!important;background:rgba(139,44,255,.20)!important}}
+@media(max-width:600px){.master-skeleton-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.master-skeleton-card{padding:13px}.master-skeleton-row,.master-skeleton-table-row{padding:12px}}

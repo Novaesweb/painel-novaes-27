@@ -1,4 +1,5 @@
 import { Master2StoreIntegration } from '../components/Master2StoreIntegration'
+import { MasterLoadingSkeleton } from '../components/MasterLoadingSkeleton'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from '../lib/router-compat'
 import { ArrowLeft, Building2, ChevronRight, Clock3, Edit3, Globe2, Layers3, Plus, RefreshCw, Save, Search, Settings2, ShieldCheck, ShoppingBag, Store, Send, Sparkles, Smartphone, KeyRound, X, Gift } from 'lucide-react'
@@ -51,6 +52,7 @@ export function StoresPage({ role }: { role: string }) {
   const appliedDeepLink = useRef<string | null>(null)
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [query, setQuery] = useState('')
   const [message, setMessage] = useState('')
@@ -121,6 +123,7 @@ export function StoresPage({ role }: { role: string }) {
       setFeedback('Configure o Supabase para carregar o cadastro oficial de lojas.', 'info')
       setSites([])
       setLoading(false)
+      setInitialLoading(false)
       return
     }
     if (quiet) setRefreshing(true)
@@ -163,6 +166,7 @@ export function StoresPage({ role }: { role: string }) {
       setSites([...new Map(normalizedSites.map((site) => [site.id, site])).values()])
     }
     setLoading(false)
+    setInitialLoading(false)
     setRefreshing(false)
   }, [setFeedback])
 
@@ -937,7 +941,7 @@ export function StoresPage({ role }: { role: string }) {
         <label htmlFor="store-query">BUSCAR POR ID NX, NOME OU DOMÍNIO</label>
         <div className="store-search-row"><div className="input-wrap"><Search size={17} /><input id="store-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex.: NX-… ou nome da loja" /></div><button className="primary-button" disabled={loading}><Search size={15} /> Buscar loja</button></div>
       </form>
-      {loading ? <div className="stores-empty"><span className="loader" /><p>Carregando lojas autorizadas…</p></div> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th>ACESSO</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
+      {initialLoading ? <MasterLoadingSkeleton variant="store-table" /> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th>ACESSO</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
         <td><div className="store-name-cell"><span className="store-avatar small"><Store size={15} /></span><span><strong>{site.name}</strong><small>{site.nx_id}</small></span></div></td>
         <td>{site.owner_name || (site.owner_id ? `…${site.owner_id.slice(-8)}` : '—')}</td><td><StatusBadge status={site.status} /></td>
         <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td>

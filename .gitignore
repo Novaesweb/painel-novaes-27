@@ -40,3 +40,7 @@ supabase/.temp/
 # Pasta confidencial de ideias guardadas (NUNCA enviar ao GitHub)
 guardado_na_gaveta/
 guardado_na_gaveta/**
+
+# Testes isolados de apps e repositórios externos (NUNCA enviar ao GitHub)
+teste_motoboy/
+teste_motoboy/**

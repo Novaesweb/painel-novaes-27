@@ -76,8 +76,8 @@ describe('StoreReferralModal (Programa Indique e Ganhe)', () => {
 
     const referrals = getReferralsForStore('NX-BURGER77')
     expect(referrals.length).toBe(1)
-    expect(referrals[0].referredStoreName).toBe('Pizzaria Napolitana')
-    expect(referrals[0].rewardValue).toBe(30)
+    expect(referrals[0]?.referredStoreName).toBe('Pizzaria Napolitana')
+    expect(referrals[0]?.rewardValue).toBe(30)
   })
 
   it('abre o WhatsApp com a mensagem pré-preenchida ao clicar em Enviar WhatsApp', () => {

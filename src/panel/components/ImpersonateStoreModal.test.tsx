@@ -63,10 +63,10 @@ describe('ImpersonateStoreModal (Modo Suporte com Impersonação Segura)', () =>
 
     const logs = getImpersonationLogs()
     expect(logs.length).toBe(1)
-    expect(logs[0].storeId).toBe('store-uuid-456')
-    expect(logs[0].storeName).toBe('Delivery Express Prime')
-    expect(logs[0].nxId).toBe('NX-DELIVERY')
-    expect(logs[0].id).toContain('SUP-NX-DELIVERY-')
+    expect(logs[0]?.storeId).toBe('store-uuid-456')
+    expect(logs[0]?.storeName).toBe('Delivery Express Prime')
+    expect(logs[0]?.nxId).toBe('NX-DELIVERY')
+    expect(logs[0]?.id).toContain('SUP-NX-DELIVERY-')
   })
 
   it('copia o link com token para a área de transferência ao clicar em Copiar', async () => {

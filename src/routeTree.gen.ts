@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as LojaBloqueadaRouteImport } from './routes/loja-bloqueada'
+import { Route as ApiCronMaster2SyncRouteImport } from './routes/api/cron/master2-sync'
 import { Route as ApiCronSupabaseKeepaliveRouteImport } from './routes/api/cron/supabase-keepalive'
 import { Route as ApiMaster2StoreIntegrationRouteImport } from './routes/api/master2.store-integration'
 
@@ -22,6 +24,16 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LojaBloqueadaRoute = LojaBloqueadaRouteImport.update({
+  id: '/loja-bloqueada',
+  path: '/loja-bloqueada',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronMaster2SyncRoute = ApiCronMaster2SyncRouteImport.update({
+  id: '/api/cron/master2-sync',
+  path: '/api/cron/master2-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronSupabaseKeepaliveRoute =
@@ -40,12 +52,16 @@ const ApiMaster2StoreIntegrationRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/loja-bloqueada': typeof LojaBloqueadaRoute
+  '/api/cron/master2-sync': typeof ApiCronMaster2SyncRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
   '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/loja-bloqueada': typeof LojaBloqueadaRoute
+  '/api/cron/master2-sync': typeof ApiCronMaster2SyncRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
   '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
@@ -53,6 +69,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/loja-bloqueada': typeof LojaBloqueadaRoute
+  '/api/cron/master2-sync': typeof ApiCronMaster2SyncRoute
   '/api/cron/supabase-keepalive': typeof ApiCronSupabaseKeepaliveRoute
   '/api/master2/store-integration': typeof ApiMaster2StoreIntegrationRoute
 }
@@ -61,18 +79,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/loja-bloqueada'
+    | '/api/cron/master2-sync'
     | '/api/cron/supabase-keepalive'
     | '/api/master2/store-integration'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/loja-bloqueada'
+    | '/api/cron/master2-sync'
     | '/api/cron/supabase-keepalive'
     | '/api/master2/store-integration'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/loja-bloqueada'
+    | '/api/cron/master2-sync'
     | '/api/cron/supabase-keepalive'
     | '/api/master2/store-integration'
   fileRoutesById: FileRoutesById
@@ -80,6 +104,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  LojaBloqueadaRoute: typeof LojaBloqueadaRoute
+  ApiCronMaster2SyncRoute: typeof ApiCronMaster2SyncRoute
   ApiCronSupabaseKeepaliveRoute: typeof ApiCronSupabaseKeepaliveRoute
   ApiMaster2StoreIntegrationRoute: typeof ApiMaster2StoreIntegrationRoute
 }
@@ -98,6 +124,20 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/loja-bloqueada': {
+      id: '/loja-bloqueada'
+      path: '/loja-bloqueada'
+      fullPath: '/loja-bloqueada'
+      preLoaderRoute: typeof LojaBloqueadaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/master2-sync': {
+      id: '/api/cron/master2-sync'
+      path: '/api/cron/master2-sync'
+      fullPath: '/api/cron/master2-sync'
+      preLoaderRoute: typeof ApiCronMaster2SyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/supabase-keepalive': {
@@ -120,9 +160,21 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  LojaBloqueadaRoute: LojaBloqueadaRoute,
+  ApiCronMaster2SyncRoute: ApiCronMaster2SyncRoute,
   ApiCronSupabaseKeepaliveRoute: ApiCronSupabaseKeepaliveRoute,
   ApiMaster2StoreIntegrationRoute: ApiMaster2StoreIntegrationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -115,6 +115,7 @@ export const StoreReferralModal: React.FC<StoreReferralModalProps> = ({
   }
 
   function handleCopyPrompt() {
+    if (!store) return
     const customizedPrompt = referralPromptTemplate
       .replace(/NX-LOJA/g, store.nx_id)
     navigator.clipboard.writeText(customizedPrompt).then(() => {
@@ -126,7 +127,7 @@ export const StoreReferralModal: React.FC<StoreReferralModalProps> = ({
 
   function handleAddManualReferral(e: React.FormEvent) {
     e.preventDefault()
-    if (!newReferredName.trim()) return
+    if (!newReferredName.trim() || !store) return
     const entry: ReferralEntry = {
       id: `ref-${Date.now()}`,
       referrerNxId: store.nx_id,

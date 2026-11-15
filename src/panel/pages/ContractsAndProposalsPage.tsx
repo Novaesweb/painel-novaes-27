@@ -120,13 +120,13 @@ export function ContractsAndProposalsPage({
       franchise = 'Não se aplica (site institucional sem delivery)'
       overageTariff = 'R$ 0,00'
     } else if (proposalPlan === 'NOVAES_BUSINESS') {
-      creationPrice = 578.0
+      creationPrice = 290.0
       monthlyPrice = 190.0
-      planTitle = 'Novaes Business (Catálogo & Delivery)'
+      planTitle = 'Novaes Pro (Catálogo & Delivery)'
       franchise = '340 pedidos aceitos/mês'
       overageTariff = 'R$ 0,20 por pedido aceito excedente'
     } else {
-      creationPrice = 980.0
+      creationPrice = 490.0
       monthlyPrice = 270.0
       planTitle = 'Novaes Premium (Delivery Avançado)'
       franchise = '750 pedidos aceitos/mês'
@@ -496,7 +496,7 @@ Proposta válida por 15 dias a contar da data de emissão.`
                 onChange={(e: any) => setProrataPlan(e.target.value)}
                 className="form-select"
               >
-                <option value="NOVAES_BUSINESS">Novaes Business (Base: R$ 190,00 · 340 pedidos)</option>
+                <option value="NOVAES_BUSINESS">Novaes Pro (Base: R$ 190,00 · 340 pedidos)</option>
                 <option value="NOVAES_PREMIUM">Novaes Premium (Base: R$ 270,00 · 750 pedidos)</option>
               </select>
             </label>

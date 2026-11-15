@@ -20,7 +20,7 @@ export const APPROVED_PLAN_RULES: Record<
   },
   NOVAES_BUSINESS: {
     price_cents: 19000,
-    creation_price_cents: 57800,
+    creation_price_cents: 29000,
     included_orders: 340,
     overage_price_cents: 20,
     max_products: 200,
@@ -28,7 +28,7 @@ export const APPROVED_PLAN_RULES: Record<
   },
   NOVAES_PREMIUM: {
     price_cents: 27000,
-    creation_price_cents: 98000,
+    creation_price_cents: 49000,
     included_orders: 750,
     overage_price_cents: 15,
     max_products: 500,

@@ -199,8 +199,8 @@ export function StoreMessengerSection({
         ? 'Novaes Premium'
         : currentStore.plan_code === 'NOVAES_START'
         ? 'Novaes Start'
-        : 'Novaes Business'
-      : 'Novaes Business'
+        : 'Novaes Pro'
+      : 'Novaes Pro'
 
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
@@ -263,12 +263,12 @@ export function StoreMessengerSection({
 
           const resolvedMsg = body
             .replace(/{loja}/gi, s.name)
-            .replace(/{plano}/gi, s.plan_code || 'Novaes Business')
+            .replace(/{plano}/gi, s.plan_code === 'NOVAES_BUSINESS' ? 'Novaes Pro' : (s.plan_code || 'Novaes Pro'))
             .replace(/{data}/gi, new Date().toLocaleDateString('pt-BR'))
 
           const resolvedTtl = title
             .replace(/{loja}/gi, s.name)
-            .replace(/{plano}/gi, s.plan_code || 'Novaes Business')
+            .replace(/{plano}/gi, s.plan_code === 'NOVAES_BUSINESS' ? 'Novaes Pro' : (s.plan_code || 'Novaes Pro'))
 
           const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
             body: {

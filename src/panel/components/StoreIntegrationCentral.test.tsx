@@ -206,7 +206,7 @@ describe("Autorização e recursos anteriores", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(7);
     fireEvent.click(screen.getByRole("button", { name: "Criador de Sites — Gerador de Prompts" }));
     expect(screen.getByText("Novaes Start")).toBeTruthy();
-    expect(screen.getByText("Novaes Business")).toBeTruthy();
+    expect(screen.getByText("Novaes Pro")).toBeTruthy();
     expect(screen.getByText("Novaes Premium")).toBeTruthy();
     expect(screen.getByText("Novaes Empresarial")).toBeTruthy();
   });

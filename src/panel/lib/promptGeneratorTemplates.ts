@@ -501,10 +501,10 @@ export const INITIAL_PROMPT_TEMPLATES: PromptTemplateModel[] = [
   {
     id: 'business',
     planCode: 'NOVAES_BUSINESS',
-    defaultName: 'Novaes Business',
-    displayName: 'Novaes Business',
+    defaultName: 'Novaes Pro',
+    displayName: 'Novaes Pro',
     description: 'Delivery completo para restaurantes e lojas, até 200 produtos, 2 admins e 340 pedidos inclusos.',
-    creationPrice: 'R$ 578,00',
+    creationPrice: 'R$ 290,00',
     monthlyPrice: 'R$ 190,00/mês',
     supportPrice: 'Incluso no plano',
     limits: {
@@ -537,7 +537,7 @@ export const INITIAL_PROMPT_TEMPLATES: PromptTemplateModel[] = [
     defaultName: 'Novaes Premium',
     displayName: 'Novaes Premium', // Editável (ex: "Novaes Express" com regras Premium)
     description: 'Delivery avançado para alto volume, 500 produtos, 5 admins, 750 pedidos, cupons e acompanhamento.',
-    creationPrice: 'R$ 980,00',
+    creationPrice: 'R$ 490,00',
     monthlyPrice: 'R$ 270,00/mês',
     supportPrice: 'Incluso no plano com prioridade',
     limits: {

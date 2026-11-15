@@ -148,7 +148,7 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
             plan_code: planCode,
             status: 'active',
             payment_status: 'paid',
-            plan_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            plan_expires_at: new Date(Date.now() + (planCode.includes('ANUAL') ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
           })
           .select('id')
           .single()
@@ -374,9 +374,11 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
               <label className="field-label">
                 <span>Plano Oficial</span>
                 <select value={planCode} onChange={(e) => setPlanCode(e.target.value)}>
-                  <option value="NOVAES_BUSINESS">NOVAES_BUSINESS (R$ 190,00 · 340 pedidos) — Recomendado</option>
-                  <option value="NOVAES_PREMIUM">NOVAES_PREMIUM (R$ 270,00 · 750 pedidos)</option>
-                  <option value="NOVAES_START">NOVAES_START (R$ 97,00 · Institucional)</option>
+                  <option value="NOVAES_BUSINESS">Novaes Pro — R$ 190,00/mês + Criação R$ 290,00 (340 pedidos) — Recomendado</option>
+                  <option value="NOVAES_PREMIUM">Novaes Premium — R$ 270,00/mês + Criação R$ 490,00 (750 pedidos)</option>
+                  <option value="NOVAES_START">Novaes Start — Criação R$ 630,00 · Sem mensalidade (Institucional)</option>
+                  <option value="NOVAES_BUSINESS_ANUAL">Novaes Pro Anual — R$ 1.900,00/ano (R$ 158,33/mês · 2 meses grátis) + Criação R$ 290,00</option>
+                  <option value="NOVAES_PREMIUM_ANUAL">Novaes Premium Anual — R$ 2.700,00/ano (R$ 225,00/mês · 2 meses grátis) + Criação R$ 490,00</option>
                 </select>
               </label>
             </div>

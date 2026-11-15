@@ -1807,3 +1807,80 @@
 
 
 
+
+/* ========================================================
+   ESTILOS DE PLANOS ANUAIS (ANCORAGEM DO SITE)
+   ======================================================== */
+.annual-plans-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.annual-plans-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(168, 85, 247, 0.1));
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+}
+
+.annual-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  width: fit-content;
+  letter-spacing: 0.03em;
+}
+
+.annual-banner-title {
+  font-size: 16px;
+  font-family: Manrope, sans-serif;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.annual-banner-desc {
+  font-size: 13px;
+  color: rgba(220, 205, 240, 0.85);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.annual-card-savings-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.annual-pricing-highlight {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.08), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.annual-price-strike {
+  font-size: 13px;
+  color: rgba(220, 205, 240, 0.55);
+  text-decoration: line-through;
+  font-weight: 500;
+}
+

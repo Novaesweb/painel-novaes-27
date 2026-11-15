@@ -427,7 +427,7 @@ export function StoresPage({ role }: { role: string }) {
   }
 
   function openEditStoreModal(site: Site) {
-    const isOfficialPlan = ['NOVAES_START', 'NOVAES_BUSINESS', 'NOVAES_PREMIUM'].includes(site.plan_code || '')
+    const isOfficialPlan = ['NOVAES_START', 'NOVAES_BUSINESS', 'NOVAES_PREMIUM', 'NOVAES_BUSINESS_ANUAL', 'NOVAES_PREMIUM_ANUAL'].includes(site.plan_code || '')
     setEditingStoreForm({
       name: site.name,
       owner_name: site.owner_name || '',
@@ -529,12 +529,14 @@ export function StoresPage({ role }: { role: string }) {
             maxLength={80}
             value={registration.plan_code}
             onChange={(event) => setRegistration({ ...registration, plan_code: event.target.value })}
-            placeholder="Ex: NOVAES_BUSINESS, NOVAES_PREMIUM ou NOVAES_START"
+            placeholder="Ex: NOVAES_BUSINESS, NOVAES_PREMIUM, NOVAES_START ou planos anuais"
           />
           <datalist id="plans-datalist">
-            <option value="NOVAES_BUSINESS">Plano Business (340 pedidos / R$ 190,00)</option>
-            <option value="NOVAES_PREMIUM">Plano Premium (750 pedidos / R$ 270,00)</option>
-            <option value="NOVAES_START">Plano Start (Institucional / R$ 97,00)</option>
+            <option value="NOVAES_BUSINESS">Novaes Pro — R$ 190,00/mês + Criação R$ 290,00 (340 pedidos)</option>
+            <option value="NOVAES_PREMIUM">Novaes Premium — R$ 270,00/mês + Criação R$ 490,00 (750 pedidos)</option>
+            <option value="NOVAES_START">Novaes Start — Criação R$ 630,00 · Sem mensalidade (Institucional)</option>
+            <option value="NOVAES_BUSINESS_ANUAL">Novaes Pro Anual — R$ 1.900,00/ano (R$ 158,33/mês · 2 meses grátis)</option>
+            <option value="NOVAES_PREMIUM_ANUAL">Novaes Premium Anual — R$ 2.700,00/ano (R$ 225,00/mês · 2 meses grátis)</option>
           </datalist>
         </label>
         <div className="registration-actions"><button className="primary-button" disabled={registering}>{registering ? 'Importando…' : 'Importar ID existente'}</button><button type="button" className="secondary-button" onClick={() => setShowRegistration(false)}>Cancelar</button></div>
@@ -700,9 +702,11 @@ export function StoresPage({ role }: { role: string }) {
                     onChange={(e) => setEditingStoreForm({ ...editingStoreForm, plan_code: e.target.value })}
                     style={{ height: 38, padding: '0 10px', background: 'rgba(2, 6, 23, 0.9)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: 6, color: '#fff' }}
                   >
-                    <option value="NOVAES_BUSINESS">NOVAES_BUSINESS (R$ 190,00/mês · 340 pedidos inclusos)</option>
-                    <option value="NOVAES_PREMIUM">NOVAES_PREMIUM (R$ 270,00/mês · 750 pedidos inclusos)</option>
-                    <option value="NOVAES_START">NOVAES_START (R$ 97,00/mês · Institucional)</option>
+                    <option value="NOVAES_BUSINESS">Novaes Pro — R$ 190,00/mês + Criação R$ 290,00 (340 pedidos inclusos)</option>
+                    <option value="NOVAES_PREMIUM">Novaes Premium — R$ 270,00/mês + Criação R$ 490,00 (750 pedidos inclusos)</option>
+                    <option value="NOVAES_START">Novaes Start — Criação R$ 630,00 · Sem mensalidade (Institucional)</option>
+                    <option value="NOVAES_BUSINESS_ANUAL">Novaes Pro Anual — R$ 1.900,00/ano (R$ 158,33/mês · 2 meses grátis)</option>
+                    <option value="NOVAES_PREMIUM_ANUAL">Novaes Premium Anual — R$ 2.700,00/ano (R$ 225,00/mês · 2 meses grátis)</option>
                     <option value="custom">Outro (Digitar código personalizado)</option>
                   </select>
                 </label>

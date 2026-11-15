@@ -64,13 +64,13 @@ export function ContractsAndProposalsPage({
   const [proposalClientName, setProposalClientName] = useState('')
   const [proposalSegment, setProposalSegment] = useState('Pizzaria')
   const [proposalCity, setProposalCity] = useState('')
-  const [proposalPlan, setProposalPlan] = useState<'NOVAES_START' | 'NOVAES_BUSINESS' | 'NOVAES_PREMIUM'>('NOVAES_BUSINESS')
+  const [proposalPlan, setProposalPlan] = useState<'NOVAES_START' | 'NOVAES_BUSINESS' | 'NOVAES_PREMIUM' | 'NOVAES_BUSINESS_ANUAL' | 'NOVAES_PREMIUM_ANUAL'>('NOVAES_BUSINESS')
   const [proposalActivationDay, setProposalActivationDay] = useState<number>(1)
   const [proposalSelectedAddons, setProposalSelectedAddons] = useState<string[]>([])
   const [copiedProposal, setCopiedProposal] = useState(false)
 
   // Estado da Calculadora de Pró-rata (PED-06)
-  const [prorataPlan, setProrataPlan] = useState<'NOVAES_BUSINESS' | 'NOVAES_PREMIUM'>('NOVAES_BUSINESS')
+  const [prorataPlan, setProrataPlan] = useState<'NOVAES_BUSINESS' | 'NOVAES_PREMIUM' | 'NOVAES_BUSINESS_ANUAL' | 'NOVAES_PREMIUM_ANUAL'>('NOVAES_BUSINESS')
   const [prorataYear, setProrataYear] = useState<number>(2026)
   const [prorataMonth, setProrataMonth] = useState<number>(10)
   const [prorataStartDay, setProrataStartDay] = useState<number>(16)
@@ -83,8 +83,9 @@ export function ContractsAndProposalsPage({
     const activeDays = totalDaysInMonth - validDay + 1
     const fraction = activeDays / totalDaysInMonth
 
-    const isBusiness = prorataPlan === 'NOVAES_BUSINESS'
-    const fullMonthly = isBusiness ? 190.0 : 270.0
+    const isBusiness = prorataPlan === 'NOVAES_BUSINESS' || prorataPlan === 'NOVAES_BUSINESS_ANUAL'
+    const isAnnual = prorataPlan === 'NOVAES_BUSINESS_ANUAL' || prorataPlan === 'NOVAES_PREMIUM_ANUAL'
+    const fullMonthly = isBusiness ? (isAnnual ? 158.33 : 190.0) : (isAnnual ? 225.0 : 270.0)
     const fullFranchise = isBusiness ? 340 : 750
     const overageTariff = isBusiness ? 0.2 : 0.15
 
@@ -125,6 +126,18 @@ export function ContractsAndProposalsPage({
       planTitle = 'Novaes Pro (Catálogo & Delivery)'
       franchise = '340 pedidos aceitos/mês'
       overageTariff = 'R$ 0,20 por pedido aceito excedente'
+    } else if (proposalPlan === 'NOVAES_BUSINESS_ANUAL') {
+      creationPrice = 290.0
+      monthlyPrice = 158.33
+      planTitle = 'Novaes Pro Anual (R$ 1.900,00/ano · 2 meses grátis)'
+      franchise = '340 pedidos aceitos/mês'
+      overageTariff = 'R$ 0,20 por pedido aceito excedente'
+    } else if (proposalPlan === 'NOVAES_PREMIUM_ANUAL') {
+      creationPrice = 490.0
+      monthlyPrice = 225.0
+      planTitle = 'Novaes Premium Anual (R$ 2.700,00/ano · 2 meses grátis)'
+      franchise = '750 pedidos aceitos/mês'
+      overageTariff = 'R$ 0,15 por pedido aceito excedente'
     } else {
       creationPrice = 490.0
       monthlyPrice = 270.0
@@ -387,8 +400,8 @@ Proposta válida por 15 dias a contar da data de emissão.`
                     className={`plan-radio-card ${proposalPlan === 'NOVAES_BUSINESS' ? 'selected' : ''}`}
                     onClick={() => setProposalPlan('NOVAES_BUSINESS')}
                   >
-                    <div className="plan-card-tag highlight">Business</div>
-                    <strong>R$ 578 + R$ 190/mês</strong>
+                    <div className="plan-card-tag highlight">Pro</div>
+                    <strong>R$ 290 + R$ 190/mês</strong>
                     <small>Catálogo · Pedidos · Delivery</small>
                     <span className="plan-feature-sub">340 pedidos inclusos · R$ 0,20 extra</span>
                   </div>
@@ -398,8 +411,28 @@ Proposta válida por 15 dias a contar da data de emissão.`
                     onClick={() => setProposalPlan('NOVAES_PREMIUM')}
                   >
                     <div className="plan-card-tag">Premium</div>
-                    <strong>R$ 980 + R$ 270/mês</strong>
+                    <strong>R$ 490 + R$ 270/mês</strong>
                     <small>Alto volume · Cupons · Gráficos</small>
+                    <span className="plan-feature-sub">750 pedidos inclusos · R$ 0,15 extra</span>
+                  </div>
+
+                  <div
+                    className={`plan-radio-card ${proposalPlan === 'NOVAES_BUSINESS_ANUAL' ? 'selected' : ''}`}
+                    onClick={() => setProposalPlan('NOVAES_BUSINESS_ANUAL')}
+                  >
+                    <div className="plan-card-tag highlight">Pro Anual</div>
+                    <strong>R$ 290 + R$ 1.900/ano</strong>
+                    <small>R$ 158,33/mês · 2 meses grátis</small>
+                    <span className="plan-feature-sub">340 pedidos inclusos · R$ 0,20 extra</span>
+                  </div>
+
+                  <div
+                    className={`plan-radio-card ${proposalPlan === 'NOVAES_PREMIUM_ANUAL' ? 'selected' : ''}`}
+                    onClick={() => setProposalPlan('NOVAES_PREMIUM_ANUAL')}
+                  >
+                    <div className="plan-card-tag">Premium Anual</div>
+                    <strong>R$ 490 + R$ 2.700/ano</strong>
+                    <small>R$ 225,00/mês · 2 meses grátis</small>
                     <span className="plan-feature-sub">750 pedidos inclusos · R$ 0,15 extra</span>
                   </div>
                 </div>
@@ -498,6 +531,8 @@ Proposta válida por 15 dias a contar da data de emissão.`
               >
                 <option value="NOVAES_BUSINESS">Novaes Pro (Base: R$ 190,00 · 340 pedidos)</option>
                 <option value="NOVAES_PREMIUM">Novaes Premium (Base: R$ 270,00 · 750 pedidos)</option>
+                <option value="NOVAES_BUSINESS_ANUAL">Novaes Pro Anual (Base: R$ 158,33/mês · 340 pedidos)</option>
+                <option value="NOVAES_PREMIUM_ANUAL">Novaes Premium Anual (Base: R$ 225,00/mês · 750 pedidos)</option>
               </select>
             </label>
 

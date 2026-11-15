@@ -35,9 +35,11 @@ const ticketStatusLabels: Record<string, string> = { open: 'Aberto', in_progress
 function getPlanMonthlyPrice(planCode: string | null): number {
   if (!planCode) return 0
   const normalized = planCode.toUpperCase()
+  if (normalized.includes('PREMIUM_ANUAL')) return 225
+  if (normalized.includes('BUSINESS_ANUAL') || normalized.includes('PRO_ANUAL')) return 158.33
   if (normalized.includes('PREMIUM')) return 270
-  if (normalized.includes('BUSINESS')) return 190
-  if (normalized.includes('START')) return 97
+  if (normalized.includes('BUSINESS') || normalized.includes('PRO')) return 190
+  if (normalized.includes('START')) return 0
   return 0
 }
 
@@ -683,9 +685,11 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
               value={form.plan}
               onChange={(e) => setForm({ ...form, plan: e.target.value })}
             >
-              <option value="NOVAES_BUSINESS">NOVAES_BUSINESS (R$ 190,00/mês · 340 pedidos inclusos)</option>
-              <option value="NOVAES_PREMIUM">NOVAES_PREMIUM (R$ 270,00/mês · 750 pedidos inclusos)</option>
-              <option value="NOVAES_START">NOVAES_START (R$ 97,00/mês · Institucional)</option>
+              <option value="NOVAES_BUSINESS">Novaes Pro — R$ 190,00/mês + Criação R$ 290,00 (340 pedidos inclusos)</option>
+              <option value="NOVAES_PREMIUM">Novaes Premium — R$ 270,00/mês + Criação R$ 490,00 (750 pedidos inclusos)</option>
+              <option value="NOVAES_START">Novaes Start — Criação R$ 630,00 · Sem mensalidade (Institucional)</option>
+              <option value="NOVAES_BUSINESS_ANUAL">Novaes Pro Anual — R$ 1.900,00/ano (R$ 158,33/mês · 2 meses grátis)</option>
+              <option value="NOVAES_PREMIUM_ANUAL">Novaes Premium Anual — R$ 2.700,00/ano (R$ 225,00/mês · 2 meses grátis)</option>
             </select>
           </label>
           <label>

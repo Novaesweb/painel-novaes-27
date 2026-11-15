@@ -175,8 +175,8 @@ Descrição: {{DESCRICAO_NEGOCIO}}
 Público-alvo: {{PUBLICO_ALVO}}
 
 3. PLANO CONTRATADO E CONDIÇÕES COMERCIAIS
-- Plano: Novaes Business
-- Taxa de Criação: R$ 578,00
+- Plano: Novaes Pro
+- Taxa de Criação: R$ 290,00
 - Mensalidade: R$ 190,00/mês
 - Rodadas de revisão na criação: Até 2 rodadas
 - Franquia mensal inclusa: 340 pedidos aceitos/mês
@@ -289,7 +289,7 @@ Público-alvo: {{PUBLICO_ALVO}}
 
 3. PLANO CONTRATADO E CONDIÇÕES COMERCIAIS
 - Plano: Novaes Premium (ou {{NOME_MODELO}})
-- Taxa de Criação: R$ 980,00
+- Taxa de Criação: R$ 490,00
 - Mensalidade: R$ 270,00/mês
 - Rodadas de revisão na criação: Até 2 rodadas
 - Franquia mensal inclusa: 750 pedidos aceitos/mês

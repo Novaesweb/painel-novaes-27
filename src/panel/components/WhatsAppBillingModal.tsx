@@ -86,9 +86,11 @@ function formatDateBR(dateIso: string | null): string {
 function getPlanPriceFormatted(planCode: string | null): string {
   if (!planCode) return 'Sob consulta'
   const up = planCode.toUpperCase()
+  if (up.includes('PREMIUM_ANUAL')) return 'R$ 2.700,00/ano (R$ 225,00/mês)'
+  if (up.includes('BUSINESS_ANUAL') || up.includes('PRO_ANUAL')) return 'R$ 1.900,00/ano (R$ 158,33/mês)'
   if (up.includes('PREMIUM')) return 'R$ 270,00'
-  if (up.includes('BUSINESS')) return 'R$ 190,00'
-  if (up.includes('START')) return 'R$ 97,00'
+  if (up.includes('BUSINESS') || up.includes('PRO')) return 'R$ 190,00'
+  if (up.includes('START')) return 'Sem mensalidade (Criação R$ 630,00)'
   return 'R$ 190,00'
 }
 

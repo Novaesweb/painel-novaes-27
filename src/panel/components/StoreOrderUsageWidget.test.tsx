@@ -4,7 +4,7 @@ import { StoreOrderUsageWidget, type StoreOrderUsageData } from "./StoreOrderUsa
 const base: StoreOrderUsageData = {
   store_id: "A",
   store_name: "A",
-  plan_name: "Novaes Business",
+  plan_name: "Novaes Pro",
   plan_code: "NOVAES_BUSINESS",
   competence: "2026-10",
   competence_label: "Outubro de 2026",

@@ -843,12 +843,18 @@ export function PromptGeneratorSection({ initialStoreId }: { initialStoreId?: st
             </div>
           </div>
 
-          {/* Grupo 2: Identidade Visual & Cores */}
-          <div className="form-group-section">
-            <div className="group-title">
-              <Palette size={16} />
-              <span>2. Identidade Visual & Design</span>
-            </div>
+          {/* Grupo 2: Identidade Visual & Cores (Progressive Disclosure) */}
+          <details className="ux-disclosure-section">
+            <summary>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Palette size={16} />
+                <span>2. Identidade Visual & Design (Opcional)</span>
+              </span>
+              <span className="ux-disclosure-summary-meta">
+                {form.colorTheme === 'light' ? 'Tema Claro' : 'Tema Escuro'} · {form.primaryColor} · {form.visualStyle}
+              </span>
+            </summary>
+            <div className="ux-disclosure-body">
 
             <div className="form-row-3">
               <label className="form-field">
@@ -927,14 +933,21 @@ export function PromptGeneratorSection({ initialStoreId }: { initialStoreId?: st
                 />
               </label>
             </div>
-          </div>
-
-          {/* Grupo 3: Conteúdo e Produtos */}
-          <div className="form-group-section">
-            <div className="group-title">
-              <FileText size={16} />
-              <span>3. Conteúdo & Catálogo do Site</span>
             </div>
+          </details>
+
+          {/* Grupo 3: Conteúdo e Produtos (Progressive Disclosure) */}
+          <details className="ux-disclosure-section">
+            <summary>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={16} />
+                <span>3. Conteúdo, Produtos & Adicionais (Opcional)</span>
+              </span>
+              <span className="ux-disclosure-summary-meta">
+                {form.mainProductsServices?.trim() ? 'Catálogo preenchido' : 'Usar demonstrativo do segmento'}
+              </span>
+            </summary>
+            <div className="ux-disclosure-body">
 
             <label className="form-field">
               <span>Produtos ou Serviços Principais (e categorias sugeridas):</span>
@@ -970,7 +983,8 @@ export function PromptGeneratorSection({ initialStoreId }: { initialStoreId?: st
                 />
               </label>
             )}
-          </div>
+            </div>
+          </details>
 
           {/* Grupo 4: Escopo Sob Medida do Plano Empresarial (Seleção Manual) */}
           {selectedModelId === 'empresarial' && (

@@ -43,6 +43,35 @@ export const APPROVED_PLAN_RULES: Record<
     max_admins: null,
   },
 };
+
+export const APPROVED_ANNUAL_PLAN_RULES: Record<
+  string,
+  {
+    price_cents: number;
+    creation_price_cents: number | null;
+    included_orders: number | null;
+    overage_price_cents: number | null;
+    max_products: number | null;
+    max_admins: number | null;
+  }
+> = {
+  NOVAES_BUSINESS_ANUAL: {
+    price_cents: 190000,
+    creation_price_cents: 29000,
+    included_orders: 340,
+    overage_price_cents: 20,
+    max_products: 200,
+    max_admins: 2,
+  },
+  NOVAES_PREMIUM_ANUAL: {
+    price_cents: 270000,
+    creation_price_cents: 49000,
+    included_orders: 750,
+    overage_price_cents: 15,
+    max_products: 500,
+    max_admins: 5,
+  },
+};
 export function validatePlanCommercial(plan: {
   code: string;
   price_cents: number;
@@ -64,7 +93,7 @@ export function validatePlanCommercial(plan: {
     if (value != null && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0))
       return "Limites e valores precisam ser inteiros não negativos.";
   }
-  const rules = APPROVED_PLAN_RULES[plan.code];
+  const rules = APPROVED_PLAN_RULES[plan.code] ?? APPROVED_ANNUAL_PLAN_RULES[plan.code];
   if (!rules) return null;
   if (plan.price_cents !== rules.price_cents)
     return "Preço principal divergente do plano aprovado; alteração requer aprovação comercial.";

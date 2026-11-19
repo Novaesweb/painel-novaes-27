@@ -9,9 +9,11 @@ import { PlanManagement } from './PlanManagement'
 import { OrderControlManagement } from './OrderControlManagement'
 import { ContractsAndProposalsPage } from './ContractsAndProposalsPage'
 import { IncomeSimulator } from '../components/IncomeSimulator'
-import { calculateNextMonthDueDate, formatDateBR } from '../lib/dateUtils'
+import { calculateNextMonthDueDate, calculateNextYearDueDate, formatDateBR } from '../lib/dateUtils'
 import { sendEvolutionWhatsAppMessage, getEvolutionConfig } from '../lib/evolutionApi'
 import { WhatsAppBillingModal, getStoreStoredPhone, saveStoreStoredPhone } from '../components/WhatsAppBillingModal'
+import { getPlanDisplayMeta, isAnnualPlanCode } from '../lib/planDisplay'
+import { fetchMasterSitesCached, invalidateMasterSitesCache } from '../lib/masterSitesCache'
 import './OperationalModules.css'
 
 type Domain = { domain: string; is_primary: boolean; verification_status: string }
@@ -33,14 +35,7 @@ const paymentNames: Record<string, string> = { unknown: 'Sem informação', paid
 const ticketStatusLabels: Record<string, string> = { open: 'Aberto', in_progress: 'Em andamento', waiting: 'Aguardando', resolved: 'Resolvido', closed: 'Fechado' }
 
 function getPlanMonthlyPrice(planCode: string | null): number {
-  if (!planCode) return 0
-  const normalized = planCode.toUpperCase()
-  if (normalized.includes('PREMIUM_ANUAL')) return 225
-  if (normalized.includes('BUSINESS_ANUAL') || normalized.includes('PRO_ANUAL')) return 158.33
-  if (normalized.includes('PREMIUM')) return 270
-  if (normalized.includes('BUSINESS') || normalized.includes('PRO')) return 190
-  if (normalized.includes('START')) return 0
-  return 0
+  return getPlanDisplayMeta(planCode).monthlyEquivalentReais
 }
 
 function normalizeDomain(value: string) {
@@ -86,29 +81,37 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     return data as Record<string, any>
   }, [])
 
-  const loadSites = useCallback(async () => {
-    const data = await invoke('novaesweb-master-sites', { action: 'list_sites' })
-    const rawSites = (data['sites'] ?? []) as Site[]
+  const loadSites = useCallback(async (force = false) => {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase não configurado.')
+    if (force) invalidateMasterSitesCache()
+    const { data, error } = await fetchMasterSitesCached(supabase, { force })
+    if (error) {
+      let detail = error.message
+      try { const response = (error as Error & { context?: Response }).context; const payload = await response?.clone().json() as { error?: string } | undefined; if (payload?.error) detail = payload.error } catch { /* Keep the function error. */ }
+      throw new Error(detail)
+    }
+    if (data?.['error']) throw new Error(String(data['error']))
+    const rawSites = (data?.['sites'] ?? []) as Site[]
     const enriched = rawSites.map((s) => ({
       ...s,
       owner_phone: (s as unknown as { owner_phone?: string }).owner_phone || getStoreStoredPhone(s.id) || null,
     }))
     setSites(enriched)
-    setPlans((data['plans'] ?? []) as Plan[])
-  }, [invoke])
+    setPlans((data?.['plans'] ?? []) as Plan[])
+  }, [])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setLoading(true); setMessage('')
     try {
       if (path === '/usuarios') {
         const data = await invoke('novaesweb-master-operations', { action: 'list_master_users' })
         setUsers((data['users'] ?? []) as MasterUser[])
       } else if (path === '/suporte') {
-        await loadSites()
+        await loadSites(force)
         const data = await invoke('novaesweb-master-operations', { action: 'list_support_tickets' })
         setTickets((data['tickets'] ?? []) as Ticket[])
       } else {
-        await loadSites()
+        await loadSites(force)
         if (path === '/configuracoes') {
           const data = await invoke('novaesweb-master-operations', { action: 'list_store_settings' })
           setSettings((data['settings'] ?? []) as typeof settings)
@@ -166,7 +169,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
 
   async function run(task: () => Promise<unknown>, success?: string) {
     setBusy(true); setMessage('')
-    try { await task(); await load(); if (success) setMessage(success) }
+    try { await task(); invalidateMasterSitesCache(); await load(); if (success) setMessage(success) }
     catch (error) { setMessage(error instanceof Error ? error.message : 'A operação não foi concluída.') }
     finally { setBusy(false) }
   }
@@ -236,7 +239,10 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   }
 
   async function quickPayAndAdvanceMonth(targetSite: Site) {
-    const nextExpires = calculateNextMonthDueDate(targetSite.plan_expires_at)
+    const isAnnual = isAnnualPlanCode(targetSite.plan_code)
+    const nextExpires = isAnnual
+      ? calculateNextYearDueDate(targetSite.plan_expires_at)
+      : calculateNextMonthDueDate(targetSite.plan_expires_at)
     await run(async () => {
       await invoke('novaesweb-master-sites', {
         action: 'set_billing_details',
@@ -265,8 +271,8 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
           expires: nextExpires,
         }))
       }
-      await loadSites()
-    }, `Pagamento registrado com sucesso para ${targetSite.name}! Vencimento avançado para ${formatDateBR(nextExpires)} e sincronizado com a loja.`)
+      await loadSites(true)
+    }, `Pagamento ${isAnnual ? 'anual ' : ''}registrado com sucesso para ${targetSite.name}! Vencimento avançado para ${formatDateBR(nextExpires)} e sincronizado com a loja.`)
   }
 
   async function openWhatsAppBillingReminder(targetSite: Site) {
@@ -302,7 +308,9 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
   const handlePaymentStatusChange = (newStatus: string) => {
     let nextExpires = form.expires
     if (newStatus === 'paid') {
-      nextExpires = calculateNextMonthDueDate(form.expires || selected?.plan_expires_at)
+      nextExpires = isAnnualPlanCode(form.plan || selected?.plan_code)
+        ? calculateNextYearDueDate(form.expires || selected?.plan_expires_at)
+        : calculateNextMonthDueDate(form.expires || selected?.plan_expires_at)
     }
     setForm((prev) => ({
       ...prev,
@@ -406,7 +414,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
     setTicketDraft({ subject: '', message: '', priority: 'normal' })
   }
 
-  const head = <div className="page-heading"><div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>{path === '/financeiro' && financeTab === 'simulator' ? 'Simulador de Renda' : title[path] ?? 'Módulo'}</h1><p>{path === '/financeiro' && financeTab === 'simulator' ? 'Projeções locais para planejar a NovaesWeb, sem alterar contratos ou cobranças.' : 'Informações administrativas reais do Supabase NovaesWeb.'}</p></div><button className="secondary-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} /> Atualizar</button></div>
+  const head = <div className="page-heading"><div><div className="eyebrow small-eyebrow">OPERAÇÃO</div><h1>{path === '/financeiro' && financeTab === 'simulator' ? 'Simulador de Renda' : title[path] ?? 'Módulo'}</h1><p>{path === '/financeiro' && financeTab === 'simulator' ? 'Projeções locais para planejar a NovaesWeb, sem alterar contratos ou cobranças.' : 'Informações administrativas reais do Supabase NovaesWeb.'}</p></div><button className="secondary-button" onClick={() => void load(true)} disabled={loading}><RefreshCw size={14} /> Atualizar</button></div>
   const sitePicker = <label className="operational-picker">Loja<select value={selectedSite} onChange={(event) => setSelectedSite(event.target.value)}><option value="">Selecione uma loja</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.nx_id} · {site.name}</option>)}</select></label>
   if (loading && path !== '/financeiro') return <div className="operational-page">{head}<section className="panel operational-empty"><span className="loader" /><p>Carregando dados do Supabase…</p></section></div>
   const isSuccessMessage = /salv|criad|vinculad|atualizad|registrad|restaurad/i.test(message)
@@ -502,7 +510,7 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
           <small className="kpi-detail">Cadastros monitorados</small>
         </div>
         <div className="order-kpi-card">
-          <span className="kpi-label">Faturamento Mensal Previsto</span>
+          <span className="kpi-label">Faturamento Mensal Previsto (MRR)</span>
           <div className="kpi-value-row">
             <CircleDollarSign size={20} className="kpi-icon text-emerald" />
             <strong className="kpi-value text-emerald">
@@ -511,7 +519,11 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
               )}
             </strong>
           </div>
-          <small className="kpi-detail">Mensalidades contratuais base</small>
+          <small className="kpi-detail">
+            {sites.filter((s) => isAnnualPlanCode(s.plan_code)).length > 0
+              ? `Inclui ${sites.filter((s) => isAnnualPlanCode(s.plan_code)).length} plano(s) anual(is) diluído(s)/mês`
+              : 'Mensalidades contratuais base'}
+          </small>
         </div>
         <div className="order-kpi-card">
           <span className="kpi-label">Mensalidades Pagas</span>
@@ -559,7 +571,9 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
             </thead>
             <tbody>
               {filtered.map((site) => {
-                const planPrice = getPlanMonthlyPrice(site.plan_code)
+                const planMeta = getPlanDisplayMeta(site.plan_code)
+                const planPrice = planMeta.monthlyEquivalentReais
+                const isAnnual = planMeta.cycle === 'annual'
                 return (
                   <tr key={site.id} onClick={() => setSelectedSite(site.id)}>
                     <td>
@@ -581,13 +595,29 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                       </span>
                     </td>
                     <td>
-                      <span className="domain-chip" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe' }}>
-                        {site.plan_code || 'Sem plano'}
+                      <span className={`plan-pill plan-pill-${planMeta.tone}`}>
+                        {planMeta.label}
                       </span>
                     </td>
                     <td>
-                      <b>{planPrice > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice) : '—'}</b>
-                      <small style={{ display: 'block', color: '#94a3b8' }}>mensal</small>
+                      {isAnnual && planMeta.annualTotalReais ? (
+                        <>
+                          <b>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planMeta.annualTotalReais)}/ano</b>
+                          <small style={{ display: 'block', color: '#6ee7b7' }}>
+                            ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice)}/mês · anual)
+                          </small>
+                        </>
+                      ) : planMeta.cycle === 'one_time' ? (
+                        <>
+                          <b>Isento</b>
+                          <small style={{ display: 'block', color: '#94a3b8' }}>sem mensalidade</small>
+                        </>
+                      ) : (
+                        <>
+                          <b>{planPrice > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(planPrice) : '—'}</b>
+                          <small style={{ display: 'block', color: '#94a3b8' }}>mensal</small>
+                        </>
+                      )}
                     </td>
                     <td>
                       <span className="text-xs">PIX Automático / Cartão</span>
@@ -620,10 +650,10 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                             e.stopPropagation()
                             void quickPayAndAdvanceMonth(site)
                           }}
-                          title="Quitar mensalidade e avançar vencimento automaticamente para o próximo mês (+1 Mês)"
+                          title={isAnnual ? 'Quitar assinatura anual e avançar vencimento (+1 Ano)' : 'Quitar mensalidade e avançar vencimento automaticamente para o próximo mês (+1 Mês)'}
                         >
                           <CheckCircle2 size={12} />
-                          Quitar (+1 Mês)
+                          {isAnnual ? 'Quitar (+1 Ano)' : 'Quitar (+1 Mês)'}
                         </button>
                         {site.payment_status !== 'paid' && (
                           <button
@@ -718,10 +748,21 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
                 type="button"
                 className="secondary-button"
                 style={{ padding: '8px 12px', fontSize: 11, whiteSpace: 'nowrap' }}
-                onClick={() => setForm((prev) => ({ ...prev, expires: calculateNextMonthDueDate(prev.expires || selected?.plan_expires_at) }))}
-                title="Pula o vencimento para o mesmo dia do próximo mês (+1 Mês)"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    expires: isAnnualPlanCode(prev.plan || selected?.plan_code)
+                      ? calculateNextYearDueDate(prev.expires || selected?.plan_expires_at)
+                      : calculateNextMonthDueDate(prev.expires || selected?.plan_expires_at),
+                  }))
+                }
+                title={
+                  isAnnualPlanCode(form.plan || selected?.plan_code)
+                    ? 'Avança o vencimento anual em +1 Ano'
+                    : 'Pula o vencimento para o mesmo dia do próximo mês (+1 Mês)'
+                }
               >
-                +1 Mês
+                {isAnnualPlanCode(form.plan || selected?.plan_code) ? '+1 Ano' : '+1 Mês'}
               </button>
             </div>
           </label>
@@ -792,7 +833,9 @@ export function OperationalModulePage({ path, role, sessionUserId }: { path: str
               onClick={() => selected && void quickPayAndAdvanceMonth(selected)}
             >
               <CheckCircle2 size={15} />
-              Quitar como Pago & Avançar (+1 Mês Automático)
+              {isAnnualPlanCode(form.plan || selected?.plan_code)
+                ? 'Quitar como Pago & Avançar (+1 Ano Automático)'
+                : 'Quitar como Pago & Avançar (+1 Mês Automático)'}
             </button>
           </div>
         </form>

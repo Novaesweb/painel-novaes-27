@@ -38,6 +38,37 @@ export function calculateNextMonthDueDate(currentDateIsoOrYmd?: string | null): 
 }
 
 /**
+ * Calcula a data de vencimento do próximo ano (+12 meses) mantendo dia e mês para planos anuais.
+ */
+export function calculateNextYearDueDate(currentDateIsoOrYmd?: string | null): string {
+  let dateObj: Date
+  if (currentDateIsoOrYmd && currentDateIsoOrYmd.trim()) {
+    const raw = currentDateIsoOrYmd.split('T')[0]!
+    const parts = raw.split('-')
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]!, 10) + 1
+      const month = parseInt(parts[1]!, 10) - 1
+      const day = parseInt(parts[2]!, 10)
+      dateObj = new Date(year, month, day)
+      if (dateObj.getMonth() !== month) {
+        dateObj = new Date(year, month + 1, 0)
+      }
+    } else {
+      dateObj = new Date(currentDateIsoOrYmd)
+      dateObj.setFullYear(dateObj.getFullYear() + 1)
+    }
+  } else {
+    const now = new Date()
+    dateObj = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
+  }
+
+  const y = dateObj.getFullYear()
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const d = String(dateObj.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
  * Formata uma data YYYY-MM-DD para visualização amigável pt-BR (DD/MM/YYYY).
  */
 export function formatDateBR(dateIsoOrYmd?: string | null): string {

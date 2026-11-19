@@ -202,12 +202,12 @@ describe("Autorização e recursos anteriores", () => {
   });
   it("preserva os prompts oficiais de integração (1 a 7) e os quatro modelos de criação na página existente", () => {
     render(<SiteIntegrationPage role="MASTER" />);
-    expect(screen.getByRole("button", { name: "Copiar Prompt de Integração" })).toBeTruthy();
-    expect(screen.getAllByRole("listitem")).toHaveLength(7);
-    fireEvent.click(screen.getByRole("button", { name: "Criador de Sites — Gerador de Prompts" }));
     expect(screen.getByText("Novaes Start")).toBeTruthy();
     expect(screen.getByText("Novaes Pro")).toBeTruthy();
     expect(screen.getByText("Novaes Premium")).toBeTruthy();
     expect(screen.getByText("Novaes Empresarial")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Prompts Separados / Manutenção (1 a 7)" }));
+    expect(screen.getByRole("button", { name: "Copiar Prompt de Integração" })).toBeTruthy();
+    expect(screen.getAllByRole("listitem")).toHaveLength(7);
   });
 });

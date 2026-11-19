@@ -9,6 +9,8 @@ import { QuickStoreModal } from '../components/QuickStoreModal'
 import { WhatsAppBillingModal, getStoreStoredPhone, WhatsAppBillingTargetSite } from '../components/WhatsAppBillingModal'
 import { ImpersonateStoreModal } from '../components/ImpersonateStoreModal'
 import { StoreReferralModal } from '../components/StoreReferralModal'
+import { getPlanDisplayMeta } from '../lib/planDisplay'
+import { fetchMasterSitesCached, invalidateMasterSitesCache } from '../lib/masterSitesCache'
 import './StoresPage.css'
 import './StoreAdministration.css'
 
@@ -126,12 +128,12 @@ export function StoresPage({ role }: { role: string }) {
       setInitialLoading(false)
       return
     }
-    if (quiet) setRefreshing(true)
-    else setLoading(true)
+    if (quiet) {
+      setRefreshing(true)
+      invalidateMasterSitesCache()
+    } else setLoading(true)
     setFeedback('', 'info')
-    const { data, error } = await supabase.functions.invoke('novaesweb-master-sites', {
-      body: { action: 'list_sites' },
-    })
+    const { data, error } = await fetchMasterSitesCached(supabase, { force: quiet })
     if (error || data?.error) {
       const detail = data?.error || error?.message || 'erro desconhecido'
       setFeedback(`Não foi possível carregar as lojas pelo backend MASTER: ${detail}`, 'error')
@@ -183,6 +185,14 @@ export function StoresPage({ role }: { role: string }) {
       setSelectedId(requestedSite)
     }
   }, [searchParams, sites])
+  useEffect(() => {
+    if (searchParams.get('quick_new') === '1' && role === 'MASTER') {
+      setShowQuickStoreModal(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('quick_new')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, role, setSearchParams])
 
   useEffect(() => {
     if (!supabase) return
@@ -790,7 +800,7 @@ export function StoresPage({ role }: { role: string }) {
       <div className="store-detail-grid">
         <Info label="Proprietário" value={selected.owner_name || (selected.owner_id ? `Usuário ${selected.owner_id.slice(0, 8)}…` : 'Não vinculado')} />
         <Info label="Vínculo do proprietário" value={selected.owner_membership_status} />
-        <Info label="Plano" value={selected.plan_code || 'Não informado'} />
+        <Info label="Plano" value={selected.plan_code ? getPlanDisplayMeta(selected.plan_code).label : 'Não informado'} />
         <Info label="Criada em" value={dateLabel(selected.created_at)} />
         <Info label="UUID interno" value={selected.id} mono />
       </div>
@@ -969,7 +979,7 @@ export function StoresPage({ role }: { role: string }) {
       {initialLoading ? <MasterLoadingSkeleton variant="store-table" /> : filtered.length === 0 ? <div className="stores-empty"><div className="stores-empty-icon"><Store size={22} /></div><strong>{sites.length ? 'Nenhuma loja corresponde à busca' : 'Nenhuma loja cadastrada'}</strong><p>{sites.length ? 'Confira o termo digitado ou pesquise pelo ID NX oficial.' : 'Quando o cadastro oficial for concluído no Supabase, a loja aparecerá aqui automaticamente.'}</p></div> : <div className="store-table-wrap"><table className="store-table"><thead><tr><th>LOJA</th><th>PROPRIETÁRIO</th><th>STATUS</th><th>DOMÍNIO</th><th>PLANO</th><th>CADASTRO</th><th>WHATSAPP</th><th>ACESSO</th><th /></tr></thead><tbody>{filtered.map((site) => <tr key={site.id} onClick={() => setSelectedId(site.id)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelectedId(site.id) }}>
         <td><div className="store-name-cell"><span className="store-avatar small"><Store size={15} /></span><span><strong>{site.name}</strong><small>{site.nx_id}</small></span></div></td>
         <td>{site.owner_name || (site.owner_id ? `…${site.owner_id.slice(-8)}` : '—')}</td><td><StatusBadge status={site.status} /></td>
-        <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code || '—'}</td><td>{dateLabel(site.created_at)}</td>
+        <td>{site.store_domains.find((domain) => domain.is_primary)?.domain || site.store_domains[0]?.domain || '—'}</td><td>{site.plan_code ? (() => { const pm = getPlanDisplayMeta(site.plan_code); return <span className={`plan-pill plan-pill-${pm.tone}`}>{pm.label}</span> })() : '—'}</td><td>{dateLabel(site.created_at)}</td>
         <td onClick={(e) => e.stopPropagation()}>
           <button
             type="button"

@@ -120,13 +120,17 @@ export function LeadsPage({ role }: { role: string }) {
   }, [filter, leads, query])
 
   async function changeStatus(lead: Lead, status: LeadStatus) {
+    const previousLeads = leads
     setBusyId(lead.id)
     setMessage('')
+    // Optimistic UI com reversão segura em caso de falha do servidor
+    setLeads((current) => current.map((item) => (item.id === lead.id ? { ...item, status } : item)))
     try {
       await invoke({ action: 'set_website_lead_status', lead_id: lead.id, status })
       await load()
       setMessage('Status do lead atualizado.')
     } catch (error) {
+      setLeads(previousLeads)
       setMessage(error instanceof Error ? error.message : 'Não foi possível atualizar o lead.')
     } finally { setBusyId('') }
   }

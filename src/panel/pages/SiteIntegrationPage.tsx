@@ -10,13 +10,16 @@ import './SiteIntegrationPage.css'
 import { StoreIntegrationCentral } from '../components/StoreIntegrationCentral'
 
 export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; sessionUserId?: string } = {}) {
+  const [searchParams] = useSearchParams()
+  const initialStoreId = searchParams.get('store_id') || undefined
   const [activeTab, setActiveTab] = useState<'prompts' | 'generator' | 'stores'>(() => {
     try {
       const p = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
       const tab = p.get('tab')
       if (tab === 'generator' || tab === 'stores' || tab === 'prompts') return tab
+      if (p.get('store_id')) return 'generator'
     } catch {}
-    return 'prompts'
+    return 'generator'
   })
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<{ id: string; message: string } | null>(null)
@@ -63,48 +66,26 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
         </div>
       </div>
 
-      {/* Guia Visual do Fluxo de Trabalho */}
+      {/* Guia Visual Enxuto do Fluxo de Trabalho */}
       <section className="panel site-workflow-banner" aria-label="Passo a passo oficial de integração">
-        <div className="workflow-banner-header">
-          <HelpCircle size={18} className="workflow-icon" />
-          <div>
-            <strong>Passo a Passo Oficial: Como criar ou conectar uma loja</strong>
-            <p>O fluxo de trabalho varia conforme o cenário da loja. Entenda a ordem correta:</p>
-          </div>
-        </div>
-
         <div className="workflow-scenarios-grid">
           {/* Cenário A: Nova Loja do Zero */}
           <div className="workflow-scenario-card new-store">
-            <div className="scenario-badge">Cenário A · Loja Nova do Zero</div>
-            <h3>Criando um site para novo cliente</h3>
+            <div className="scenario-badge">Cenário A · Site Novo (Prompt Único)</div>
+            <h3>Criar site novo já conectado ao Master</h3>
             <div className="scenario-steps">
               <div className="scenario-step-item">
                 <span className="step-num s1">1</span>
                 <div>
-                  <strong>Criar a Loja Primeiro</strong>
-                  <p>Acesse a aba <em>Criador de Sites</em>, preencha o formulário e envie o prompt à IA (Lovable) para gerar o site, cardápio e layout.</p>
+                  <strong>Cadastrar ou Selecionar a Loja</strong>
+                  <p>No <em>Criador de Sites</em>, selecione a loja já cadastrada para puxar automaticamente o <code>NX-ID</code>, <code>STORE_ID</code> e o plano (Mensal ou Anual).</p>
                 </div>
               </div>
               <div className="scenario-step-item">
                 <span className="step-num s2">2</span>
                 <div>
-                  <strong>Colocar o Supabase</strong>
-                  <p>Com o site criado e funcional, envie o <strong>Prompt 1</strong> no chat do site para plugar o banco, RLS e variáveis <code>.env</code>.</p>
-                </div>
-              </div>
-              <div className="scenario-step-item">
-                <span className="step-num s3">3</span>
-                <div>
-                  <strong>Conectar ao Master</strong>
-                  <p>O site executa o auto-cadastro seguro, recebe o <code>NX-ID</code> oficial e faz check-in direto no Painel Master.</p>
-                </div>
-              </div>
-              <div className="scenario-step-item">
-                <span className="step-num s4">4</span>
-                <div>
-                  <strong>Controles e Franquia</strong>
-                  <p>Envie os Prompts 2 a 6 para sincronizar bloqueio/manutenção, catálogo de adicionais e contagem de pedidos.</p>
+                  <strong>Gerar e Colar o Prompt Único Completo</strong>
+                  <p>O prompt já inclui site, cardápio, Supabase Master, contagem de pedidos, Rodapé v5.2, Suporte, Indique e Ganhe e Guia do Lojista de uma só vez.</p>
                 </div>
               </div>
             </div>
@@ -113,41 +94,27 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
               className="scenario-action-btn"
               onClick={() => changeTab('generator')}
             >
-              <Sparkles size={14} /> Ir para o Criador de Sites
+              <Sparkles size={14} /> Abrir Criador de Sites
             </button>
           </div>
 
           {/* Cenário B: Loja Já Existente */}
           <div className="workflow-scenario-card existing-store">
             <div className="scenario-badge">Cenário B · Loja Já Existente</div>
-            <h3>Conectando loja pronta (ex: Burger Rose)</h3>
+            <h3>Conectar ou atualizar site antigo</h3>
             <div className="scenario-steps">
-              <div className="scenario-step-item">
-                <span className="step-num s-check">✓</span>
-                <div>
-                  <strong>Site Já Existe</strong>
-                  <p>Não precisa recriar a loja. O frontend, design, produtos e rotas originais são 100% preservados.</p>
-                </div>
-              </div>
               <div className="scenario-step-item">
                 <span className="step-num s1">1</span>
                 <div>
-                  <strong>Colocar o Supabase e Conectar</strong>
-                  <p>Envie direto o <strong>Prompt 1</strong> no chat da loja para plugar o Supabase central e obter o <code>NX-ID</code>.</p>
+                  <strong>Usar Prompts de Conexão (1 a 7)</strong>
+                  <p>Para sites que já existem, use os prompts individuais na aba <em>Prompts de Conexão</em> para plugar banco, controles, franquia e suporte sem recriar o layout.</p>
                 </div>
               </div>
               <div className="scenario-step-item">
                 <span className="step-num s2">2</span>
                 <div>
-                  <strong>Conectar ao Painel Master</strong>
-                  <p>O check-in ativa a loja na Central Multi-Loja sem necessidade de aprovação manual.</p>
-                </div>
-              </div>
-              <div className="scenario-step-item">
-                <span className="step-num s3">3</span>
-                <div>
-                  <strong>Ativar Controles e Pedidos</strong>
-                  <p>Envie os Prompts 2 e 5 para vincular as regras de bloqueio e acompanhamento da franquia do plano.</p>
+                  <strong>Conferir na Central por Loja</strong>
+                  <p>Acompanhe check-in, plano confirmado e adicionais na aba <em>Central de Integração por Loja</em>.</p>
                 </div>
               </div>
             </div>
@@ -156,7 +123,7 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
               className="scenario-action-btn"
               onClick={() => changeTab('prompts')}
             >
-              <Layers size={14} /> Ver Prompts de Conexão
+              <Layers size={14} /> Ver Prompts de Conexão (1 a 7)
             </button>
           </div>
         </div>
@@ -164,6 +131,15 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
 
       {/* Seletor de Abas da Página */}
       <div className="integration-navigation-tabs">
+        <button
+          type="button"
+          className={`integration-nav-tab ${activeTab === 'generator' ? 'active' : ''}`}
+          onClick={() => changeTab('generator')}
+        >
+          <Sparkles size={15} />
+          <span>Criador de Sites — Prompt Único</span>
+        </button>
+
         <button
           type="button"
           className={`integration-nav-tab ${activeTab === 'stores' ? 'active' : ''}`}
@@ -179,16 +155,7 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
           onClick={() => changeTab('prompts')}
         >
           <Layers size={15} />
-          <span>Prompts de Conexão e Controle (1 a 7)</span>
-        </button>
-
-        <button
-          type="button"
-          className={`integration-nav-tab ${activeTab === 'generator' ? 'active' : ''}`}
-          onClick={() => changeTab('generator')}
-        >
-          <Sparkles size={15} />
-          <span>Criador de Sites — Gerador de Prompts</span>
+          <span>Prompts Separados / Manutenção (1 a 7)</span>
         </button>
       </div>
 
@@ -205,7 +172,7 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
               2. Depois envie o <strong>Prompt 2</strong> (Controles do Master) para ativar avisos de bloqueio/manutenção e mensagens.<br />
               3. Envie o <strong>Prompt 3</strong> (Central de Adicionais) para exibir o catálogo oficial no painel do lojista.<br />
               4. O <strong>Prompt 4</strong> é usado somente quando você aceitar um adicional específico no Master.<br />
-              5. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia mensal (340 pedidos no Business ou 750 no Premium) com <strong>Zero Bloqueio</strong>.<br />
+              5. O <strong>Prompt 5</strong> conecta a contagem segura de pedidos à franquia mensal (340 pedidos no Pro ou 750 no Premium) com <strong>Zero Bloqueio</strong>.<br />
               6. O <strong>Prompt 6</strong> embute o widget de consumo no painel do lojista e ativa recursos Premium (cupons e pedidos agendados).<br />
               7. O <strong>Prompt 7</strong> instala a Central de Suporte e Chamados no painel do lojista, conectando dúvidas e tickets em tempo real com o Master.
             </p>
@@ -254,76 +221,84 @@ export function SiteIntegrationPage({ role, sessionUserId }: { role?: string; se
             ))}
           </ol>
 
-          {/* Card Rápido: Rodapé Oficial e Versão v5.2 */}
-          <section className="panel site-footer-quick-banner" aria-label="Padronização de Rodapé e Versão v5.2">
-            <div className="site-footer-quick-content">
-              <div className="site-footer-badge">
-                <Heart size={14} className="heart-icon-pulse" />
-                <span>Identidade Visual & Versão Oficial</span>
-              </div>
-              <h3>Rodapé Oficial: Feito com ❤️ por NovaesWeb e Versão v5.2</h3>
-              <p>
-                Prompt pronto e autônomo para padronizar a assinatura institucional (com link e coração) no rodapé de todas as páginas públicas e adicionar o indicador <code>v5.2</code> no painel administrativo do lojista.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="primary-button site-footer-quick-copy"
-              onClick={() => void copyPrompt('footer-v52', footerVersionPrompt.trim())}
-            >
-              {copied === 'footer-v52' ? <Check size={16} /> : <Copy size={16} />}
-              <span>{copied === 'footer-v52' ? 'Prompt de Rodapé Copiado!' : 'Copiar Prompt de Rodapé e Versão (v5.2)'}</span>
-            </button>
-          </section>
+          {/* Módulos Avulsos recolhidos (para lojas antigas — já inclusos no Criador de Sites) */}
+          <details className="panel" style={{ marginTop: 18, padding: '14px 18px' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, color: '#d8b4fe' }}>
+              Módulos Avulsos para Lojas Antigas (Rodapé v5.2, Indique e Ganhe, Guia Passo a Passo) — já inclusos no Prompt Único
+            </summary>
+            <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
+              {/* Card Rápido: Rodapé Oficial e Versão v5.2 */}
+              <section className="panel site-footer-quick-banner" aria-label="Padronização de Rodapé e Versão v5.2">
+                <div className="site-footer-quick-content">
+                  <div className="site-footer-badge">
+                    <Heart size={14} className="heart-icon-pulse" />
+                    <span>Identidade Visual & Versão Oficial</span>
+                  </div>
+                  <h3>Rodapé Oficial: Feito com ❤️ por NovaesWeb e Versão v5.2</h3>
+                  <p>
+                    Prompt avulso para padronizar a assinatura institucional no rodapé e o indicador <code>v5.2</code> em lojas criadas antes do Prompt Único.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="primary-button site-footer-quick-copy"
+                  onClick={() => void copyPrompt('footer-v52', footerVersionPrompt.trim())}
+                >
+                  {copied === 'footer-v52' ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copied === 'footer-v52' ? 'Prompt de Rodapé Copiado!' : 'Copiar Prompt de Rodapé (v5.2)'}</span>
+                </button>
+              </section>
 
-          {/* Card Rápido: Programa Indique e Ganhe */}
-          <section className="panel site-referral-quick-banner" aria-label="Programa Indique e Ganhe">
-            <div className="site-footer-quick-content">
-              <div className="site-referral-badge">
-                <Gift size={14} className="gift-icon-bounce" />
-                <span>Crescimento Viral & Bonificação</span>
-              </div>
-              <h3>Programa Indique e Ganhe: Card no Painel do Lojista</h3>
-              <p>
-                Prompt oficial para instalar o card <strong>"Ganhe R$ 30 por indicação"</strong> com link exclusivo de parceiro e botão de compartilhamento no WhatsApp dentro do painel do lojista (<code>/painel</code>).
-              </p>
-            </div>
-            <button
-              type="button"
-              className="primary-button site-referral-quick-copy"
-              onClick={() => void copyPrompt('referral-prompt', referralPrompt.trim())}
-            >
-              {copied === 'referral-prompt' ? <Check size={16} /> : <Copy size={16} />}
-              <span>{copied === 'referral-prompt' ? 'Prompt de Indicação Copiado!' : 'Copiar Prompt Indique e Ganhe'}</span>
-            </button>
-          </section>
+              {/* Card Rápido: Programa Indique e Ganhe */}
+              <section className="panel site-referral-quick-banner" aria-label="Programa Indique e Ganhe">
+                <div className="site-footer-quick-content">
+                  <div className="site-referral-badge">
+                    <Gift size={14} className="gift-icon-bounce" />
+                    <span>Crescimento Viral & Bonificação</span>
+                  </div>
+                  <h3>Programa Indique e Ganhe: Card no Painel do Lojista</h3>
+                  <p>
+                    Prompt avulso para instalar o card <strong>"Ganhe R$ 30 por indicação"</strong> no painel (<code>/painel</code>) de lojas antigas.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="primary-button site-referral-quick-copy"
+                  onClick={() => void copyPrompt('referral-prompt', referralPrompt.trim())}
+                >
+                  {copied === 'referral-prompt' ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copied === 'referral-prompt' ? 'Prompt de Indicação Copiado!' : 'Copiar Prompt Indique e Ganhe'}</span>
+                </button>
+              </section>
 
-          {/* Card Rápido: Guia Passo a Passo Oficial (Business & Premium) */}
-          <section className="panel site-onboarding-quick-banner" aria-label="Guia Passo a Passo do Lojista">
-            <div className="site-footer-quick-content">
-              <div className="site-onboarding-badge">
-                <BookOpen size={14} className="guide-icon-pulse" />
-                <span>Onboarding & Manual do Lojista</span>
-              </div>
-              <h3>Guia Passo a Passo: Mapa do Painel e Regras dos Planos (Business & Premium)</h3>
-              <p>
-                Prompt oficial completo para instalar a <strong>Central de Boas-Vindas e Tour Operacional</strong> no painel do lojista (<code>/painel</code>), explicando o que fazer em cada tela (pedidos, produtos, horários, Pix, frete), o significado do Código NX e a regra de <strong>Zero Bloqueio</strong> na franquia de pedidos.
-              </p>
+              {/* Card Rápido: Guia Passo a Passo Oficial (Pro & Premium) */}
+              <section className="panel site-onboarding-quick-banner" aria-label="Guia Passo a Passo do Lojista">
+                <div className="site-footer-quick-content">
+                  <div className="site-onboarding-badge">
+                    <BookOpen size={14} className="guide-icon-pulse" />
+                    <span>Onboarding & Manual do Lojista</span>
+                  </div>
+                  <h3>Guia Passo a Passo: Mapa do Painel e Regras dos Planos (Pro & Premium)</h3>
+                  <p>
+                    Prompt avulso para instalar a <strong>Central de Boas-Vindas e Tour Operacional</strong> em lojas antigas (<code>/painel</code>).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="primary-button site-onboarding-quick-copy"
+                  onClick={() => void copyPrompt('onboarding-prompt', onboardingPrompt.trim())}
+                >
+                  {copied === 'onboarding-prompt' ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copied === 'onboarding-prompt' ? 'Prompt do Guia Copiado!' : 'Copiar Prompt do Guia Passo a Passo'}</span>
+                </button>
+              </section>
             </div>
-            <button
-              type="button"
-              className="primary-button site-onboarding-quick-copy"
-              onClick={() => void copyPrompt('onboarding-prompt', onboardingPrompt.trim())}
-            >
-              {copied === 'onboarding-prompt' ? <Check size={16} /> : <Copy size={16} />}
-              <span>{copied === 'onboarding-prompt' ? 'Prompt do Guia Copiado!' : 'Copiar Prompt do Guia Passo a Passo'}</span>
-            </button>
-          </section>
+          </details>
         </>
       )}
 
       {/* ABA 2: CRIADOR DE SITES — GERADOR DE PROMPTS */}
-      {activeTab === 'generator' && <PromptGeneratorSection />}
+      {activeTab === 'generator' && <PromptGeneratorSection initialStoreId={initialStoreId} />}
       {activeTab === 'stores' && <StoreIntegrationCentral key={sessionUserId ?? 'sem-sessao'} role={role} />}
     </div>
   )

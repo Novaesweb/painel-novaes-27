@@ -54,9 +54,11 @@ type AvailableStore = {
   nx_id: string
   plan_code: string | null
   site_type?: string | null
+  domain?: string | null
+  owner_phone?: string | null
 }
 
-export function PromptGeneratorSection() {
+export function PromptGeneratorSection({ initialStoreId }: { initialStoreId?: string | undefined } = {}) {
   const [templates, setTemplates] = useState<PromptTemplateModel[]>(() => loadPromptTemplates())
   const [selectedModelId, setSelectedModelId] = useState<'start' | 'business' | 'premium' | 'empresarial'>('business')
 
@@ -64,10 +66,16 @@ export function PromptGeneratorSection() {
   const [availableStores, setAvailableStores] = useState<AvailableStore[]>([])
   const [selectedStoreId, setSelectedStoreId] = useState<string>('')
   const [loadingStores, setLoadingStores] = useState<boolean>(false)
+  const appliedInitialStore = useRef<string | null>(null)
 
   // Estado do Formulário
   const [form, setForm] = useState<ClientSitePromptInput>({
     modelId: 'business',
+    billingCycle: 'monthly',
+    includeMasterModules: true,
+    storeId: '',
+    nxId: '',
+    domain: '',
     storeName: '',
     segment: 'Pizzaria',
     customSegment: '',
@@ -152,13 +160,21 @@ export function PromptGeneratorSection() {
         if (!error && Array.isArray(data?.sites)) {
           if (active) {
             setAvailableStores(
-              data.sites.map((s: any) => ({
-                id: s.id,
-                name: s.name,
-                nx_id: s.nx_id,
-                plan_code: s.plan_code ?? null,
-                site_type: s.site_type ?? null,
-              }))
+              data.sites.map((s: any) => {
+                const primaryDomain =
+                  Array.isArray(s.domains)
+                    ? (s.domains.find((d: any) => d.is_primary)?.domain || s.domains[0]?.domain || null)
+                    : null
+                return {
+                  id: s.id,
+                  name: s.name,
+                  nx_id: s.nx_id,
+                  plan_code: s.plan_code ?? null,
+                  site_type: s.site_type ?? null,
+                  domain: primaryDomain,
+                  owner_phone: s.owner_phone ?? null,
+                }
+              })
             )
           }
         } else {
@@ -189,20 +205,14 @@ export function PromptGeneratorSection() {
     setForm((prev) => ({ ...prev, modelId: id }))
   }
 
-  // Preenchimento ao selecionar uma loja existente
-  const handleStoreSelect = (storeId: string) => {
-    setSelectedStoreId(storeId)
-    if (!storeId) return
-
-    const store = availableStores.find((s) => s.id === storeId)
-    if (!store) return
-
-    // Mapeia plan_code da loja para o modelo correspondente (start, business, premium, empresarial)
+  // Preenchimento ao selecionar uma loja existente (com injeção automática de STORE_ID, NX_ID, domínio e ciclo)
+  const applyStoreSelection = useCallback((store: AvailableStore) => {
     const normalizedPlan = (store.plan_code || '').toLowerCase()
+    const isAnnual = normalizedPlan.includes('anual') || normalizedPlan.includes('annual')
     let mappedModel: 'start' | 'business' | 'premium' | 'empresarial' = 'business'
     if (normalizedPlan.includes('start') || normalizedPlan.includes('iniciante') || normalizedPlan.includes('basico')) {
       mappedModel = 'start'
-    } else if (normalizedPlan.includes('premium') || normalizedPlan.includes('pro') || normalizedPlan.includes('avancado')) {
+    } else if (normalizedPlan.includes('premium') || normalizedPlan.includes('avancado')) {
       mappedModel = 'premium'
     } else if (normalizedPlan.includes('empresarial') || normalizedPlan.includes('custom') || normalizedPlan.includes('rede')) {
       mappedModel = 'empresarial'
@@ -210,16 +220,41 @@ export function PromptGeneratorSection() {
       mappedModel = 'business'
     }
 
+    setSelectedStoreId(store.id)
     setSelectedModelId(mappedModel)
-
     setForm((prev) => ({
       ...prev,
       modelId: mappedModel,
+      billingCycle: isAnnual ? 'annual' : 'monthly',
+      storeId: store.id,
+      nxId: store.nx_id,
+      domain: store.domain || '',
       storeName: store.name,
       brandName: store.name,
+      whatsapp: store.owner_phone || prev.whatsapp || '',
     }))
     setFormError(null)
+  }, [])
+
+  const handleStoreSelect = (storeId: string) => {
+    setSelectedStoreId(storeId)
+    if (!storeId) {
+      setForm((prev) => ({ ...prev, storeId: '', nxId: '', domain: '' }))
+      return
+    }
+    const store = availableStores.find((s) => s.id === storeId)
+    if (store) applyStoreSelection(store)
   }
+
+  // Deep-link automático quando vindo da Central Multi-Loja (?tab=generator&store_id=...)
+  useEffect(() => {
+    if (!initialStoreId || appliedInitialStore.current === initialStoreId || availableStores.length === 0) return
+    const target = availableStores.find((s) => s.id === initialStoreId)
+    if (target) {
+      appliedInitialStore.current = initialStoreId
+      applyStoreSelection(target)
+    }
+  }, [initialStoreId, availableStores, applyStoreSelection])
 
   // Helpers para seleção manual de módulos no Plano Empresarial
   const toggleModule = (moduleName: string) => {
@@ -287,6 +322,11 @@ export function PromptGeneratorSection() {
         setSelectedStoreId('')
         setForm({
           modelId: selectedModelId,
+          billingCycle: 'monthly',
+          includeMasterModules: true,
+          storeId: '',
+          nxId: '',
+          domain: '',
           storeName: '',
           segment: 'Pizzaria',
           customSegment: '',
@@ -388,23 +428,15 @@ export function PromptGeneratorSection() {
 
   return (
     <div className="prompt-generator-container">
-      {/* Tarja de Apresentação e Segurança */}
+      {/* Tarja de Apresentação Enxuta */}
       <div className="generator-hero-banner">
         <div className="generator-hero-text">
-          <div className="generator-badge">CRIADOR DE SITES · GERADOR INTELIGENTE</div>
-          <h2>Gerador de Prompts para Criação de Sites de Clientes</h2>
+          <div className="generator-badge">CRIADOR DE SITES · PROMPT ÚNICO COMPLETO</div>
+          <h2>Gerador de Prompts para Criação de Sites</h2>
           <p>
-            Configure as informações do novo estabelecimento e gere automaticamente um prompt técnico,
-            profissional e blindado para colar no <b>Google Antigravity</b> ou no <b>Codex</b>.
+            Escolha o plano, selecione uma loja cadastrada (ou preencha manualmente) e gere um prompt completo já
+            pronto com a integração ao Painel Master para colar no <b>Antigravity</b> ou <b>Codex</b>.
           </p>
-        </div>
-
-        <div className="generator-warning-box">
-          <ShieldCheck size={18} className="text-emerald" />
-          <span>
-            <b>Atenção:</b> O botão "Gerar Prompt" produz exclusivamente o texto estruturado do prompt. Ele não
-            cria, publica ou modifica nenhum site real automaticamente.
-          </span>
         </div>
       </div>
 
@@ -624,7 +656,7 @@ export function PromptGeneratorSection() {
           <div className="store-selector-box">
             <div className="store-selector-label">
               <Store size={15} className="text-brand-purple" />
-              <span><b>Escolher Loja Cadastrada</b> (preenchimento automático):</span>
+              <span><b>Escolher Loja Cadastrada</b> (injeta NX-ID, Store ID, plano e domínio automaticamente):</span>
             </div>
             <select
               value={selectedStoreId}
@@ -640,6 +672,54 @@ export function PromptGeneratorSection() {
               ))}
             </select>
             {loadingStores && <small className="text-muted">Carregando estabelecimentos cadastrados…</small>}
+            {form.storeId && form.nxId && (
+              <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.35)', fontSize: 12, color: '#6ee7b7', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <span><b>✓ IDs Oficiais no Prompt:</b> <code>{form.nxId}</code></span>
+                <span>UUID: <code>{form.storeId.slice(0, 8)}…</code></span>
+                {form.domain && <span>Domínio: <code>{form.domain}</code></span>}
+              </div>
+            )}
+          </div>
+
+          {/* Ciclo de Cobrança (Mensal / Anual) + Pacote Completo Master */}
+          <div style={{ display: 'grid', gap: 10, padding: '12px 14px', borderRadius: 10, background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', marginBottom: 14 }}>
+            {(selectedModelId === 'business' || selectedModelId === 'premium') && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
+                  Ciclo de Assinatura do Plano ({selectedModelId === 'business' ? 'Novaes Pro' : 'Novaes Premium'}):
+                </span>
+                <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={form.billingCycle !== 'annual' ? 'primary-button' : 'secondary-button'}
+                    style={{ fontSize: 11, padding: '4px 10px' }}
+                    onClick={() => setForm((prev) => ({ ...prev, billingCycle: 'monthly' }))}
+                  >
+                    Mensal ({selectedModelId === 'business' ? 'R$ 190/mês' : 'R$ 270/mês'})
+                  </button>
+                  <button
+                    type="button"
+                    className={form.billingCycle === 'annual' ? 'primary-button' : 'secondary-button'}
+                    style={{ fontSize: 11, padding: '4px 10px' }}
+                    onClick={() => setForm((prev) => ({ ...prev, billingCycle: 'annual' }))}
+                  >
+                    Anual · 2 Meses Grátis ({selectedModelId === 'business' ? 'R$ 1.900/ano' : 'R$ 2.700/ano'})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 12, color: '#cbd5e1' }}>
+              <input
+                type="checkbox"
+                checked={form.includeMasterModules !== false}
+                onChange={(e) => setForm((prev) => ({ ...prev, includeMasterModules: e.target.checked }))}
+                style={{ marginTop: 2, accentColor: '#a855f7' }}
+              />
+              <span>
+                <b>Prompt Único Completo (Recomendado):</b> já embute no site novo a integração com o Master, Rodapé Oficial v5.2, Widget de Franquia, Central de Suporte, Indique e Ganhe e Guia do Lojista — sem precisar colar 7 prompts depois.
+              </span>
+            </label>
           </div>
 
           {/* Grupo 1: Identificação */}

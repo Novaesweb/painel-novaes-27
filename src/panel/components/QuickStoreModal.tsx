@@ -25,6 +25,7 @@ interface QuickStoreModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: (newSiteId: string) => void
+  onCreatePrompt?: (newSiteId: string) => void
 }
 
 interface PresetOption {
@@ -43,7 +44,7 @@ const PRESETS: PresetOption[] = [
   { icon: <Pill size={14} />, label: 'Farmácia / Diversos', defaultPrefix: 'Drogaria ', defaultPlan: 'NOVAES_BUSINESS', category: 'Saúde & Variedades' },
 ]
 
-export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClose, onSuccess, onCreatePrompt }) => {
   const [name, setName] = useState('')
   const [nxId, setNxId] = useState('')
   const [domain, setDomain] = useState('')
@@ -297,13 +298,29 @@ export const QuickStoreModal: React.FC<QuickStoreModalProps> = ({ isOpen, onClos
               </button>
             </div>
 
-            <button
-              type="button"
-              className="btn-finish-modal"
-              onClick={handleFinish}
-            >
-              Abrir Loja no Painel <ArrowRight size={16} />
-            </button>
+            <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap', marginTop: 6 }}>
+              {onCreatePrompt && successData.id && (
+                <button
+                  type="button"
+                  className="btn-finish-modal"
+                  style={{ flex: 1, background: 'linear-gradient(135deg, #9333ea, #6d28d9)' }}
+                  onClick={() => {
+                    onCreatePrompt(successData.id)
+                    onClose()
+                  }}
+                >
+                  <Sparkles size={15} /> Gerar Prompt do Site desta Loja
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-finish-modal"
+                style={{ flex: 1 }}
+                onClick={handleFinish}
+              >
+                Abrir Loja no Painel <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         ) : (
           /* Formulário Interativo */

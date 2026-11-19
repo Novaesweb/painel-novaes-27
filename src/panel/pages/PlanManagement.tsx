@@ -29,7 +29,7 @@ export type Plan = {
   billing_period: string
   duration_days: number | null
   is_active: boolean
-  limits?: Record<string, string | number | boolean | null> | null
+  limits?: Record<string, string | number | boolean | null | undefined> | null
   features?: unknown
 }
 

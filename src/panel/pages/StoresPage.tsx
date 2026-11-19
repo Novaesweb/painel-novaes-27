@@ -626,6 +626,27 @@ export function StoresPage({ role }: { role: string }) {
               <span>Editar dados da loja</span>
             </button>
           )}
+          {role === 'MASTER' && (
+            <button
+              type="button"
+              className="secondary-button"
+              style={{
+                height: '34px',
+                fontSize: '11px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderColor: 'rgba(139, 92, 246, 0.45)',
+                color: '#e9d5ff',
+                background: 'rgba(139, 92, 246, 0.14)',
+              }}
+              onClick={() => navigate(`/integracao-sites?tab=generator&store_id=${encodeURIComponent(selected.id)}`)}
+              title="Abrir o Criador de Sites com IDs e plano desta loja já preenchidos"
+            >
+              <Sparkles size={13} style={{ color: '#c084fc' }} />
+              <span>Criar Site / Prompt</span>
+            </button>
+          )}
           <button type="button" className="secondary-button" onClick={() => navigate('/controle-pedidos')}>
             <ShoppingBag size={14} /> Franquia de pedidos
           </button>
@@ -991,6 +1012,10 @@ export function StoresPage({ role }: { role: string }) {
       onSuccess={(newId) => {
         setSelectedId(newId)
         void loadSites(true)
+      }}
+      onCreatePrompt={(newId) => {
+        void loadSites(true)
+        navigate(`/integracao-sites?tab=generator&store_id=${encodeURIComponent(newId)}`)
       }}
     />
     <WhatsAppBillingModal
